@@ -416,10 +416,11 @@
     const tasks = (todaySess?.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
     const completedIds = todaySess?.completed_ids || [];
     const allDone = tasks.length > 0 && tasks.every(t => completedIds.includes(t.id));
+    const isMythic = tasks.length === 5;
     return `
       <div class="home-header">
-        <div class="home-emoji">${allDone ? '🏆' : '⚡'}</div>
-        <div class="home-title">${allDone ? 'All Done!' : 'Mission Active'}</div>
+        <div class="home-emoji">${allDone ? '🏆' : '🔱'}</div>
+        <div class="home-title"${isMythic && !allDone ? ` style="color:var(--mythic)"` : ''}>${allDone ? 'All Done!' : isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
         <div class="home-sub">${allDone ? 'Great work today' : 'Tap a task to mark it complete'}</div>
       </div>
       <div class="tasks-label">Today's Tasks</div>
