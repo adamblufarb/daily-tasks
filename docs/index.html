@@ -97,6 +97,7 @@
     .active-task.confirming { border-color: #9ca3af; box-shadow: 0 0 0 1px #9ca3af, var(--shadow); }
     .active-task.confirming.type-legendary { border-color: var(--legendary); box-shadow: 0 0 0 1px var(--legendary), var(--shadow); }
     .active-task.confirming.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px rgba(196,113,45,0.8); }
+    .active-task.type-legendary:not(.completed) { border-color: rgba(196,113,45,0.35); }
     .active-task.completed { cursor: default; animation: none !important; transition: none; }
     .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
     .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
