@@ -126,11 +126,10 @@
   <button class="tab-btn" data-tab="today"><span class="tab-icon">⚡</span><span>Today</span></button>
   <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>History</span></button>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const SUPABASE_URL = 'https://PLACEHOLDER.supabase.co';
-  const SUPABASE_KEY = 'PLACEHOLDER_KEY';
-  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script type="module">
+  const CONNECTION_STRING = 'postgresql://neondb_owner:npg_ZpcMwu79JeSV@ep-noisy-tree-aq773vyi-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require';
+  const { neon } = await import('https://esm.sh/@neondatabase/serverless');
+  const sql = neon(CONNECTION_STRING);
 
   /* ── Task pool ── */
   const TASKS = [
@@ -423,7 +422,16 @@
     s.sessions.push(session);
     s.picked = [];
     render();
-    await db.from('daily_sessions').upsert(session);
+    await sql`
+      INSERT INTO daily_sessions (id, date, offered_ids, picked_ids, completed_ids, status)
+      VALUES (${session.id}, ${session.date}, ${session.offered_ids}, ${session.picked_ids}, ${session.completed_ids}, ${session.status})
+      ON CONFLICT (date) DO UPDATE SET
+        id = EXCLUDED.id,
+        offered_ids = EXCLUDED.offered_ids,
+        picked_ids = EXCLUDED.picked_ids,
+        completed_ids = EXCLUDED.completed_ids,
+        status = EXCLUDED.status
+    `;
   }
 
   async function submitReview() {
@@ -435,13 +443,17 @@
     s.sessions = s.sessions.map(x => x.id === pending.id ? updated : x);
     s.reviewChecked = [];
     render();
-    await db.from('daily_sessions').update({ completed_ids: completedIds, status: 'done' }).eq('id', pending.id);
+    await sql`
+      UPDATE daily_sessions
+      SET completed_ids = ${completedIds}, status = 'done'
+      WHERE id = ${pending.id}
+    `;
   }
 
   /* ── Load ── */
   async function load() {
-    const { data } = await db.from('daily_sessions').select('*');
-    if (data) s.sessions = data;
+    const rows = await sql`SELECT * FROM daily_sessions`;
+    s.sessions = rows;
     s.loading = false;
     const todaySess = s.sessions.find(x => x.date === s.today);
     if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
