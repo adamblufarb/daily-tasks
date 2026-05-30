@@ -60,6 +60,10 @@
       0%, 100% { box-shadow: 0 0 10px rgba(196,113,45,0.35), 0 2px 16px rgba(196,113,45,0.12); }
       50%       { box-shadow: 0 0 32px rgba(196,113,45,0.75), 0 0 64px rgba(196,113,45,0.28); }
     }
+    @keyframes legendary-breathe-selected {
+      0%, 100% { box-shadow: 0 0 0 1px var(--legendary), 0 0 10px rgba(196,113,45,0.35), 0 2px 16px rgba(196,113,45,0.12); }
+      50%       { box-shadow: 0 0 0 1px var(--legendary), 0 0 32px rgba(196,113,45,0.75), 0 0 64px rgba(196,113,45,0.28); }
+    }
     @keyframes legendary-flash {
       0%   { box-shadow: 0 0 12px rgba(196,113,45,0.5); }
       45%  { box-shadow: 0 0 55px rgba(196,113,45,1), 0 0 100px rgba(196,113,45,0.5); }
@@ -68,7 +72,7 @@
     .legendary-glow  { animation: legendary-breathe 2.4s ease-in-out infinite; }
 
     .task-card.legendary-card { border: 2px solid rgba(196,113,45,0.35); animation: legendary-breathe 2.4s ease-in-out infinite; }
-    .task-card.legendary-card.selected { border-color: var(--legendary); box-shadow: 0 0 0 1px var(--legendary), var(--shadow); }
+    .task-card.legendary-card.selected { border-color: var(--legendary); animation: legendary-breathe-selected 2.4s ease-in-out infinite; }
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
     .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
@@ -129,8 +133,14 @@
     .tasks-label { font-size: 0.68rem; color: var(--subtext); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
 
     /* Task pool tab */
-    .pool-section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--subtext); margin: 20px 0 8px; }
+    .pool-section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin: 20px 0 8px; }
+    .pool-section-label.label-common { color: #6d727f; }
+    .pool-section-label.label-legendary { color: var(--legendary); }
+    .pool-section-label.label-archived { color: var(--subtext); }
     .pool-task-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); }
+    .pool-task-card.card-common { border-color: rgba(109,114,127,0.35); }
+    .pool-task-card.card-legendary { border-color: rgba(196,113,45,0.35); }
+    .pool-task-card.card-archived { opacity: 0.55; }
     .pool-task-row { display: flex; align-items: center; gap: 10px; }
     .pool-task-info { flex: 1; min-width: 0; }
     .pool-task-title { font-size: 0.95rem; font-weight: 700; }
@@ -139,20 +149,33 @@
     .btn-icon { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px; border-radius: 8px; color: var(--subtext); transition: background 0.15s, color 0.15s; }
     .btn-icon:hover { background: var(--bg); }
     .btn-icon.del:hover { color: #ef4444; }
+    .btn-icon.restore:hover { color: var(--common); }
+
+    /* Delete confirmation inline */
+    .delete-confirm { margin-top: 10px; padding: 10px 12px; background: #fee2e2; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .delete-confirm-text { font-size: 0.84rem; font-weight: 700; color: #dc2626; }
+    .btn-del-yes { background: #ef4444; color: #fff; border: none; border-radius: 10px; padding: 7px 16px; font-size: 0.84rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-del-no  { background: none; border: 1px solid #fca5a5; border-radius: 10px; padding: 7px 14px; font-size: 0.84rem; font-weight: 600; cursor: pointer; font-family: inherit; color: #dc2626; }
 
     /* Task edit form */
     .task-edit-form { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
     .form-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; color: var(--text); background: var(--bg); outline: none; }
-    .form-input:focus { border-color: var(--accent); }
+    .form-input:focus { border-color: var(--common); }
     .form-row { display: flex; gap: 8px; align-items: center; }
     .form-type-btn { flex: 1; padding: 8px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: none; color: var(--subtext); }
-    .form-type-btn.active-common { border-color: var(--accent); background: #e0e7ff; color: var(--accent); }
+    .form-type-btn.active-common { border-color: var(--common); background: var(--common-light); color: #6d727f; }
     .form-type-btn.active-legendary { border-color: var(--legendary); background: #fef3c7; color: var(--legendary); }
     .form-actions { display: flex; gap: 8px; margin-top: 4px; }
-    .btn-save { flex: 1; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+    .btn-save { flex: 1; padding: 10px; color: #fff; border: none; border-radius: 12px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+    .btn-save.save-common { background: var(--common); }
+    .btn-save.save-legendary { background: var(--legendary); }
     .btn-cancel { padding: 10px 16px; background: none; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; cursor: pointer; color: var(--subtext); }
-    .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-top: 8px; transition: border-color 0.15s, color 0.15s; }
-    .btn-add-task:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-bottom: 4px; transition: border-color 0.15s, color 0.15s; }
+    .btn-add-task:hover { border-color: var(--common); color: var(--common); }
+
+    /* New task card at top */
+    .new-task-card { background: var(--card); border: 1.5px dashed var(--common); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); }
+    .new-task-label { font-size: 0.88rem; font-weight: 700; color: #6d727f; margin-bottom: 4px; }
 
     /* History */
     .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
@@ -205,6 +228,13 @@
   ];
 
   function getTask(id) { return s.tasks.find(t => t.id === id); }
+  function getTaskForHistory(sess, id) {
+    if (sess.task_snapshots?.length) {
+      const snap = sess.task_snapshots.find(t => t.id === id);
+      if (snap) return snap;
+    }
+    return getTask(id);
+  }
 
   /* ── State ── */
   const s = {
@@ -218,6 +248,7 @@
     reviewChecked: [],
     confirmTask: null,
     editingTask: null,   // null | { id, title, description, type }  (id==='' → new)
+    deletingTask: null,  // task id pending delete confirmation
     newTaskType: 'common',
   };
 
@@ -239,7 +270,7 @@
     for (const sess of s.sessions) {
       if (sess.status !== 'done') continue;
       for (const id of (sess.completed_ids || [])) {
-        const t = getTask(id);
+        const t = getTaskForHistory(sess, id);
         if (t?.type === 'legendary') legendary++; else common++;
       }
     }
@@ -266,7 +297,8 @@
     if (todaySess?.offered_ids?.length) {
       s.offered = todaySess.offered_ids;
     } else if (!s.offered.length) {
-      s.offered = shuffle(s.tasks).slice(0,5).map(t => t.id);
+      const active = s.tasks.filter(t => !t.archived);
+      s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
     }
   }
 
@@ -317,9 +349,8 @@
   /* ── Active ── */
   function htmlActive() {
     const todaySess = s.sessions.find(x => x.date === s.today);
-    const tasks = (todaySess?.picked_ids || []).map(id => getTask(id)).filter(Boolean);
+    const tasks = (todaySess?.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
     const completedIds = todaySess?.completed_ids || [];
-    const pts = computePoints();
     const allDone = tasks.length > 0 && tasks.every(t => completedIds.includes(t.id));
     return `
       <div class="home-header">
@@ -360,7 +391,7 @@
   /* ── Review ── */
   function htmlReview() {
     const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
-    const tasks = (pending?.picked_ids || []).map(id => getTask(id)).filter(Boolean);
+    const tasks = (pending?.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
     const allChecked = s.reviewChecked.length === tasks.length && tasks.length > 0;
     return `
       <div class="section-header">
@@ -388,14 +419,17 @@
 
   /* ── Task Pool tab ── */
   function htmlTaskPool() {
-    const common    = s.tasks.filter(t => t.type === 'common');
-    const legendary = s.tasks.filter(t => t.type === 'legendary');
-    const isAdding  = s.editingTask?.id === '';
+    const active     = s.tasks.filter(t => !t.archived);
+    const common     = active.filter(t => t.type === 'common');
+    const legendary  = active.filter(t => t.type === 'legendary');
+    const archived   = s.tasks.filter(t => t.archived);
+    const isAdding   = s.editingTask?.id === '';
 
     function taskRow(t) {
-      const editing = s.editingTask?.id === t.id;
+      const editing  = s.editingTask?.id === t.id;
+      const deleting = s.deletingTask === t.id;
       return `
-        <div class="pool-task-card${t.type==='legendary'?' legendary-glow':''}">
+        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}">
           <div class="pool-task-row">
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
@@ -403,14 +437,49 @@
             </div>
             <div class="pool-task-actions">
               <button class="btn-icon" data-edit-task="${t.id}" title="Edit">✏️</button>
+              <button class="btn-icon" data-archive-task="${t.id}" title="Archive">📦</button>
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
             </div>
           </div>
+          ${deleting ? `
+          <div class="delete-confirm">
+            <span class="delete-confirm-text">Delete forever?</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-del-no" data-cancel-delete>Cancel</button>
+              <button class="btn-del-yes" data-confirm-delete="${t.id}">Delete</button>
+            </div>
+          </div>` : ''}
           ${editing ? editForm(s.editingTask) : ''}
         </div>`;
     }
 
+    function archivedRow(t) {
+      const deleting = s.deletingTask === t.id;
+      return `
+        <div class="pool-task-card card-archived">
+          <div class="pool-task-row">
+            <div class="pool-task-info">
+              <div class="pool-task-title">${t.title}</div>
+              <div class="pool-task-desc">${t.description} · <em>${t.type}</em></div>
+            </div>
+            <div class="pool-task-actions">
+              <button class="btn-icon restore" data-restore-task="${t.id}" title="Restore">↩️</button>
+              <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
+            </div>
+          </div>
+          ${deleting ? `
+          <div class="delete-confirm">
+            <span class="delete-confirm-text">Delete forever?</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-del-no" data-cancel-delete>Cancel</button>
+              <button class="btn-del-yes" data-confirm-delete="${t.id}">Delete</button>
+            </div>
+          </div>` : ''}
+        </div>`;
+    }
+
     function editForm(task) {
+      const saveClass = `save-${task.type || 'common'}`;
       return `
         <div class="task-edit-form">
           <input class="form-input" id="edit-title" placeholder="Task name" value="${task.title||''}">
@@ -421,7 +490,7 @@
           </div>
           <div class="form-actions">
             <button class="btn-cancel" data-cancel-edit>Cancel</button>
-            <button class="btn-save" data-save-task>Save</button>
+            <button class="btn-save ${saveClass}" data-save-task>Save</button>
           </div>
         </div>`;
     }
@@ -429,18 +498,20 @@
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Task Pool</div>
-        <div class="section-sub">${s.tasks.length} tasks · ${common.length} common · ${legendary.length} legendary</div>
+        <div class="section-sub">${active.length} active · ${common.length} common · ${legendary.length} legendary${archived.length ? ` · ${archived.length} archived` : ''}</div>
       </div>
-      <div class="pool-section-label">Common</div>
-      ${common.map(taskRow).join('')}
-      <div class="pool-section-label">Legendary</div>
-      ${legendary.map(taskRow).join('')}
       ${isAdding ? `
-        <div class="pool-task-card" style="margin-top:12px">
-          <div style="font-size:0.88rem;font-weight:700;margin-bottom:4px">New Task</div>
+        <div class="new-task-card">
+          <div class="new-task-label">New Task</div>
           ${editForm(s.editingTask)}
-        </div>` : ''}
-      <button class="btn-add-task" id="btn-add-task">+ Add Task</button>`;
+        </div>` : `<button class="btn-add-task" id="btn-add-task">+ Add Task</button>`}
+      <div class="pool-section-label label-common">Common</div>
+      ${common.map(taskRow).join('')}
+      <div class="pool-section-label label-legendary">Legendary</div>
+      ${legendary.map(taskRow).join('')}
+      ${archived.length ? `
+        <div class="pool-section-label label-archived">Archived</div>
+        ${archived.map(archivedRow).join('')}` : ''}`;
   }
 
   /* ── History ── */
@@ -464,14 +535,14 @@
 
       ${!sorted.length ? `<div class="empty"><div class="empty-emoji">📜</div><div>No history yet.</div></div>` : ''}
       ${sorted.map(sess => {
-        const tasks = (sess.picked_ids||[]).map(id=>getTask(id)).filter(Boolean);
+        const tasks = (sess.picked_ids||[]).map(id => getTaskForHistory(sess, id)).filter(Boolean);
         const isDone = sess.status === 'done';
         const isWin  = isDone && (sess.completed_ids||[]).length === (sess.picked_ids||[]).length;
         const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Completed' : 'Failed';
         const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
         let cPts = 0, lPts = 0;
         if (isDone) for (const id of (sess.completed_ids||[])) {
-          const t = getTask(id);
+          const t = getTaskForHistory(sess, id);
           if (t?.type === 'legendary') lPts++; else cPts++;
         }
         return `
@@ -514,7 +585,8 @@
         }));
       document.getElementById('btn-start')?.addEventListener('click', startDay);
       document.getElementById('btn-shuffle')?.addEventListener('click', () => {
-        s.offered = shuffle(s.tasks).slice(0,5).map(t => t.id);
+        const active = s.tasks.filter(t => !t.archived);
+        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
         s.picked = [];
         render();
       });
@@ -525,7 +597,6 @@
         el.addEventListener('click', () => {
           const taskId = el.dataset.confirmTask;
           if (el.dataset.taskType === 'legendary') {
-            // Trigger flash on existing element without re-rendering (avoids glow reset glitch)
             el.style.animation = 'legendary-flash 0.65s ease-in-out forwards';
             el.style.borderColor = 'var(--legendary)';
             setTimeout(() => { s.confirmTask = taskId; render(); }, 350);
@@ -559,10 +630,26 @@
         el.addEventListener('click', () => {
           const t = getTask(el.dataset.editTask);
           s.editingTask = t ? { ...t } : null;
+          s.deletingTask = null;
           render();
         }));
+      document.querySelectorAll('[data-archive-task]').forEach(el =>
+        el.addEventListener('click', () => archivePoolTask(el.dataset.archiveTask)));
+      document.querySelectorAll('[data-restore-task]').forEach(el =>
+        el.addEventListener('click', () => restorePoolTask(el.dataset.restoreTask)));
       document.querySelectorAll('[data-delete-task]').forEach(el =>
-        el.addEventListener('click', () => deletePoolTask(el.dataset.deleteTask)));
+        el.addEventListener('click', () => {
+          s.deletingTask = el.dataset.deleteTask;
+          s.editingTask = null;
+          render();
+        }));
+      document.querySelector('[data-cancel-delete]')?.addEventListener('click', () => {
+        s.deletingTask = null; render();
+      });
+      const confirmDelBtn = document.querySelector('[data-confirm-delete]');
+      if (confirmDelBtn) confirmDelBtn.addEventListener('click', () => {
+        deletePoolTask(confirmDelBtn.dataset.confirmDelete);
+      });
       document.querySelectorAll('[data-set-type]').forEach(el =>
         el.addEventListener('click', () => {
           if (s.editingTask) { s.editingTask.type = el.dataset.setType; render(); }
@@ -586,6 +673,7 @@
   /* ── Today actions ── */
   async function startDay() {
     if (s.picked.length !== 3) return;
+    const pickedTasks = s.tasks.filter(t => s.picked.includes(t.id));
     const session = {
       id: Date.now().toString(),
       date: s.today,
@@ -593,18 +681,19 @@
       picked_ids: s.picked.slice(),
       completed_ids: [],
       status: 'active',
+      task_snapshots: pickedTasks,
     };
     s.sessions = s.sessions.filter(x => x.date !== s.today);
     s.sessions.push(session);
     s.picked = [];
     render();
     await sql`
-      INSERT INTO daily_sessions (id, date, offered_ids, picked_ids, completed_ids, status)
-      VALUES (${session.id}, ${session.date}, ${session.offered_ids}, ${session.picked_ids}, ${session.completed_ids}, ${session.status})
+      INSERT INTO daily_sessions (id, date, offered_ids, picked_ids, completed_ids, status, task_snapshots)
+      VALUES (${session.id}, ${session.date}, ${session.offered_ids}, ${session.picked_ids}, ${session.completed_ids}, ${session.status}, ${JSON.stringify(session.task_snapshots)}::jsonb)
       ON CONFLICT (date) DO UPDATE SET
         id = EXCLUDED.id, offered_ids = EXCLUDED.offered_ids,
         picked_ids = EXCLUDED.picked_ids, completed_ids = EXCLUDED.completed_ids,
-        status = EXCLUDED.status
+        status = EXCLUDED.status, task_snapshots = EXCLUDED.task_snapshots
     `;
   }
 
@@ -658,14 +747,27 @@
     s.editingTask = null;
     render();
     await sql`
-      INSERT INTO tasks (id, title, description, type)
-      VALUES (${task.id}, ${task.title}, ${task.description}, ${task.type})
+      INSERT INTO tasks (id, title, description, type, archived)
+      VALUES (${task.id}, ${task.title}, ${task.description}, ${task.type}, false)
       ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, type = EXCLUDED.type
     `;
   }
 
+  async function archivePoolTask(id) {
+    s.tasks = s.tasks.map(t => t.id === id ? { ...t, archived: true } : t);
+    render();
+    await sql`UPDATE tasks SET archived = true WHERE id = ${id}`;
+  }
+
+  async function restorePoolTask(id) {
+    s.tasks = s.tasks.map(t => t.id === id ? { ...t, archived: false } : t);
+    render();
+    await sql`UPDATE tasks SET archived = false WHERE id = ${id}`;
+  }
+
   async function deletePoolTask(id) {
     s.tasks = s.tasks.filter(t => t.id !== id);
+    s.deletingTask = null;
     render();
     await sql`DELETE FROM tasks WHERE id = ${id}`;
   }
@@ -673,7 +775,6 @@
   /* ── Load ── */
   async function load() {
     try {
-      // Auto-create tables so no manual migration needed
       await sql`
         CREATE TABLE IF NOT EXISTS daily_sessions (
           id text primary key,
@@ -694,6 +795,9 @@
           created_at timestamptz default now()
         )
       `;
+      // Add columns introduced after initial schema (idempotent)
+      await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false`;
+      await sql`ALTER TABLE daily_sessions ADD COLUMN IF NOT EXISTS task_snapshots jsonb DEFAULT '[]'`;
 
       const [sessionRows, taskRows] = await Promise.all([
         sql`SELECT * FROM daily_sessions`,
@@ -719,7 +823,7 @@
           ('l3',  'Deep Work',         '3 hours of uninterrupted focused work',      'legendary')
           ON CONFLICT (id) DO NOTHING
         `;
-        s.tasks = [...DEFAULT_TASKS];
+        s.tasks = DEFAULT_TASKS.map(t => ({ ...t, archived: false }));
       } else {
         s.tasks = taskRows;
       }
