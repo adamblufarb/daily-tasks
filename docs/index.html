@@ -18,6 +18,7 @@
       --accent: #4f46e5;
       --accent2: #818cf8;
       --legendary: #c4712d;
+      --mythic: #b87ad7;
       --legendary2: #e08c50;
       --common: #999da6;
       --common-light: #f3f4f6;
@@ -49,6 +50,7 @@
     .points-val { font-size: 2rem; font-weight: 700; line-height: 1; }
     .points-val.common { color: var(--common); }
     .points-val.legendary { color: var(--legendary); }
+    .points-val.mythic { color: var(--mythic); }
     .points-label { font-size: 0.68rem; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
 
     /* Task option cards (pick screen) */
@@ -192,6 +194,13 @@
     .pts-earned { font-weight: 700; }
     .pts-common { color: var(--common); }
     .pts-legendary { color: var(--legendary); }
+    .pts-mythic { color: var(--mythic); }
+
+    @keyframes mythic-breathe {
+      0%, 100% { box-shadow: 0 0 10px rgba(184,122,215,0.35), 0 2px 16px rgba(184,122,215,0.12); }
+      50%       { box-shadow: 0 0 32px rgba(184,122,215,0.75), 0 0 64px rgba(184,122,215,0.28); }
+    }
+    .mythic-glow { animation: mythic-breathe 2.4s ease-in-out infinite; }
 
     .loading { text-align: center; padding: 80px 20px; color: var(--subtext); font-size: 1rem; }
     .empty { text-align: center; padding: 60px 20px; color: var(--subtext); }
@@ -266,15 +275,16 @@
 
   /* ── Points ── */
   function computePoints() {
-    let common = 0, legendary = 0;
+    let common = 0, legendary = 0, mythic = 0;
     for (const sess of s.sessions) {
       if (sess.status !== 'done') continue;
+      if ((sess.picked_ids||[]).length === 5 && (sess.completed_ids||[]).length === 5) mythic++;
       for (const id of (sess.completed_ids || [])) {
         const t = getTaskForHistory(sess, id);
         if (t?.type === 'legendary') legendary++; else common++;
       }
     }
-    return { common, legendary };
+    return { common, legendary, mythic };
   }
 
   /* ── Helpers ── */
@@ -298,7 +308,7 @@
       s.offered = todaySess.offered_ids;
     } else if (!s.offered.length) {
       const active = s.tasks.filter(t => !t.archived);
-      s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+      s.offered = shuffle(active).slice(0, Math.min(7, active.length)).map(t => t.id);
     }
   }
 
@@ -329,12 +339,12 @@
     const n = s.picked.length;
     return `
       <div class="section-header">
-        <div class="section-title">Pick Your 3 Tasks</div>
+        <div class="section-title">Pick Your Tasks</div>
         <div class="section-sub">${fmtDate(s.today)}</div>
       </div>
-      <div class="pick-count">Selected: <strong>${n} / 3</strong></div>
+      <div class="pick-count">Selected: <strong>${n} / 5</strong> <span style="font-weight:400;color:var(--subtext)">(min 3${n===5?' · Pick all 5 for a Mythic point! ✨':''})</span></div>
       ${tasks.map(t => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}" data-pick="${t.id}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}" data-pick="${t.id}" ${s.picked.length>=5&&!s.picked.includes(t.id)?'style="opacity:0.45;pointer-events:none"':''}>
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
@@ -525,11 +535,15 @@
       <div class="points-bar">
         <div class="points-card">
           <div class="points-val common">${pts.common}</div>
-          <div class="points-label">Common Points</div>
+          <div class="points-label">Common</div>
         </div>
         <div class="points-card legendary-glow">
           <div class="points-val legendary">${pts.legendary}</div>
-          <div class="points-label">Legendary Points</div>
+          <div class="points-label">Legendary</div>
+        </div>
+        <div class="points-card mythic-glow">
+          <div class="points-val mythic">${pts.mythic}</div>
+          <div class="points-label">Mythic</div>
         </div>
       </div>
 
@@ -541,6 +555,7 @@
         const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Completed' : 'Failed';
         const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
         let cPts = 0, lPts = 0;
+        const isMythic = isDone && (sess.picked_ids||[]).length === 5 && (sess.completed_ids||[]).length === 5;
         if (isDone) for (const id of (sess.completed_ids||[])) {
           const t = getTaskForHistory(sess, id);
           if (t?.type === 'legendary') lPts++; else cPts++;
@@ -564,6 +579,7 @@
             ${isDone ? `<div class="history-pts">
               ${cPts ? `<span class="pts-earned pts-common">+${cPts} common</span>` : ''}
               ${lPts ? `<span class="pts-earned pts-legendary">+${lPts} legendary</span>` : ''}
+              ${isMythic ? `<span class="pts-earned pts-mythic">+1 mythic ✨</span>` : ''}
               ${!cPts && !lPts ? `<span>No points earned</span>` : ''}
             </div>` : ''}
           </div>`;
@@ -580,13 +596,13 @@
         el.addEventListener('click', () => {
           const id = el.dataset.pick;
           if (s.picked.includes(id)) s.picked = s.picked.filter(x => x !== id);
-          else if (s.picked.length < 3) s.picked.push(id);
+          else if (s.picked.length < 5) s.picked.push(id);
           render();
         }));
       document.getElementById('btn-start')?.addEventListener('click', startDay);
       document.getElementById('btn-shuffle')?.addEventListener('click', () => {
         const active = s.tasks.filter(t => !t.archived);
-        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+        s.offered = shuffle(active).slice(0, Math.min(7, active.length)).map(t => t.id);
         s.picked = [];
         render();
       });
