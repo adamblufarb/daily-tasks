@@ -9,7 +9,7 @@
   <title>Daily Tasks</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     :root {
@@ -33,7 +33,7 @@
       --radius: 20px;
       --shadow: 0 2px 12px rgba(79,70,229,0.08);
     }
-    body { background: var(--bg); color: var(--text); font-family: 'Fredoka', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; transition: background 0.45s ease; }
+    body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; transition: background 0.45s ease; }
     body.mythic-bg { background: var(--mythic); }
     body.mythic-bg .tab-bar { background: var(--mythic); border-top-color: rgba(255,255,255,0.2); transition: background 0.45s ease; }
     body.mythic-bg .tab-btn { color: rgba(255,255,255,0.6); }
@@ -99,11 +99,11 @@
 
     /* Active task list */
     .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); position: relative; }
-    /* selected = tapped/highlighted; idle = default untouched state */
+    /* idle = default; selected = tapped/highlighted */
+    .active-task.type-legendary { border: 2px solid color-mix(in srgb, var(--legendary) 35%, transparent); }
     .active-task.selected { border-color: var(--common); box-shadow: var(--shadow); }
-    .active-task.selected.type-legendary { border-color: color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
+    .active-task.selected.type-legendary { border: 2px solid color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
     .active-task.selected.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
-    .active-task.type-legendary:not(.completed) { border-color: color-mix(in srgb, var(--legendary) 35%, transparent); }
     .active-task.completed { cursor: default; animation: none !important; transition: none; }
     .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
     .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
