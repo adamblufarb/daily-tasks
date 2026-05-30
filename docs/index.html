@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f0f4ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Daily Tasks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #f0f4ff;
+      --card: #ffffff;
+      --accent: #4f46e5;
+      --accent2: #818cf8;
+      --legendary: #d97706;
+      --legendary2: #fbbf24;
+      --text: #1e1b4b;
+      --subtext: #6b7280;
+      --border: #e0e7ff;
+      --radius: 20px;
+      --shadow: 0 2px 12px rgba(79,70,229,0.08);
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Fredoka', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; }
+
+    .tab-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -2px 12px rgba(0,0,0,0.05); }
+    .tab-btn { flex: 1; padding: 12px 8px; background: none; border: none; color: var(--subtext); font-size: 0.72rem; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.15s; }
+    .tab-icon { font-size: 1.4rem; line-height: 1; }
+    .tab-btn.active { color: var(--accent); }
+
+    .content { padding: 0 20px calc(88px + env(safe-area-inset-bottom)) 20px; }
+
+    /* Buttons */
+    .btn-primary { width: 100%; padding: 17px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(79,70,229,0.3); transition: transform 0.1s; touch-action: manipulation; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.4; pointer-events: none; }
+    .btn-ghost { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.9rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
+
+    /* Points bar */
+    .points-bar { display: flex; gap: 10px; margin-bottom: 28px; }
+    .points-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; text-align: center; box-shadow: var(--shadow); }
+    .points-val { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .points-val.common { color: var(--accent); }
+    .points-val.legendary { color: var(--legendary); }
+    .points-label { font-size: 0.68rem; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+    /* Task option cards (pick screen) */
+    .task-card { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; box-shadow: var(--shadow); }
+    .task-card:active { transform: scale(0.98); }
+    .task-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+    .task-card.legendary-card { border-color: #fde68a; }
+    .task-card.legendary-card.selected { border-color: var(--legendary); box-shadow: 0 0 0 1px var(--legendary), 0 4px 20px rgba(217,119,6,0.18); }
+    .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+    .task-title { font-size: 1.05rem; font-weight: 700; }
+    .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
+    .badge-common { background: #e0e7ff; color: var(--accent); }
+    .badge-legendary { background: #fef3c7; color: var(--legendary); }
+    .task-desc { font-size: 0.84rem; color: var(--subtext); }
+
+    /* Active task list */
+    .active-task { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow); }
+    .active-task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-common { background: var(--accent); }
+    .dot-legendary { background: var(--legendary); }
+    .active-task-info { flex: 1; }
+    .active-task-title { font-size: 1rem; font-weight: 700; }
+    .active-task-desc { font-size: 0.82rem; color: var(--subtext); margin-top: 2px; }
+
+    /* Review */
+    .review-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
+    .review-task.checked { border-color: #22c55e; box-shadow: 0 0 0 1px #22c55e, var(--shadow); }
+    .review-checkbox { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem; transition: all 0.15s; }
+    .review-task.checked .review-checkbox { background: #22c55e; border-color: #22c55e; color: #fff; }
+    .review-task-info { flex: 1; }
+    .review-task-title { font-size: 1rem; font-weight: 700; }
+    .review-task-sub { font-size: 0.82rem; color: var(--subtext); margin-top: 2px; }
+
+    /* Warning */
+    .warning-banner { background: #fef3c7; border: 1px solid #fde68a; border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start; }
+    .warning-text { font-size: 0.84rem; color: #92400e; font-weight: 600; line-height: 1.4; }
+
+    /* Section headers */
+    .section-header { padding: 48px 0 24px; }
+    .section-title { font-size: 1.6rem; font-weight: 700; }
+    .section-sub { font-size: 0.88rem; color: var(--subtext); margin-top: 4px; }
+
+    /* Pick count */
+    .pick-count { text-align: center; font-size: 0.88rem; color: var(--subtext); font-weight: 600; margin-bottom: 14px; }
+    .pick-count strong { color: var(--accent); }
+
+    /* Home / active header */
+    .home-header { padding: 52px 0 24px; text-align: center; }
+    .home-emoji { font-size: 5.5rem; line-height: 1; margin-bottom: 12px; }
+    .home-title { font-size: 1.8rem; font-weight: 700; }
+    .home-sub { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
+    .tasks-label { font-size: 0.68rem; color: var(--subtext); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+
+    /* History */
+    .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
+    .history-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .history-date { font-size: 0.95rem; font-weight: 700; }
+    .history-result { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .result-win { background: #dcfce7; color: #16a34a; }
+    .result-fail { background: #fee2e2; color: #dc2626; }
+    .result-active { background: #e0e7ff; color: var(--accent); }
+    .history-tasks { display: flex; flex-direction: column; gap: 6px; }
+    .history-task-row { font-size: 0.84rem; display: flex; align-items: center; gap: 8px; color: var(--subtext); }
+    .history-task-row.done { color: var(--text); font-weight: 600; }
+    .history-pts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--subtext); display: flex; gap: 12px; }
+    .pts-earned { font-weight: 700; }
+    .pts-common { color: var(--accent); }
+    .pts-legendary { color: var(--legendary); }
+
+    .loading { text-align: center; padding: 80px 20px; color: var(--subtext); font-size: 1rem; }
+    .empty { text-align: center; padding: 60px 20px; color: var(--subtext); }
+    .empty-emoji { font-size: 3rem; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+<div class="content" id="app"></div>
+<div class="tab-bar">
+  <button class="tab-btn" data-tab="today"><span class="tab-icon">⚡</span><span>Today</span></button>
+  <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>History</span></button>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://PLACEHOLDER.supabase.co';
+  const SUPABASE_KEY = 'PLACEHOLDER_KEY';
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  /* ── Task pool ── */
+  const TASKS = [
+    { id:'c1',  type:'common',    title:'Morning Walk',      desc:'Take a 20-minute walk outside' },
+    { id:'c2',  type:'common',    title:'Hydrate',           desc:'Drink 8 glasses of water' },
+    { id:'c3',  type:'common',    title:'Read',              desc:'Read for at least 20 minutes' },
+    { id:'c4',  type:'common',    title:'Meditate',          desc:'10 minutes of mindfulness' },
+    { id:'c5',  type:'common',    title:'Journal',           desc:'Write 5 minutes in your journal' },
+    { id:'c6',  type:'common',    title:'No Social Media',   desc:'Avoid social media until noon' },
+    { id:'c7',  type:'common',    title:'Exercise',          desc:'Work out for 30 minutes' },
+    { id:'c8',  type:'common',    title:'Healthy Breakfast', desc:'Eat a nutritious breakfast' },
+    { id:'c9',  type:'common',    title:'Connect',           desc:'Reach out to someone you care about' },
+    { id:'c10', type:'common',    title:'Early Bed',         desc:'In bed before midnight' },
+    { id:'l1',  type:'legendary', title:'The Fast',          desc:'Complete a 16-hour fast' },
+    { id:'l2',  type:'legendary', title:'Ice Bath',          desc:'Take a cold shower or ice bath' },
+    { id:'l3',  type:'legendary', title:'Deep Work',         desc:'3 hours of uninterrupted focused work' },
+  ];
+  function getTask(id) { return TASKS.find(t => t.id === id); }
+
+  /* ── State ── */
+  const s = {
+    tab: 'today',
+    loading: true,
+    sessions: [],
+    today: todayStr(),
+    offered: [],      // 5 task IDs shown during pick
+    picked: [],       // IDs selected so far on pick screen
+    reviewChecked: [],
+  };
+
+  function todayStr() {
+    return new Date().toISOString().slice(0,10);
+  }
+
+  /* ── Screen logic ── */
+  function getScreen() {
+    if (s.loading) return 'loading';
+    const pendingReview = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (pendingReview) return 'review';
+    const todaySess = s.sessions.find(x => x.date === s.today);
+    if (!todaySess || todaySess.status === 'picking') return 'pick';
+    return 'active';
+  }
+
+  /* ── Points ── */
+  function computePoints() {
+    let common = 0, legendary = 0;
+    for (const sess of s.sessions) {
+      if (sess.status !== 'done') continue;
+      for (const id of (sess.completed_ids || [])) {
+        const t = getTask(id);
+        if (t?.type === 'legendary') legendary++; else common++;
+      }
+    }
+    return { common, legendary };
+  }
+
+  /* ── Helpers ── */
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function fmtDate(str) {
+    if (!str) return '';
+    return new Date(str + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  }
+
+  function ensureOffered() {
+    const todaySess = s.sessions.find(x => x.date === s.today);
+    if (todaySess?.offered_ids?.length) {
+      s.offered = todaySess.offered_ids;
+    } else if (!s.offered.length) {
+      s.offered = shuffle(TASKS).slice(0,5).map(t => t.id);
+    }
+  }
+
+  /* ── Render ── */
+  function render() {
+    const screen = s.tab === 'history' ? 'history' : getScreen();
+    document.getElementById('app').innerHTML = buildHtml(screen);
+    document.querySelectorAll('.tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === s.tab));
+    bind(screen);
+  }
+
+  function buildHtml(screen) {
+    if (screen === 'loading') return `<div class="loading">Loading…</div>`;
+    if (screen === 'history') return htmlHistory();
+    if (screen === 'review')  return htmlReview();
+    if (screen === 'pick')    return htmlPick();
+    return htmlActive();
+  }
+
+  /* ── Pick ── */
+  function htmlPick() {
+    ensureOffered();
+    const tasks = s.offered.map(id => getTask(id)).filter(Boolean);
+    const n = s.picked.length;
+    return `
+      <div class="section-header">
+        <div class="section-title">Pick Your 3 Tasks</div>
+        <div class="section-sub">${fmtDate(s.today)}</div>
+      </div>
+      <div class="pick-count">Selected: <strong>${n} / 3</strong></div>
+      ${tasks.map(t => `
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}" data-pick="${t.id}">
+          <div class="task-card-top">
+            <div class="task-title">${t.title}</div>
+            <span class="task-badge badge-${t.type}">${t.type}</span>
+          </div>
+          <div class="task-desc">${t.desc}</div>
+        </div>`).join('')}
+      <div style="height:16px"></div>
+      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Day →</button>
+      <button class="btn-ghost" id="btn-shuffle">↻ Shuffle options</button>`;
+  }
+
+  /* ── Active ── */
+  function htmlActive() {
+    const todaySess = s.sessions.find(x => x.date === s.today);
+    const tasks = (todaySess?.picked_ids || []).map(id => getTask(id)).filter(Boolean);
+    const pts = computePoints();
+    return `
+      <div class="home-header">
+        <div class="home-emoji">⚡</div>
+        <div class="home-title">Mission Active</div>
+        <div class="home-sub">Come back tomorrow to log your results</div>
+      </div>
+      <div class="points-bar">
+        <div class="points-card">
+          <div class="points-val common">${pts.common}</div>
+          <div class="points-label">Common Points</div>
+        </div>
+        <div class="points-card">
+          <div class="points-val legendary">${pts.legendary}</div>
+          <div class="points-label">Legendary Points</div>
+        </div>
+      </div>
+      <div class="tasks-label">Today's Tasks</div>
+      ${tasks.map(t => `
+        <div class="active-task">
+          <div class="active-task-dot dot-${t.type}"></div>
+          <div class="active-task-info">
+            <div class="active-task-title">${t.title}</div>
+            <div class="active-task-desc">${t.desc}</div>
+          </div>
+          <span class="task-badge badge-${t.type}">${t.type}</span>
+        </div>`).join('')}`;
+  }
+
+  /* ── Review ── */
+  function htmlReview() {
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    const tasks = (pending?.picked_ids || []).map(id => getTask(id)).filter(Boolean);
+    const allChecked = s.reviewChecked.length === tasks.length && tasks.length > 0;
+    return `
+      <div class="section-header">
+        <div class="section-title">How'd it go?</div>
+        <div class="section-sub">${fmtDate(pending?.date || '')}</div>
+      </div>
+      <div class="warning-banner">
+        <div>⚠️</div>
+        <div class="warning-text">You need to complete all 3 tasks to earn points. Failing even one means no points for the day.</div>
+      </div>
+      ${tasks.map(t => `
+        <div class="review-task${s.reviewChecked.includes(t.id)?' checked':''}" data-review="${t.id}">
+          <div class="review-checkbox">${s.reviewChecked.includes(t.id)?'✓':''}</div>
+          <div class="review-task-info">
+            <div class="review-task-title">${t.title}</div>
+            <div class="review-task-sub">${t.desc}</div>
+          </div>
+          <span class="task-badge badge-${t.type}">${t.type}</span>
+        </div>`).join('')}
+      <div style="height:16px"></div>
+      <button class="btn-primary" id="btn-submit-review">
+        ${allChecked ? '🏆 Claim Points' : 'Submit — no points today'}
+      </button>`;
+  }
+
+  /* ── History ── */
+  function htmlHistory() {
+    const pts = computePoints();
+    const sorted = s.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
+    return `
+      <div class="section-header" style="padding-bottom:20px">
+        <div class="section-title">History</div>
+      </div>
+      <div class="points-bar">
+        <div class="points-card">
+          <div class="points-val common">${pts.common}</div>
+          <div class="points-label">Common Points</div>
+        </div>
+        <div class="points-card">
+          <div class="points-val legendary">${pts.legendary}</div>
+          <div class="points-label">Legendary Points</div>
+        </div>
+      </div>
+      ${!sorted.length ? `<div class="empty"><div class="empty-emoji">📜</div><div>No history yet.</div></div>` : ''}
+      ${sorted.map(sess => {
+        const tasks = (sess.picked_ids||[]).map(id=>getTask(id)).filter(Boolean);
+        const isDone = sess.status === 'done';
+        const isWin  = isDone && (sess.completed_ids||[]).length === (sess.picked_ids||[]).length;
+        const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Completed' : 'Failed';
+        const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
+
+        // Points earned this session
+        let cPts = 0, lPts = 0;
+        if (isDone) {
+          for (const id of (sess.completed_ids||[])) {
+            const t = getTask(id);
+            if (t?.type === 'legendary') lPts++; else cPts++;
+          }
+        }
+
+        return `
+          <div class="history-card">
+            <div class="history-card-top">
+              <div class="history-date">${fmtDate(sess.date)}</div>
+              <span class="history-result ${cls}">${label}</span>
+            </div>
+            <div class="history-tasks">
+              ${tasks.map(t => {
+                const done = (sess.completed_ids||[]).includes(t.id);
+                return `<div class="history-task-row${done?' done':''}">
+                  <span>${done?'✓':'○'}</span>
+                  <span style="flex:1">${t.title}</span>
+                  <span class="task-badge badge-${t.type}">${t.type}</span>
+                </div>`;
+              }).join('')}
+            </div>
+            ${isDone ? `<div class="history-pts">
+              ${cPts ? `<span class="pts-earned pts-common">+${cPts} common</span>` : ''}
+              ${lPts ? `<span class="pts-earned pts-legendary">+${lPts} legendary</span>` : ''}
+              ${!cPts && !lPts ? `<span>No points earned</span>` : ''}
+            </div>` : ''}
+          </div>`;
+      }).join('')}`;
+  }
+
+  /* ── Bind ── */
+  function bind(screen) {
+    document.querySelectorAll('.tab-btn').forEach(b =>
+      b.addEventListener('click', () => { s.tab = b.dataset.tab; render(); }));
+
+    if (screen === 'pick') {
+      document.querySelectorAll('[data-pick]').forEach(el =>
+        el.addEventListener('click', () => {
+          const id = el.dataset.pick;
+          if (s.picked.includes(id)) s.picked = s.picked.filter(x => x !== id);
+          else if (s.picked.length < 3) s.picked.push(id);
+          render();
+        }));
+      document.getElementById('btn-start')?.addEventListener('click', startDay);
+      document.getElementById('btn-shuffle')?.addEventListener('click', () => {
+        s.offered = shuffle(TASKS).slice(0,5).map(t => t.id);
+        s.picked = [];
+        render();
+      });
+    }
+
+    if (screen === 'review') {
+      document.querySelectorAll('[data-review]').forEach(el =>
+        el.addEventListener('click', () => {
+          const id = el.dataset.review;
+          if (s.reviewChecked.includes(id)) s.reviewChecked = s.reviewChecked.filter(x => x !== id);
+          else s.reviewChecked.push(id);
+          render();
+        }));
+      document.getElementById('btn-submit-review')?.addEventListener('click', submitReview);
+    }
+  }
+
+  /* ── Actions ── */
+  async function startDay() {
+    if (s.picked.length !== 3) return;
+    const session = {
+      id: Date.now().toString(),
+      date: s.today,
+      offered_ids: s.offered,
+      picked_ids: s.picked.slice(),
+      completed_ids: [],
+      status: 'active',
+    };
+    s.sessions = s.sessions.filter(x => x.date !== s.today);
+    s.sessions.push(session);
+    s.picked = [];
+    render();
+    await db.from('daily_sessions').upsert(session);
+  }
+
+  async function submitReview() {
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (!pending) return;
+    const allCompleted = s.reviewChecked.length === pending.picked_ids.length;
+    const completedIds = allCompleted ? [...s.reviewChecked] : [];
+    const updated = { ...pending, completed_ids: completedIds, status: 'done' };
+    s.sessions = s.sessions.map(x => x.id === pending.id ? updated : x);
+    s.reviewChecked = [];
+    render();
+    await db.from('daily_sessions').update({ completed_ids: completedIds, status: 'done' }).eq('id', pending.id);
+  }
+
+  /* ── Load ── */
+  async function load() {
+    const { data } = await db.from('daily_sessions').select('*');
+    if (data) s.sessions = data;
+    s.loading = false;
+    const todaySess = s.sessions.find(x => x.date === s.today);
+    if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
+    render();
+  }
+
+  render();
+  load();
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+</script>
+</body>
+</html>
