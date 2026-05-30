@@ -62,13 +62,20 @@
     .task-desc { font-size: 0.84rem; color: var(--subtext); }
 
     /* Active task list */
-    .active-task { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow); }
+    .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
+    .active-task.completed { border-color: #22c55e; box-shadow: 0 0 0 1px #22c55e, var(--shadow); opacity: 0.75; cursor: default; }
+    .active-task-row { display: flex; align-items: center; gap: 14px; }
     .active-task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dot-common { background: var(--accent); }
     .dot-legendary { background: var(--legendary); }
+    .active-task-check { width: 24px; height: 24px; border-radius: 50%; background: #22c55e; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
     .active-task-info { flex: 1; }
     .active-task-title { font-size: 1rem; font-weight: 700; }
     .active-task-desc { font-size: 0.82rem; color: var(--subtext); margin-top: 2px; }
+    .task-confirm { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .task-confirm-text { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+    .btn-confirm-yes { background: #22c55e; color: #fff; border: none; border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-confirm-no  { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--subtext); }
 
     /* Review */
     .review-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
@@ -158,6 +165,7 @@
     offered: [],      // 5 task IDs shown during pick
     picked: [],       // IDs selected so far on pick screen
     reviewChecked: [],
+    confirmTask: null,
   };
 
   function todayStr() {
@@ -256,12 +264,14 @@
   function htmlActive() {
     const todaySess = s.sessions.find(x => x.date === s.today);
     const tasks = (todaySess?.picked_ids || []).map(id => getTask(id)).filter(Boolean);
+    const completedIds = todaySess?.completed_ids || [];
     const pts = computePoints();
+    const allDone = tasks.length > 0 && tasks.every(t => completedIds.includes(t.id));
     return `
       <div class="home-header">
-        <div class="home-emoji">⚡</div>
-        <div class="home-title">Mission Active</div>
-        <div class="home-sub">Come back tomorrow to log your results</div>
+        <div class="home-emoji">${allDone ? '🏆' : '⚡'}</div>
+        <div class="home-title">${allDone ? 'All Done!' : 'Mission Active'}</div>
+        <div class="home-sub">${allDone ? 'Great work today' : 'Tap a task to mark it complete'}</div>
       </div>
       <div class="points-bar">
         <div class="points-card">
@@ -274,15 +284,31 @@
         </div>
       </div>
       <div class="tasks-label">Today's Tasks</div>
-      ${tasks.map(t => `
-        <div class="active-task">
-          <div class="active-task-dot dot-${t.type}"></div>
-          <div class="active-task-info">
-            <div class="active-task-title">${t.title}</div>
-            <div class="active-task-desc">${t.desc}</div>
+      ${tasks.map(t => {
+        const done = completedIds.includes(t.id);
+        const confirming = s.confirmTask === t.id;
+        return `
+        <div class="active-task${done ? ' completed' : ''}" ${!done ? `data-confirm-task="${t.id}"` : ''}>
+          <div class="active-task-row">
+            ${done
+              ? `<div class="active-task-check">✓</div>`
+              : `<div class="active-task-dot dot-${t.type}"></div>`}
+            <div class="active-task-info">
+              <div class="active-task-title">${t.title}</div>
+              <div class="active-task-desc">${t.desc}</div>
+            </div>
+            <span class="task-badge badge-${t.type}">${t.type}</span>
           </div>
-          <span class="task-badge badge-${t.type}">${t.type}</span>
-        </div>`).join('')}`;
+          ${confirming ? `
+          <div class="task-confirm">
+            <span class="task-confirm-text">Did you complete this?</span>
+            <div style="display:flex;gap:8px">
+              <button class="btn-confirm-no" data-confirm-no>No</button>
+              <button class="btn-confirm-yes" data-confirm-yes="${t.id}">Yes ✓</button>
+            </div>
+          </div>` : ''}
+        </div>`;
+      }).join('')}`;
   }
 
   /* ── Review ── */
@@ -395,6 +421,24 @@
       });
     }
 
+    if (screen === 'active') {
+      document.querySelectorAll('[data-confirm-task]').forEach(el =>
+        el.addEventListener('click', () => {
+          s.confirmTask = el.dataset.confirmTask;
+          render();
+        }));
+      document.querySelector('[data-confirm-no]')?.addEventListener('click', e => {
+        e.stopPropagation();
+        s.confirmTask = null;
+        render();
+      });
+      const yesBtn = document.querySelector('[data-confirm-yes]');
+      if (yesBtn) yesBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        completeTask(yesBtn.dataset.confirmYes);
+      });
+    }
+
     if (screen === 'review') {
       document.querySelectorAll('[data-review]').forEach(el =>
         el.addEventListener('click', () => {
@@ -447,6 +491,23 @@
       UPDATE daily_sessions
       SET completed_ids = ${completedIds}, status = 'done'
       WHERE id = ${pending.id}
+    `;
+  }
+
+  async function completeTask(taskId) {
+    const todaySess = s.sessions.find(x => x.date === s.today);
+    if (!todaySess) return;
+    const newCompleted = [...new Set([...(todaySess.completed_ids || []), taskId])];
+    const allDone = newCompleted.length === todaySess.picked_ids.length;
+    const newStatus = allDone ? 'done' : 'active';
+    s.sessions = s.sessions.map(x => x.id === todaySess.id
+      ? { ...x, completed_ids: newCompleted, status: newStatus } : x);
+    s.confirmTask = null;
+    render();
+    await sql`
+      UPDATE daily_sessions
+      SET completed_ids = ${newCompleted}, status = ${newStatus}
+      WHERE id = ${todaySess.id}
     `;
   }
 
