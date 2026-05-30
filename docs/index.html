@@ -53,8 +53,15 @@
     .task-card { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; box-shadow: var(--shadow); }
     .task-card:active { transform: scale(0.98); }
     .task-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
-    .task-card.legendary-card { border-color: #fde68a; }
-    .task-card.legendary-card.selected { border-color: var(--legendary); box-shadow: 0 0 0 1px var(--legendary), 0 4px 20px rgba(217,119,6,0.18); }
+    /* ── Legendary glow — edit here to update ALL legendary glows ── */
+    @keyframes legendary-breathe {
+      0%, 100% { box-shadow: 0 0 10px rgba(217,119,6,0.35), 0 2px 16px rgba(217,119,6,0.12); }
+      50%       { box-shadow: 0 0 30px rgba(217,119,6,0.7),  0 0 60px rgba(217,119,6,0.25); }
+    }
+    .legendary-glow { animation: legendary-breathe 2.4s ease-in-out infinite; }
+
+    .task-card.legendary-card { border-color: #fde68a; animation: legendary-breathe 2.4s ease-in-out infinite; }
+    .task-card.legendary-card.selected { border-color: var(--legendary); }
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
     .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
@@ -311,17 +318,18 @@
           <div class="points-val common">${pts.common}</div>
           <div class="points-label">Common Points</div>
         </div>
-        <div class="points-card">
+        <div class="points-card legendary-glow">
           <div class="points-val legendary">${pts.legendary}</div>
           <div class="points-label">Legendary Points</div>
         </div>
       </div>
+
       <div class="tasks-label">Today's Tasks</div>
       ${tasks.map(t => {
         const done = completedIds.includes(t.id);
         const confirming = s.confirmTask === t.id;
         return `
-        <div class="active-task${done?' completed':''}"${!done?` data-confirm-task="${t.id}"`:''}">
+        <div class="active-task${done?' completed':''}${t.type==='legendary'&&!done?' legendary-glow':''}"${!done?` data-confirm-task="${t.id}"`:''}">
           <div class="active-task-row">
             ${done
               ? `<div class="active-task-check">✓</div>`
@@ -383,7 +391,7 @@
     function taskRow(t) {
       const editing = s.editingTask?.id === t.id;
       return `
-        <div class="pool-task-card">
+        <div class="pool-task-card${t.type==='legendary'?' legendary-glow':''}">
           <div class="pool-task-row">
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
@@ -444,11 +452,12 @@
           <div class="points-val common">${pts.common}</div>
           <div class="points-label">Common Points</div>
         </div>
-        <div class="points-card">
+        <div class="points-card legendary-glow">
           <div class="points-val legendary">${pts.legendary}</div>
           <div class="points-label">Legendary Points</div>
         </div>
       </div>
+
       ${!sorted.length ? `<div class="empty"><div class="empty-emoji">📜</div><div>No history yet.</div></div>` : ''}
       ${sorted.map(sess => {
         const tasks = (sess.picked_ids||[]).map(id=>getTask(id)).filter(Boolean);
