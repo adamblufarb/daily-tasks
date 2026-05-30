@@ -17,9 +17,9 @@
       --card: #ffffff;
       --accent: #4f46e5;
       --accent2: #818cf8;
-      --legendary: #FF6900;
-      --legendary2: #ff8c42;
-      --common: #6b7280;
+      --legendary: #c4712d;
+      --legendary2: #e08c50;
+      --common: #999da6;
       --common-light: #f3f4f6;
       --text: #1e1b4b;
       --subtext: #6b7280;
@@ -57,24 +57,23 @@
     .task-card.selected { border-color: #9ca3af; box-shadow: 0 0 0 1px #9ca3af, var(--shadow); }
     /* ── Legendary glow — edit here to update ALL legendary glows ── */
     @keyframes legendary-breathe {
-      0%, 100% { box-shadow: 0 0 10px rgba(255,105,0,0.35), 0 2px 16px rgba(255,105,0,0.12); }
-      50%       { box-shadow: 0 0 32px rgba(255,105,0,0.75), 0 0 64px rgba(255,105,0,0.28); }
+      0%, 100% { box-shadow: 0 0 10px rgba(196,113,45,0.35), 0 2px 16px rgba(196,113,45,0.12); }
+      50%       { box-shadow: 0 0 32px rgba(196,113,45,0.75), 0 0 64px rgba(196,113,45,0.28); }
     }
     @keyframes legendary-flash {
-      0%   { box-shadow: 0 0 12px rgba(255,105,0,0.5); }
-      45%  { box-shadow: 0 0 55px rgba(255,105,0,1), 0 0 100px rgba(255,105,0,0.5); }
-      100% { box-shadow: 0 0 12px rgba(255,105,0,0.35); }
+      0%   { box-shadow: 0 0 12px rgba(196,113,45,0.5); }
+      45%  { box-shadow: 0 0 55px rgba(196,113,45,1), 0 0 100px rgba(196,113,45,0.5); }
+      100% { box-shadow: 0 0 12px rgba(196,113,45,0.35); }
     }
     .legendary-glow  { animation: legendary-breathe 2.4s ease-in-out infinite; }
-    .legendary-flash { animation: legendary-flash 0.65s ease-in-out forwards; border-color: var(--legendary) !important; }
 
-    .task-card.legendary-card { border-color: rgba(255,105,0,0.4); animation: legendary-breathe 2.4s ease-in-out infinite; }
+    .task-card.legendary-card { border: 2px solid var(--legendary); animation: legendary-breathe 2.4s ease-in-out infinite; }
     .task-card.legendary-card.selected { border-color: var(--legendary); }
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
     .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
-    .badge-common { background: var(--common-light); color: var(--common); }
-    .badge-legendary { background: #fef3c7; color: var(--legendary); }
+    .badge-common { background: var(--common-light); color: #6d727f; }
+    .badge-legendary { background: #fce8d4; color: #6d3a11; }
     .task-desc { font-size: 0.84rem; color: var(--subtext); }
 
     /* Active task list */
@@ -165,7 +164,7 @@
     .history-task-row.done { color: var(--text); font-weight: 600; }
     .history-pts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--subtext); display: flex; gap: 12px; }
     .pts-earned { font-weight: 700; }
-    .pts-common { color: var(--accent); }
+    .pts-common { color: var(--common); }
     .pts-legendary { color: var(--legendary); }
 
     .loading { text-align: center; padding: 80px 20px; color: var(--subtext); font-size: 1rem; }
@@ -329,10 +328,9 @@
       ${tasks.map(t => {
         const done = completedIds.includes(t.id);
         const confirming = s.confirmTask === t.id;
-        const glowClass = t.type === 'legendary' && !done
-          ? (confirming ? ' legendary-flash' : ' legendary-glow') : '';
+        const glowClass = t.type === 'legendary' && !done ? ' legendary-glow' : '';
         return `
-        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}"${!done?` data-confirm-task="${t.id}"`:''}">
+        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}"${!done?` data-confirm-task="${t.id}" data-task-type="${t.type}"`:''}>
           <div class="active-task-row">
             ${done
               ? `<div class="active-task-check">✓</div>`
@@ -521,7 +519,17 @@
 
     if (screen === 'active') {
       document.querySelectorAll('[data-confirm-task]').forEach(el =>
-        el.addEventListener('click', () => { s.confirmTask = el.dataset.confirmTask; render(); }));
+        el.addEventListener('click', () => {
+          const taskId = el.dataset.confirmTask;
+          if (el.dataset.taskType === 'legendary') {
+            // Trigger flash on existing element without re-rendering (avoids glow reset glitch)
+            el.style.animation = 'legendary-flash 0.65s ease-in-out forwards';
+            el.style.borderColor = 'var(--legendary)';
+            setTimeout(() => { s.confirmTask = taskId; render(); }, 350);
+          } else {
+            s.confirmTask = taskId; render();
+          }
+        }));
       document.querySelector('[data-confirm-no]')?.addEventListener('click', e => {
         e.stopPropagation(); s.confirmTask = null; render();
       });
