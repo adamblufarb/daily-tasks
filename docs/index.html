@@ -652,7 +652,12 @@
       });
       document.querySelectorAll('[data-set-type]').forEach(el =>
         el.addEventListener('click', () => {
-          if (s.editingTask) { s.editingTask.type = el.dataset.setType; render(); }
+          if (s.editingTask) {
+            s.editingTask.title = document.getElementById('edit-title')?.value ?? s.editingTask.title;
+            s.editingTask.description = document.getElementById('edit-desc')?.value ?? s.editingTask.description;
+            s.editingTask.type = el.dataset.setType;
+            render();
+          }
         }));
       document.querySelector('[data-cancel-edit]')?.addEventListener('click', () => {
         s.editingTask = null; render();
