@@ -70,7 +70,7 @@
     /* Task option cards (pick screen) */
     .task-card { background: var(--card); border: 2px solid #d1d5db; border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; box-shadow: var(--shadow); position: relative; }
     .task-card:active { transform: scale(0.98); }
-    .task-card.selected { border-color: var(--common); box-shadow: 0 0 0 1px var(--common), var(--shadow); }
+    .task-card.selected { border-color: var(--common); box-shadow: var(--shadow); }
     /* ── Legendary glow via ::before so it always sits behind card backgrounds ── */
     @keyframes legendary-breathe {
       0%, 100% { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 40%, transparent); }
@@ -99,9 +99,10 @@
 
     /* Active task list */
     .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); position: relative; }
-    .active-task.confirming { border-color: var(--common); box-shadow: 0 0 0 1px var(--common), var(--shadow); }
-    .active-task.confirming.type-legendary { border-color: color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
-    .active-task.confirming.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
+    /* selected = tapped/highlighted; idle = default untouched state */
+    .active-task.selected { border-color: var(--common); box-shadow: var(--shadow); }
+    .active-task.selected.type-legendary { border-color: color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
+    .active-task.selected.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
     .active-task.type-legendary:not(.completed) { border-color: color-mix(in srgb, var(--legendary) 35%, transparent); }
     .active-task.completed { cursor: default; animation: none !important; transition: none; }
     .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
@@ -427,7 +428,7 @@
         const confirming = s.confirmTask === t.id;
         const glowClass = t.type === 'legendary' && !done ? ' legendary-glow' : '';
         const glowIdAttr = t.type === 'legendary' && !done ? ` data-glow-id="${t.id}"` : '';
-        const confirmingClass = confirming ? ' confirming' : '';
+        const confirmingClass = confirming ? ' selected' : '';
         return `
         <div class="active-task${done?' completed':''} type-${t.type}${glowClass}${confirmingClass}"${!done?` data-confirm-task="${t.id}" data-task-type="${t.type}"`:''} ${glowIdAttr}>
           <div class="active-task-row">
