@@ -39,6 +39,7 @@
     .btn-primary:active { transform: scale(0.98); }
     .btn-primary:disabled { opacity: 0.4; pointer-events: none; }
     .btn-ghost { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.9rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
+    .btn-danger-ghost { width: 100%; padding: 14px; background: none; color: #ef4444; font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
 
     /* Points bar */
     .points-bar { display: flex; gap: 10px; margin-bottom: 28px; }
@@ -63,7 +64,7 @@
 
     /* Active task list */
     .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
-    .active-task.completed { border-color: #22c55e; box-shadow: 0 0 0 1px #22c55e, var(--shadow); opacity: 0.75; cursor: default; }
+    .active-task.completed { border-color: #22c55e; box-shadow: 0 0 0 1px #22c55e, var(--shadow); opacity: 0.72; cursor: default; }
     .active-task-row { display: flex; align-items: center; gap: 14px; }
     .active-task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dot-common { background: var(--accent); }
@@ -106,6 +107,32 @@
     .home-sub { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
     .tasks-label { font-size: 0.68rem; color: var(--subtext); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
 
+    /* Task pool tab */
+    .pool-section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--subtext); margin: 20px 0 8px; }
+    .pool-task-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); }
+    .pool-task-row { display: flex; align-items: center; gap: 10px; }
+    .pool-task-info { flex: 1; min-width: 0; }
+    .pool-task-title { font-size: 0.95rem; font-weight: 700; }
+    .pool-task-desc { font-size: 0.8rem; color: var(--subtext); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pool-task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .btn-icon { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px; border-radius: 8px; color: var(--subtext); transition: background 0.15s, color 0.15s; }
+    .btn-icon:hover { background: var(--bg); }
+    .btn-icon.del:hover { color: #ef4444; }
+
+    /* Task edit form */
+    .task-edit-form { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .form-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; color: var(--text); background: var(--bg); outline: none; }
+    .form-input:focus { border-color: var(--accent); }
+    .form-row { display: flex; gap: 8px; align-items: center; }
+    .form-type-btn { flex: 1; padding: 8px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: none; color: var(--subtext); }
+    .form-type-btn.active-common { border-color: var(--accent); background: #e0e7ff; color: var(--accent); }
+    .form-type-btn.active-legendary { border-color: var(--legendary); background: #fef3c7; color: var(--legendary); }
+    .form-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .btn-save { flex: 1; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+    .btn-cancel { padding: 10px 16px; background: none; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; cursor: pointer; color: var(--subtext); }
+    .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-top: 8px; transition: border-color 0.15s, color 0.15s; }
+    .btn-add-task:hover { border-color: var(--accent); color: var(--accent); }
+
     /* History */
     .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
     .history-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -131,6 +158,7 @@
 <div class="content" id="app"></div>
 <div class="tab-bar">
   <button class="tab-btn" data-tab="today"><span class="tab-icon">⚡</span><span>Today</span></button>
+  <button class="tab-btn" data-tab="tasks"><span class="tab-icon">📋</span><span>Tasks</span></button>
   <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>History</span></button>
 </div>
 <script type="module">
@@ -138,39 +166,41 @@
   const { neon } = await import('https://esm.sh/@neondatabase/serverless');
   const sql = neon(CONNECTION_STRING);
 
-  /* ── Task pool ── */
-  const TASKS = [
-    { id:'c1',  type:'common',    title:'Morning Walk',      desc:'Take a 20-minute walk outside' },
-    { id:'c2',  type:'common',    title:'Hydrate',           desc:'Drink 8 glasses of water' },
-    { id:'c3',  type:'common',    title:'Read',              desc:'Read for at least 20 minutes' },
-    { id:'c4',  type:'common',    title:'Meditate',          desc:'10 minutes of mindfulness' },
-    { id:'c5',  type:'common',    title:'Journal',           desc:'Write 5 minutes in your journal' },
-    { id:'c6',  type:'common',    title:'No Social Media',   desc:'Avoid social media until noon' },
-    { id:'c7',  type:'common',    title:'Exercise',          desc:'Work out for 30 minutes' },
-    { id:'c8',  type:'common',    title:'Healthy Breakfast', desc:'Eat a nutritious breakfast' },
-    { id:'c9',  type:'common',    title:'Connect',           desc:'Reach out to someone you care about' },
-    { id:'c10', type:'common',    title:'Early Bed',         desc:'In bed before midnight' },
-    { id:'l1',  type:'legendary', title:'The Fast',          desc:'Complete a 16-hour fast' },
-    { id:'l2',  type:'legendary', title:'Ice Bath',          desc:'Take a cold shower or ice bath' },
-    { id:'l3',  type:'legendary', title:'Deep Work',         desc:'3 hours of uninterrupted focused work' },
+  /* ── Default task pool (seed data) ── */
+  const DEFAULT_TASKS = [
+    { id:'c1',  type:'common',    title:'Morning Walk',      description:'Take a 20-minute walk outside' },
+    { id:'c2',  type:'common',    title:'Hydrate',           description:'Drink 8 glasses of water' },
+    { id:'c3',  type:'common',    title:'Read',              description:'Read for at least 20 minutes' },
+    { id:'c4',  type:'common',    title:'Meditate',          description:'10 minutes of mindfulness' },
+    { id:'c5',  type:'common',    title:'Journal',           description:'Write 5 minutes in your journal' },
+    { id:'c6',  type:'common',    title:'No Social Media',   description:'Avoid social media until noon' },
+    { id:'c7',  type:'common',    title:'Exercise',          description:'Work out for 30 minutes' },
+    { id:'c8',  type:'common',    title:'Healthy Breakfast', description:'Eat a nutritious breakfast' },
+    { id:'c9',  type:'common',    title:'Connect',           description:'Reach out to someone you care about' },
+    { id:'c10', type:'common',    title:'Early Bed',         description:'In bed before midnight' },
+    { id:'l1',  type:'legendary', title:'The Fast',          description:'Complete a 16-hour fast' },
+    { id:'l2',  type:'legendary', title:'Ice Bath',          description:'Take a cold shower or ice bath' },
+    { id:'l3',  type:'legendary', title:'Deep Work',         description:'3 hours of uninterrupted focused work' },
   ];
-  function getTask(id) { return TASKS.find(t => t.id === id); }
+
+  function getTask(id) { return s.tasks.find(t => t.id === id); }
 
   /* ── State ── */
   const s = {
     tab: 'today',
     loading: true,
     sessions: [],
+    tasks: [],
     today: todayStr(),
-    offered: [],      // 5 task IDs shown during pick
-    picked: [],       // IDs selected so far on pick screen
+    offered: [],
+    picked: [],
     reviewChecked: [],
     confirmTask: null,
+    editingTask: null,   // null | { id, title, description, type }  (id==='' → new)
+    newTaskType: 'common',
   };
 
-  function todayStr() {
-    return new Date().toISOString().slice(0,10);
-  }
+  function todayStr() { return new Date().toISOString().slice(0,10); }
 
   /* ── Screen logic ── */
   function getScreen() {
@@ -215,13 +245,15 @@
     if (todaySess?.offered_ids?.length) {
       s.offered = todaySess.offered_ids;
     } else if (!s.offered.length) {
-      s.offered = shuffle(TASKS).slice(0,5).map(t => t.id);
+      s.offered = shuffle(s.tasks).slice(0,5).map(t => t.id);
     }
   }
 
   /* ── Render ── */
   function render() {
-    const screen = s.tab === 'history' ? 'history' : getScreen();
+    const screen = s.tab === 'history' ? 'history'
+                 : s.tab === 'tasks'   ? 'tasks'
+                 : getScreen();
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === s.tab));
@@ -231,6 +263,7 @@
   function buildHtml(screen) {
     if (screen === 'loading') return `<div class="loading">Loading…</div>`;
     if (screen === 'history') return htmlHistory();
+    if (screen === 'tasks')   return htmlTaskPool();
     if (screen === 'review')  return htmlReview();
     if (screen === 'pick')    return htmlPick();
     return htmlActive();
@@ -253,7 +286,7 @@
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
           </div>
-          <div class="task-desc">${t.desc}</div>
+          <div class="task-desc">${t.description}</div>
         </div>`).join('')}
       <div style="height:16px"></div>
       <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Day →</button>
@@ -288,14 +321,14 @@
         const done = completedIds.includes(t.id);
         const confirming = s.confirmTask === t.id;
         return `
-        <div class="active-task${done ? ' completed' : ''}" ${!done ? `data-confirm-task="${t.id}"` : ''}>
+        <div class="active-task${done?' completed':''}"${!done?` data-confirm-task="${t.id}"`:''}">
           <div class="active-task-row">
             ${done
               ? `<div class="active-task-check">✓</div>`
               : `<div class="active-task-dot dot-${t.type}"></div>`}
             <div class="active-task-info">
               <div class="active-task-title">${t.title}</div>
-              <div class="active-task-desc">${t.desc}</div>
+              <div class="active-task-desc">${t.description}</div>
             </div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
           </div>
@@ -308,7 +341,8 @@
             </div>
           </div>` : ''}
         </div>`;
-      }).join('')}`;
+      }).join('')}
+      <button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>`;
   }
 
   /* ── Review ── */
@@ -330,7 +364,7 @@
           <div class="review-checkbox">${s.reviewChecked.includes(t.id)?'✓':''}</div>
           <div class="review-task-info">
             <div class="review-task-title">${t.title}</div>
-            <div class="review-task-sub">${t.desc}</div>
+            <div class="review-task-sub">${t.description}</div>
           </div>
           <span class="task-badge badge-${t.type}">${t.type}</span>
         </div>`).join('')}
@@ -338,6 +372,63 @@
       <button class="btn-primary" id="btn-submit-review">
         ${allChecked ? '🏆 Claim Points' : 'Submit — no points today'}
       </button>`;
+  }
+
+  /* ── Task Pool tab ── */
+  function htmlTaskPool() {
+    const common    = s.tasks.filter(t => t.type === 'common');
+    const legendary = s.tasks.filter(t => t.type === 'legendary');
+    const isAdding  = s.editingTask?.id === '';
+
+    function taskRow(t) {
+      const editing = s.editingTask?.id === t.id;
+      return `
+        <div class="pool-task-card">
+          <div class="pool-task-row">
+            <div class="pool-task-info">
+              <div class="pool-task-title">${t.title}</div>
+              <div class="pool-task-desc">${t.description}</div>
+            </div>
+            <div class="pool-task-actions">
+              <button class="btn-icon" data-edit-task="${t.id}" title="Edit">✏️</button>
+              <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
+            </div>
+          </div>
+          ${editing ? editForm(s.editingTask) : ''}
+        </div>`;
+    }
+
+    function editForm(task) {
+      return `
+        <div class="task-edit-form">
+          <input class="form-input" id="edit-title" placeholder="Task name" value="${task.title||''}">
+          <input class="form-input" id="edit-desc"  placeholder="Description" value="${task.description||''}">
+          <div class="form-row">
+            <button class="form-type-btn${task.type==='common'?' active-common':''}" data-set-type="common">Common</button>
+            <button class="form-type-btn${task.type==='legendary'?' active-legendary':''}" data-set-type="legendary">Legendary</button>
+          </div>
+          <div class="form-actions">
+            <button class="btn-cancel" data-cancel-edit>Cancel</button>
+            <button class="btn-save" data-save-task>Save</button>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <div class="section-title">Task Pool</div>
+        <div class="section-sub">${s.tasks.length} tasks · ${common.length} common · ${legendary.length} legendary</div>
+      </div>
+      <div class="pool-section-label">Common</div>
+      ${common.map(taskRow).join('')}
+      <div class="pool-section-label">Legendary</div>
+      ${legendary.map(taskRow).join('')}
+      ${isAdding ? `
+        <div class="pool-task-card" style="margin-top:12px">
+          <div style="font-size:0.88rem;font-weight:700;margin-bottom:4px">New Task</div>
+          ${editForm(s.editingTask)}
+        </div>` : ''}
+      <button class="btn-add-task" id="btn-add-task">+ Add Task</button>`;
   }
 
   /* ── History ── */
@@ -365,16 +456,11 @@
         const isWin  = isDone && (sess.completed_ids||[]).length === (sess.picked_ids||[]).length;
         const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Completed' : 'Failed';
         const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
-
-        // Points earned this session
         let cPts = 0, lPts = 0;
-        if (isDone) {
-          for (const id of (sess.completed_ids||[])) {
-            const t = getTask(id);
-            if (t?.type === 'legendary') lPts++; else cPts++;
-          }
+        if (isDone) for (const id of (sess.completed_ids||[])) {
+          const t = getTask(id);
+          if (t?.type === 'legendary') lPts++; else cPts++;
         }
-
         return `
           <div class="history-card">
             <div class="history-card-top">
@@ -415,7 +501,7 @@
         }));
       document.getElementById('btn-start')?.addEventListener('click', startDay);
       document.getElementById('btn-shuffle')?.addEventListener('click', () => {
-        s.offered = shuffle(TASKS).slice(0,5).map(t => t.id);
+        s.offered = shuffle(s.tasks).slice(0,5).map(t => t.id);
         s.picked = [];
         render();
       });
@@ -423,20 +509,15 @@
 
     if (screen === 'active') {
       document.querySelectorAll('[data-confirm-task]').forEach(el =>
-        el.addEventListener('click', () => {
-          s.confirmTask = el.dataset.confirmTask;
-          render();
-        }));
+        el.addEventListener('click', () => { s.confirmTask = el.dataset.confirmTask; render(); }));
       document.querySelector('[data-confirm-no]')?.addEventListener('click', e => {
-        e.stopPropagation();
-        s.confirmTask = null;
-        render();
+        e.stopPropagation(); s.confirmTask = null; render();
       });
       const yesBtn = document.querySelector('[data-confirm-yes]');
       if (yesBtn) yesBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        completeTask(yesBtn.dataset.confirmYes);
+        e.stopPropagation(); completeTask(yesBtn.dataset.confirmYes);
       });
+      document.getElementById('btn-restart')?.addEventListener('click', restartDay);
     }
 
     if (screen === 'review') {
@@ -449,9 +530,37 @@
         }));
       document.getElementById('btn-submit-review')?.addEventListener('click', submitReview);
     }
+
+    if (screen === 'tasks') {
+      document.querySelectorAll('[data-edit-task]').forEach(el =>
+        el.addEventListener('click', () => {
+          const t = getTask(el.dataset.editTask);
+          s.editingTask = t ? { ...t } : null;
+          render();
+        }));
+      document.querySelectorAll('[data-delete-task]').forEach(el =>
+        el.addEventListener('click', () => deletePoolTask(el.dataset.deleteTask)));
+      document.querySelectorAll('[data-set-type]').forEach(el =>
+        el.addEventListener('click', () => {
+          if (s.editingTask) { s.editingTask.type = el.dataset.setType; render(); }
+        }));
+      document.querySelector('[data-cancel-edit]')?.addEventListener('click', () => {
+        s.editingTask = null; render();
+      });
+      document.querySelector('[data-save-task]')?.addEventListener('click', () => {
+        const title = document.getElementById('edit-title')?.value.trim();
+        const description = document.getElementById('edit-desc')?.value.trim();
+        if (!title) return;
+        savePoolTask({ ...s.editingTask, title, description });
+      });
+      document.getElementById('btn-add-task')?.addEventListener('click', () => {
+        s.editingTask = { id: '', title: '', description: '', type: 'common' };
+        render();
+      });
+    }
   }
 
-  /* ── Actions ── */
+  /* ── Today actions ── */
   async function startDay() {
     if (s.picked.length !== 3) return;
     const session = {
@@ -470,27 +579,9 @@
       INSERT INTO daily_sessions (id, date, offered_ids, picked_ids, completed_ids, status)
       VALUES (${session.id}, ${session.date}, ${session.offered_ids}, ${session.picked_ids}, ${session.completed_ids}, ${session.status})
       ON CONFLICT (date) DO UPDATE SET
-        id = EXCLUDED.id,
-        offered_ids = EXCLUDED.offered_ids,
-        picked_ids = EXCLUDED.picked_ids,
-        completed_ids = EXCLUDED.completed_ids,
+        id = EXCLUDED.id, offered_ids = EXCLUDED.offered_ids,
+        picked_ids = EXCLUDED.picked_ids, completed_ids = EXCLUDED.completed_ids,
         status = EXCLUDED.status
-    `;
-  }
-
-  async function submitReview() {
-    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
-    if (!pending) return;
-    const allCompleted = s.reviewChecked.length === pending.picked_ids.length;
-    const completedIds = allCompleted ? [...s.reviewChecked] : [];
-    const updated = { ...pending, completed_ids: completedIds, status: 'done' };
-    s.sessions = s.sessions.map(x => x.id === pending.id ? updated : x);
-    s.reviewChecked = [];
-    render();
-    await sql`
-      UPDATE daily_sessions
-      SET completed_ids = ${completedIds}, status = 'done'
-      WHERE id = ${pending.id}
     `;
   }
 
@@ -505,16 +596,79 @@
     s.confirmTask = null;
     render();
     await sql`
-      UPDATE daily_sessions
-      SET completed_ids = ${newCompleted}, status = ${newStatus}
+      UPDATE daily_sessions SET completed_ids = ${newCompleted}, status = ${newStatus}
       WHERE id = ${todaySess.id}
     `;
   }
 
+  async function restartDay() {
+    const todaySess = s.sessions.find(x => x.date === s.today);
+    s.sessions = s.sessions.filter(x => x.date !== s.today);
+    s.offered = [];
+    s.picked = [];
+    s.confirmTask = null;
+    render();
+    if (todaySess) await sql`DELETE FROM daily_sessions WHERE date = ${s.today}`;
+  }
+
+  async function submitReview() {
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (!pending) return;
+    const allCompleted = s.reviewChecked.length === pending.picked_ids.length;
+    const completedIds = allCompleted ? [...s.reviewChecked] : [];
+    s.sessions = s.sessions.map(x => x.id === pending.id
+      ? { ...x, completed_ids: completedIds, status: 'done' } : x);
+    s.reviewChecked = [];
+    render();
+    await sql`
+      UPDATE daily_sessions SET completed_ids = ${completedIds}, status = 'done'
+      WHERE id = ${pending.id}
+    `;
+  }
+
+  /* ── Task pool actions ── */
+  async function savePoolTask(task) {
+    const isNew = !task.id;
+    if (isNew) task.id = Date.now().toString();
+    if (isNew) s.tasks.push(task);
+    else s.tasks = s.tasks.map(t => t.id === task.id ? task : t);
+    s.editingTask = null;
+    render();
+    await sql`
+      INSERT INTO tasks (id, title, description, type)
+      VALUES (${task.id}, ${task.title}, ${task.description}, ${task.type})
+      ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, type = EXCLUDED.type
+    `;
+  }
+
+  async function deletePoolTask(id) {
+    s.tasks = s.tasks.filter(t => t.id !== id);
+    render();
+    await sql`DELETE FROM tasks WHERE id = ${id}`;
+  }
+
   /* ── Load ── */
   async function load() {
-    const rows = await sql`SELECT * FROM daily_sessions`;
-    s.sessions = rows;
+    const [sessionRows, taskRows] = await Promise.all([
+      sql`SELECT * FROM daily_sessions`,
+      sql`SELECT * FROM tasks`,
+    ]);
+    s.sessions = sessionRows;
+
+    if (taskRows.length === 0) {
+      // Seed default tasks
+      for (const t of DEFAULT_TASKS) {
+        await sql`
+          INSERT INTO tasks (id, title, description, type)
+          VALUES (${t.id}, ${t.title}, ${t.description}, ${t.type})
+          ON CONFLICT (id) DO NOTHING
+        `;
+      }
+      s.tasks = [...DEFAULT_TASKS];
+    } else {
+      s.tasks = taskRows;
+    }
+
     s.loading = false;
     const todaySess = s.sessions.find(x => x.date === s.today);
     if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
