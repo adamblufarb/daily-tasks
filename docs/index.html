@@ -308,7 +308,7 @@
       s.offered = todaySess.offered_ids;
     } else if (!s.offered.length) {
       const active = s.tasks.filter(t => !t.archived);
-      s.offered = shuffle(active).slice(0, Math.min(7, active.length)).map(t => t.id);
+      s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
     }
   }
 
@@ -602,7 +602,7 @@
       document.getElementById('btn-start')?.addEventListener('click', startDay);
       document.getElementById('btn-shuffle')?.addEventListener('click', () => {
         const active = s.tasks.filter(t => !t.archived);
-        s.offered = shuffle(active).slice(0, Math.min(7, active.length)).map(t => t.id);
+        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
         s.picked = [];
         render();
       });
