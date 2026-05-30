@@ -78,7 +78,7 @@
       inset: 0;
       border-radius: inherit;
       z-index: -1;
-      animation: legendary-breathe 2.4s ease-in-out infinite;
+      animation: legendary-breathe var(--glow-duration, 2400ms) ease-in-out infinite;
       animation-delay: var(--glow-delay, 0ms);
     }
     .legendary-glow { }
@@ -324,15 +324,21 @@
 
   /* ── Render ── */
   const GLOW_START = Date.now();
-  const GLOW_DURATION = 2400;
+  // Per-task duration: 2.0s – 3.2s, derived from ID
+  function glowDuration(id) {
+    let h = 0;
+    for (const c of String(id)) h = ((h << 5) - h + c.charCodeAt(0) + 7) | 0;
+    return 2000 + (Math.abs(h) % 1200);
+  }
 
-  // Returns a stable per-task offset so each task glows at its own phase
+  // Returns a stable per-task phase offset so re-renders don't reset the animation
   function glowDelay(id) {
     let h = 0;
     for (const c of String(id)) h = ((h << 5) - h + c.charCodeAt(0)) | 0;
-    const phase = Math.abs(h) % GLOW_DURATION;
-    const elapsed = (Date.now() - GLOW_START) % GLOW_DURATION;
-    return (phase + elapsed) % GLOW_DURATION;
+    const dur = glowDuration(id);
+    const phase = Math.abs(h) % dur;
+    const elapsed = (Date.now() - GLOW_START) % dur;
+    return (phase + elapsed) % dur;
   }
 
   function render() {
@@ -345,7 +351,9 @@
       b.classList.toggle('active', b.dataset.tab === s.tab));
     // Sync per-task glow phases via CSS custom property (used by ::before)
     document.querySelectorAll('[data-glow-id]').forEach(el => {
-      el.style.setProperty('--glow-delay', `-${glowDelay(el.dataset.glowId)}ms`);
+      const id = el.dataset.glowId;
+      el.style.setProperty('--glow-duration', `${glowDuration(id)}ms`);
+      el.style.setProperty('--glow-delay', `-${glowDelay(id)}ms`);
     });
     bind(screen);
   }
