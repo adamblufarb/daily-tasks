@@ -649,30 +649,66 @@
 
   /* ── Load ── */
   async function load() {
-    const [sessionRows, taskRows] = await Promise.all([
-      sql`SELECT * FROM daily_sessions`,
-      sql`SELECT * FROM tasks`,
-    ]);
-    s.sessions = sessionRows;
+    try {
+      // Auto-create tables so no manual migration needed
+      await sql`
+        CREATE TABLE IF NOT EXISTS daily_sessions (
+          id text primary key,
+          date text not null unique,
+          offered_ids text[] not null default '{}',
+          picked_ids text[] not null default '{}',
+          completed_ids text[] not null default '{}',
+          status text not null default 'picking',
+          created_at timestamptz default now()
+        )
+      `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS tasks (
+          id text primary key,
+          title text not null,
+          description text,
+          type text not null,
+          created_at timestamptz default now()
+        )
+      `;
 
-    if (taskRows.length === 0) {
-      // Seed default tasks
-      for (const t of DEFAULT_TASKS) {
+      const [sessionRows, taskRows] = await Promise.all([
+        sql`SELECT * FROM daily_sessions`,
+        sql`SELECT * FROM tasks`,
+      ]);
+      s.sessions = sessionRows;
+
+      if (taskRows.length === 0) {
         await sql`
-          INSERT INTO tasks (id, title, description, type)
-          VALUES (${t.id}, ${t.title}, ${t.description}, ${t.type})
+          INSERT INTO tasks (id, title, description, type) VALUES
+          ('c1',  'Morning Walk',      'Take a 20-minute walk outside',              'common'),
+          ('c2',  'Hydrate',           'Drink 8 glasses of water',                   'common'),
+          ('c3',  'Read',              'Read for at least 20 minutes',               'common'),
+          ('c4',  'Meditate',          '10 minutes of mindfulness',                  'common'),
+          ('c5',  'Journal',           'Write 5 minutes in your journal',            'common'),
+          ('c6',  'No Social Media',   'Avoid social media until noon',              'common'),
+          ('c7',  'Exercise',          'Work out for 30 minutes',                    'common'),
+          ('c8',  'Healthy Breakfast', 'Eat a nutritious breakfast',                 'common'),
+          ('c9',  'Connect',           'Reach out to someone you care about',        'common'),
+          ('c10', 'Early Bed',         'In bed before midnight',                     'common'),
+          ('l1',  'The Fast',          'Complete a 16-hour fast',                    'legendary'),
+          ('l2',  'Ice Bath',          'Take a cold shower or ice bath',             'legendary'),
+          ('l3',  'Deep Work',         '3 hours of uninterrupted focused work',      'legendary')
           ON CONFLICT (id) DO NOTHING
         `;
+        s.tasks = [...DEFAULT_TASKS];
+      } else {
+        s.tasks = taskRows;
       }
-      s.tasks = [...DEFAULT_TASKS];
-    } else {
-      s.tasks = taskRows;
-    }
 
-    s.loading = false;
-    const todaySess = s.sessions.find(x => x.date === s.today);
-    if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
-    render();
+      s.loading = false;
+      const todaySess = s.sessions.find(x => x.date === s.today);
+      if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
+      render();
+    } catch (err) {
+      document.getElementById('app').innerHTML =
+        `<div class="loading" style="color:#ef4444">Failed to connect to database.<br><small>${err.message}</small></div>`;
+    }
   }
 
   render();
