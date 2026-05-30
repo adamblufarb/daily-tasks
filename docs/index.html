@@ -343,7 +343,7 @@
         <div class="section-title">Pick Your Tasks</div>
         <div class="section-sub">${fmtDate(s.today)}</div>
       </div>
-      <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong>${n===5?' ✨':''}</div>
+      <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
       ${tasks.map(t => `
         <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}" data-pick="${t.id}" ${s.picked.length>=5&&!s.picked.includes(t.id)?'style="opacity:0.45;pointer-events:none"':''}>
           <div class="task-card-top">
