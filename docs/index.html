@@ -17,8 +17,10 @@
       --card: #ffffff;
       --accent: #4f46e5;
       --accent2: #818cf8;
-      --legendary: #d97706;
-      --legendary2: #fbbf24;
+      --legendary: #FF6900;
+      --legendary2: #ff8c42;
+      --common: #6b7280;
+      --common-light: #f3f4f6;
       --text: #1e1b4b;
       --subtext: #6b7280;
       --border: #e0e7ff;
@@ -45,38 +47,48 @@
     .points-bar { display: flex; gap: 10px; margin-bottom: 28px; }
     .points-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; text-align: center; box-shadow: var(--shadow); }
     .points-val { font-size: 2rem; font-weight: 700; line-height: 1; }
-    .points-val.common { color: var(--accent); }
+    .points-val.common { color: var(--common); }
     .points-val.legendary { color: var(--legendary); }
     .points-label { font-size: 0.68rem; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
 
     /* Task option cards (pick screen) */
     .task-card { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; box-shadow: var(--shadow); }
     .task-card:active { transform: scale(0.98); }
-    .task-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+    .task-card.selected { border-color: #9ca3af; box-shadow: 0 0 0 1px #9ca3af, var(--shadow); }
     /* ── Legendary glow — edit here to update ALL legendary glows ── */
     @keyframes legendary-breathe {
-      0%, 100% { box-shadow: 0 0 10px rgba(217,119,6,0.35), 0 2px 16px rgba(217,119,6,0.12); }
-      50%       { box-shadow: 0 0 30px rgba(217,119,6,0.7),  0 0 60px rgba(217,119,6,0.25); }
+      0%, 100% { box-shadow: 0 0 10px rgba(255,105,0,0.35), 0 2px 16px rgba(255,105,0,0.12); }
+      50%       { box-shadow: 0 0 32px rgba(255,105,0,0.75), 0 0 64px rgba(255,105,0,0.28); }
     }
-    .legendary-glow { animation: legendary-breathe 2.4s ease-in-out infinite; }
+    @keyframes legendary-flash {
+      0%   { box-shadow: 0 0 12px rgba(255,105,0,0.5); }
+      45%  { box-shadow: 0 0 55px rgba(255,105,0,1), 0 0 100px rgba(255,105,0,0.5); }
+      100% { box-shadow: 0 0 12px rgba(255,105,0,0.35); }
+    }
+    .legendary-glow  { animation: legendary-breathe 2.4s ease-in-out infinite; }
+    .legendary-flash { animation: legendary-flash 0.65s ease-in-out forwards; border-color: var(--legendary) !important; }
 
-    .task-card.legendary-card { border-color: #fde68a; animation: legendary-breathe 2.4s ease-in-out infinite; }
+    .task-card.legendary-card { border-color: rgba(255,105,0,0.4); animation: legendary-breathe 2.4s ease-in-out infinite; }
     .task-card.legendary-card.selected { border-color: var(--legendary); }
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
     .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
-    .badge-common { background: #e0e7ff; color: var(--accent); }
+    .badge-common { background: var(--common-light); color: var(--common); }
     .badge-legendary { background: #fef3c7; color: var(--legendary); }
     .task-desc { font-size: 0.84rem; color: var(--subtext); }
 
     /* Active task list */
     .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
-    .active-task.completed { border-color: #22c55e; box-shadow: 0 0 0 1px #22c55e, var(--shadow); opacity: 0.72; cursor: default; }
+    .active-task.completed { cursor: default; animation: none !important; transition: none; }
+    .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
+    .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
+    .active-task.completed .active-task-desc { color: rgba(255,255,255,0.7); }
+    .active-task.completed .task-badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.85); }
     .active-task-row { display: flex; align-items: center; gap: 14px; }
     .active-task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .dot-common { background: var(--accent); }
+    .dot-common { background: var(--common); }
     .dot-legendary { background: var(--legendary); }
-    .active-task-check { width: 24px; height: 24px; border-radius: 50%; background: #22c55e; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+    .active-task-check { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.3); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
     .active-task-info { flex: 1; }
     .active-task-title { font-size: 1rem; font-weight: 700; }
     .active-task-desc { font-size: 0.82rem; color: var(--subtext); margin-top: 2px; }
@@ -313,23 +325,14 @@
         <div class="home-title">${allDone ? 'All Done!' : 'Mission Active'}</div>
         <div class="home-sub">${allDone ? 'Great work today' : 'Tap a task to mark it complete'}</div>
       </div>
-      <div class="points-bar">
-        <div class="points-card">
-          <div class="points-val common">${pts.common}</div>
-          <div class="points-label">Common Points</div>
-        </div>
-        <div class="points-card legendary-glow">
-          <div class="points-val legendary">${pts.legendary}</div>
-          <div class="points-label">Legendary Points</div>
-        </div>
-      </div>
-
       <div class="tasks-label">Today's Tasks</div>
       ${tasks.map(t => {
         const done = completedIds.includes(t.id);
         const confirming = s.confirmTask === t.id;
+        const glowClass = t.type === 'legendary' && !done
+          ? (confirming ? ' legendary-flash' : ' legendary-glow') : '';
         return `
-        <div class="active-task${done?' completed':''}${t.type==='legendary'&&!done?' legendary-glow':''}"${!done?` data-confirm-task="${t.id}"`:''}">
+        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}"${!done?` data-confirm-task="${t.id}"`:''}">
           <div class="active-task-row">
             ${done
               ? `<div class="active-task-check">✓</div>`
