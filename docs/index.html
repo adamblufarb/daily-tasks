@@ -232,6 +232,11 @@
     }
     .mythic-glow { }
 
+    /* Plan timer */
+    .plan-timer { text-align: center; font-size: 0.82rem; font-weight: 600; color: var(--subtext); margin-top: 8px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+    .plan-timer.grace { color: var(--legendary); }
+    .plan-timer.expired { color: var(--danger); }
+
     .loading { text-align: center; padding: 80px 20px; color: var(--subtext); font-size: 1rem; }
     .empty { text-align: center; padding: 60px 20px; color: var(--subtext); }
     .empty-emoji { font-size: 3rem; margin-bottom: 12px; }
@@ -342,6 +347,44 @@
     }
   }
 
+  /* ── Picks persistence (localStorage, resets at 06:00 local time) ── */
+  function planDateKey() {
+    const now = new Date();
+    if (now.getHours() < 6) now.setDate(now.getDate() - 1);
+    return `picks_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  }
+  function savePicks()  { try { localStorage.setItem(planDateKey(), JSON.stringify(s.picked)); } catch {} }
+  function loadPicks()  { try { const v = localStorage.getItem(planDateKey()); if (v) s.picked = JSON.parse(v); } catch {} }
+  function clearPicks() { try { localStorage.removeItem(planDateKey()); } catch {} }
+
+  /* ── Plan timer ── */
+  let timerInterval = null;
+  const PLAN_DURATION_MS = 26 * 60 * 60 * 1000; // 24h + 2h grace
+
+  function startPlanTimer(startedAt) {
+    clearInterval(timerInterval);
+    const end = new Date(startedAt).getTime() + PLAN_DURATION_MS;
+    function tick() {
+      const el = document.getElementById('plan-timer');
+      if (!el) { clearInterval(timerInterval); return; }
+      const rem = end - Date.now();
+      if (rem <= 0) {
+        el.textContent = 'Time expired';
+        el.className = 'plan-timer expired';
+        clearInterval(timerInterval);
+        return;
+      }
+      const h   = Math.floor(rem / 3600000);
+      const m   = Math.floor((rem % 3600000) / 60000);
+      const sec = Math.floor((rem % 60000) / 1000);
+      const grace = rem <= 2 * 3600000;
+      el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')} ${grace ? '· grace period' : 'remaining'}`;
+      el.className = 'plan-timer' + (grace ? ' grace' : '');
+    }
+    tick();
+    timerInterval = setInterval(tick, 1000);
+  }
+
   /* ── Render ── */
   const GLOW_START = Date.now();
   // Per-task duration: 2.0s – 3.2s, derived from ID
@@ -375,6 +418,14 @@
       el.style.setProperty('--glow-duration', `${glowDuration(id)}ms`);
       el.style.setProperty('--glow-delay', `-${glowDelay(id)}ms`);
     });
+    // Start countdown timer when on active screen
+    if (screen === 'active') {
+      const sess = s.sessions.find(x => x.date === s.today);
+      const startedAt = sess?.created_at;
+      if (startedAt) startPlanTimer(startedAt);
+    } else {
+      clearInterval(timerInterval);
+    }
     bind(screen);
   }
 
@@ -422,6 +473,7 @@
         <div class="home-emoji">${allDone ? '🏆' : isMythic ? '🔱' : ''}</div>
         <div class="home-title"${isMythic && !allDone ? ` style="color:var(--mythic)"` : ''}>${allDone ? 'All Done!' : isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
         <div class="home-sub">${allDone ? 'Great work today' : 'Tap a task to mark it complete'}</div>
+        ${!allDone ? `<div id="plan-timer" class="plan-timer">--:--:--</div>` : ''}
       </div>
       <div class="tasks-label">Today's Tasks</div>
       ${tasks.map((t, i) => {
@@ -652,6 +704,7 @@
           const id = el.dataset.pick;
           if (s.picked.includes(id)) s.picked = s.picked.filter(x => x !== id);
           else if (s.picked.length < 5) s.picked.push(id);
+          savePicks();
           render();
         }));
       document.getElementById('btn-start')?.addEventListener('click', startDay);
@@ -757,6 +810,7 @@
     s.sessions = s.sessions.filter(x => x.date !== s.today);
     s.sessions.push(session);
     s.picked = [];
+    clearPicks();
     render();
     await sql`
       INSERT INTO daily_sessions (id, date, offered_ids, picked_ids, completed_ids, status, task_snapshots)
@@ -790,6 +844,7 @@
     s.offered = [];
     s.picked = [];
     s.confirmTask = null;
+    clearPicks();
     render();
     if (todaySess) await sql`DELETE FROM daily_sessions WHERE date = ${s.today}`;
   }
@@ -902,6 +957,8 @@
       s.loading = false;
       const todaySess = s.sessions.find(x => x.date === s.today);
       if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
+      // Restore picks from localStorage only if there's no active session today
+      if (!todaySess || todaySess.status === 'picking') loadPicks();
       render();
     } catch (err) {
       document.getElementById('app').innerHTML =
