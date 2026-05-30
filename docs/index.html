@@ -63,7 +63,7 @@
     .points-label { font-size: 0.68rem; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
 
     /* Task option cards (pick screen) */
-    .task-card { background: var(--card); border: 2px solid #d1d5db; border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; box-shadow: var(--shadow); }
+    .task-card { background: var(--card); border: 2px solid #d1d5db; border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; box-shadow: var(--shadow); position: relative; }
     .task-card:active { transform: scale(0.98); }
     .task-card.selected { border-color: #9ca3af; box-shadow: 0 0 0 1px #9ca3af, var(--shadow); }
     /* ── Legendary glow — edit here to update ALL legendary glows ── */
@@ -92,7 +92,7 @@
     .task-desc { font-size: 0.84rem; color: var(--subtext); }
 
     /* Active task list */
-    .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
+    .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); position: relative; }
     .active-task.completed { cursor: default; animation: none !important; transition: none; }
     .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
     .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
@@ -149,7 +149,7 @@
     .pool-section-label.label-common { color: #6d727f; }
     .pool-section-label.label-legendary { color: var(--legendary); }
     .pool-section-label.label-archived { color: var(--subtext); }
-    .pool-task-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); }
+    .pool-task-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); position: relative; }
     .pool-task-card.card-common { border-color: rgba(109,114,127,0.35); }
     .pool-task-card.card-legendary { border-color: rgba(196,113,45,0.35); }
     .pool-task-card.card-archived { opacity: 0.55; }
@@ -324,6 +324,16 @@
 
   /* ── Render ── */
   const GLOW_START = Date.now();
+  const GLOW_DURATION = 2400;
+
+  // Returns a stable per-task offset so each task glows at its own phase
+  function glowDelay(id) {
+    let h = 0;
+    for (const c of String(id)) h = ((h << 5) - h + c.charCodeAt(0)) | 0;
+    const phase = Math.abs(h) % GLOW_DURATION;
+    const elapsed = (Date.now() - GLOW_START) % GLOW_DURATION;
+    return (phase + elapsed) % GLOW_DURATION;
+  }
 
   function render() {
     const screen = s.tab === 'history' ? 'history'
@@ -333,10 +343,9 @@
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === s.tab));
-    // Sync all legendary glow phases so re-renders don't reset the animation
-    const elapsed = (Date.now() - GLOW_START) % 2400;
-    document.querySelectorAll('.legendary-glow, .task-card.legendary-card').forEach(el => {
-      el.style.animationDelay = `-${elapsed}ms`;
+    // Sync per-task glow phases so re-renders don't reset the animation
+    document.querySelectorAll('[data-glow-id]').forEach(el => {
+      el.style.animationDelay = `-${glowDelay(el.dataset.glowId)}ms`;
     });
     bind(screen);
   }
@@ -361,8 +370,8 @@
         <div class="section-sub">${fmtDate(s.today)}</div>
       </div>
       <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
-      ${tasks.map(t => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}" data-pick="${t.id}" ${s.picked.length>=5&&!s.picked.includes(t.id)?'style="opacity:0.45;pointer-events:none"':''}>
+      ${tasks.map((t, i) => `
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="z-index:${tasks.length-i}${s.picked.length>=5&&!s.picked.includes(t.id)?';opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
@@ -386,12 +395,13 @@
         <div class="home-sub">${allDone ? 'Great work today' : 'Tap a task to mark it complete'}</div>
       </div>
       <div class="tasks-label">Today's Tasks</div>
-      ${tasks.map(t => {
+      ${tasks.map((t, i) => {
         const done = completedIds.includes(t.id);
         const confirming = s.confirmTask === t.id;
         const glowClass = t.type === 'legendary' && !done ? (confirming ? ' legendary-glow-steady' : ' legendary-glow') : '';
+        const glowIdAttr = t.type === 'legendary' && !done && !confirming ? ` data-glow-id="${t.id}"` : '';
         return `
-        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}"${!done?` data-confirm-task="${t.id}" data-task-type="${t.type}"`:''}>
+        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}"${!done?` data-confirm-task="${t.id}" data-task-type="${t.type}"`:''} style="z-index:${tasks.length-i}"${glowIdAttr}>
           <div class="active-task-row">
             ${done
               ? `<div class="active-task-check">✓</div>`
@@ -452,11 +462,11 @@
     const archived   = s.tasks.filter(t => t.archived);
     const isAdding   = s.editingTask?.id === '';
 
-    function taskRow(t) {
+    function taskRow(t, i, arr) {
       const editing  = s.editingTask?.id === t.id;
       const deleting = s.deletingTask === t.id;
       return `
-        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}">
+        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}" style="z-index:${arr.length-i}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''}>
           <div class="pool-task-row">
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
@@ -554,7 +564,7 @@
           <div class="points-val common">${pts.common}</div>
           <div class="points-label">Common</div>
         </div>
-        <div class="points-card legendary-glow">
+        <div class="points-card legendary-glow" data-glow-id="pts-legendary">
           <div class="points-val legendary">${pts.legendary}</div>
           <div class="points-label">Legendary</div>
         </div>
