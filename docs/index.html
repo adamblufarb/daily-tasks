@@ -99,8 +99,8 @@
 
     /* Active task list */
     .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); position: relative; }
-    .active-task.confirming { border-color: var(--common); }
-    .active-task.confirming.type-legendary { border-color: var(--legendary); }
+    .active-task.confirming { border-color: var(--common); box-shadow: 0 0 0 1px var(--common), var(--shadow); }
+    .active-task.confirming.type-legendary { border-color: var(--legendary); box-shadow: 0 0 0 1px var(--legendary), var(--shadow); }
     .active-task.confirming.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
     .active-task.type-legendary:not(.completed) { border-color: color-mix(in srgb, var(--legendary) 35%, transparent); }
     .active-task.completed { cursor: default; animation: none !important; transition: none; }
