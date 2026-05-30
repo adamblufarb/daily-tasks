@@ -126,6 +126,7 @@
     /* Pick count */
     .pick-count { text-align: center; font-size: 0.88rem; color: var(--subtext); font-weight: 600; margin-bottom: 14px; }
     .pick-count strong { color: var(--accent); }
+    .pick-count.mythic-pick strong { color: var(--mythic); text-shadow: 0 0 12px rgba(184,122,215,0.8), 0 0 28px rgba(184,122,215,0.4); }
 
     /* Home / active header */
     .home-header { padding: 52px 0 24px; text-align: center; }
@@ -342,7 +343,7 @@
         <div class="section-title">Pick Your Tasks</div>
         <div class="section-sub">${fmtDate(s.today)}</div>
       </div>
-      <div class="pick-count">Selected: <strong>${n} / 5</strong> <span style="font-weight:400;color:var(--subtext)">(min 3${n===5?' · Pick all 5 for a Mythic point! ✨':''})</span></div>
+      <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong>${n===5?' ✨':''}</div>
       ${tasks.map(t => `
         <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}" data-pick="${t.id}" ${s.picked.length>=5&&!s.picked.includes(t.id)?'style="opacity:0.45;pointer-events:none"':''}>
           <div class="task-card-top">
