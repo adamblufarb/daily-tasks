@@ -166,9 +166,9 @@
     .form-type-btn.active-common { border-color: var(--common); background: var(--common-light); color: #6d727f; }
     .form-type-btn.active-legendary { border-color: var(--legendary); background: #fef3c7; color: var(--legendary); }
     .form-actions { display: flex; gap: 8px; margin-top: 4px; }
-    .btn-save { flex: 1; padding: 10px; color: #fff; border: none; border-radius: 12px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
-    .btn-save.save-common { background: var(--common); }
-    .btn-save.save-legendary { background: var(--legendary); }
+    .btn-save { flex: 1; padding: 10px; color: #fff; border: none; border-radius: 12px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; background: var(--border); opacity: 0.5; pointer-events: none; }
+    .btn-save.save-common { background: var(--common); opacity: 1; pointer-events: auto; }
+    .btn-save.save-legendary { background: var(--legendary); opacity: 1; pointer-events: auto; }
     .btn-cancel { padding: 10px 16px; background: none; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; cursor: pointer; color: var(--subtext); }
     .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-bottom: 4px; transition: border-color 0.15s, color 0.15s; }
     .btn-add-task:hover { border-color: var(--common); color: var(--common); }
@@ -479,7 +479,7 @@
     }
 
     function editForm(task) {
-      const saveClass = `save-${task.type || 'common'}`;
+      const saveClass = task.type ? `save-${task.type}` : '';
       return `
         <div class="task-edit-form">
           <input class="form-input" id="edit-title" placeholder="Task name" value="${task.title||''}">
@@ -660,11 +660,11 @@
       document.querySelector('[data-save-task]')?.addEventListener('click', () => {
         const title = document.getElementById('edit-title')?.value.trim();
         const description = document.getElementById('edit-desc')?.value.trim();
-        if (!title) return;
+        if (!title || !s.editingTask?.type) return;
         savePoolTask({ ...s.editingTask, title, description });
       });
       document.getElementById('btn-add-task')?.addEventListener('click', () => {
-        s.editingTask = { id: '', title: '', description: '', type: 'common' };
+        s.editingTask = { id: '', title: '', description: '', type: '' };
         render();
       });
     }
