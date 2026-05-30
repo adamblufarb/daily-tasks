@@ -241,7 +241,7 @@
 <div class="content" id="app"></div>
 <div class="tab-bar">
   <button class="tab-btn" data-tab="tasks"><span class="tab-icon">📋</span><span>Tasks</span></button>
-  <button class="tab-btn" data-tab="today"><span class="tab-icon">⚡</span><span>Today</span></button>
+  <button class="tab-btn" data-tab="today"><span class="tab-icon">☀️</span><span>Today</span></button>
   <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>History</span></button>
 </div>
 <script type="module">
@@ -419,7 +419,7 @@
     const isMythic = tasks.length === 5;
     return `
       <div class="home-header">
-        <div class="home-emoji">${allDone ? '🏆' : '🔱'}</div>
+        <div class="home-emoji">${allDone ? '🏆' : isMythic ? '🔱' : ''}</div>
         <div class="home-title"${isMythic && !allDone ? ` style="color:var(--mythic)"` : ''}>${allDone ? 'All Done!' : isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
         <div class="home-sub">${allDone ? 'Great work today' : 'Tap a task to mark it complete'}</div>
       </div>
@@ -645,8 +645,6 @@
 
   /* ── Bind ── */
   function bind(screen) {
-    document.querySelectorAll('.tab-btn').forEach(b =>
-      b.addEventListener('click', () => { s.tab = b.dataset.tab; render(); }));
 
     if (screen === 'pick') {
       document.querySelectorAll('[data-pick]').forEach(el =>
@@ -910,6 +908,10 @@
         `<div class="loading" style="color:var(--danger)">Failed to connect to database.<br><small>${err.message}</small></div>`;
     }
   }
+
+  // Tab listeners attached once — tab-bar lives outside #app and persists across renders
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.addEventListener('click', () => { s.tab = b.dataset.tab; render(); }));
 
   render();
   load();
