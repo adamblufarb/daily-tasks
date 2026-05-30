@@ -55,7 +55,7 @@
 
     /* Points bar */
     .points-bar { display: flex; gap: 10px; margin-bottom: 28px; }
-    .points-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; text-align: center; box-shadow: var(--shadow); }
+    .points-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; text-align: center; box-shadow: var(--shadow); position: relative; }
     .points-val { font-size: 2rem; font-weight: 700; line-height: 1; }
     .points-val.common { color: var(--common); }
     .points-val.legendary { color: var(--legendary); }
@@ -68,8 +68,8 @@
     .task-card.selected { border-color: #9ca3af; box-shadow: 0 0 0 1px #9ca3af, var(--shadow); }
     /* ── Legendary glow via ::before so it always sits behind card backgrounds ── */
     @keyframes legendary-breathe {
-      0%, 100% { box-shadow: 0 0 12px rgba(196,113,45,0.4), 0 0 28px rgba(196,113,45,0.18); }
-      50%       { box-shadow: 0 0 40px rgba(196,113,45,0.85), 0 0 80px rgba(196,113,45,0.35); }
+      0%, 100% { box-shadow: 0 0 8px rgba(196,113,45,0.4); }
+      50%       { box-shadow: 0 0 18px rgba(196,113,45,0.8); }
     }
     .legendary-glow::before,
     .task-card.legendary-card::before {
@@ -84,6 +84,7 @@
     .legendary-glow { }
     .task-card.legendary-card { border: 2px solid rgba(196,113,45,0.35); }
     .task-card.legendary-card.selected { border-color: var(--legendary); box-shadow: 0 0 0 1px var(--legendary), var(--shadow); }
+    .task-card.legendary-card.selected::before { animation: none; box-shadow: 0 0 18px rgba(196,113,45,0.8); }
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
     .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
@@ -93,6 +94,9 @@
 
     /* Active task list */
     .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); position: relative; }
+    .active-task.confirming { border-color: #9ca3af; box-shadow: 0 0 0 1px #9ca3af, var(--shadow); }
+    .active-task.confirming.type-legendary { border-color: var(--legendary); box-shadow: 0 0 0 1px var(--legendary), var(--shadow); }
+    .active-task.confirming.type-legendary::before { animation: none; box-shadow: 0 0 18px rgba(196,113,45,0.8); }
     .active-task.completed { cursor: default; animation: none !important; transition: none; }
     .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
     .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
@@ -207,10 +211,19 @@
     .pts-mythic { color: var(--mythic); }
 
     @keyframes mythic-breathe {
-      0%, 100% { box-shadow: 0 0 10px rgba(184,122,215,0.35), 0 2px 16px rgba(184,122,215,0.12); }
-      50%       { box-shadow: 0 0 32px rgba(184,122,215,0.75), 0 0 64px rgba(184,122,215,0.28); }
+      0%, 100% { box-shadow: 0 0 8px rgba(184,122,215,0.4); }
+      50%       { box-shadow: 0 0 18px rgba(184,122,215,0.8); }
     }
-    .mythic-glow { animation: mythic-breathe 2.4s ease-in-out infinite; }
+    .mythic-glow::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -1;
+      animation: mythic-breathe var(--glow-duration, 2400ms) ease-in-out infinite;
+      animation-delay: var(--glow-delay, 0ms);
+    }
+    .mythic-glow { }
 
     .loading { text-align: center; padding: 80px 20px; color: var(--subtext); font-size: 1rem; }
     .empty { text-align: center; padding: 60px 20px; color: var(--subtext); }
@@ -408,8 +421,9 @@
         const confirming = s.confirmTask === t.id;
         const glowClass = t.type === 'legendary' && !done ? ' legendary-glow' : '';
         const glowIdAttr = t.type === 'legendary' && !done ? ` data-glow-id="${t.id}"` : '';
+        const confirmingClass = confirming ? ' confirming' : '';
         return `
-        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}"${!done?` data-confirm-task="${t.id}" data-task-type="${t.type}"`:''} ${glowIdAttr}>
+        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}${confirmingClass}"${!done?` data-confirm-task="${t.id}" data-task-type="${t.type}"`:''} ${glowIdAttr}>
           <div class="active-task-row">
             ${done
               ? `<div class="active-task-check">✓</div>`
@@ -576,7 +590,7 @@
           <div class="points-val legendary">${pts.legendary}</div>
           <div class="points-label">Legendary</div>
         </div>
-        <div class="points-card mythic-glow">
+        <div class="points-card mythic-glow" data-glow-id="pts-mythic">
           <div class="points-val mythic">${pts.mythic}</div>
           <div class="points-label">Mythic</div>
         </div>
