@@ -283,9 +283,9 @@
     sessions: [],
     tasks: [],
     today: todayStr(),
+    activePlanId: null,  // id of the current plan; null = on pick screen
     offered: [],
     picked: [],
-    reviewChecked: [],
     confirmTask: null,
     editingTask: null,   // null | { id, title, description, type }  (id==='' → new)
     deletingTask: null,  // task id pending delete confirmation
@@ -297,11 +297,12 @@
   /* ── Screen logic ── */
   function getScreen() {
     if (s.loading) return 'loading';
-    const pendingReview = s.sessions.find(x => x.date !== s.today && x.status === 'active');
-    if (pendingReview) return 'review';
-    const todaySess = s.sessions.find(x => x.date === s.today);
-    if (!todaySess || todaySess.status === 'picking') return 'pick';
-    return 'active';
+    if (s.activePlanId && s.sessions.find(x => x.id === s.activePlanId)) return 'active';
+    return 'pick';
+  }
+
+  function activePlan() {
+    return s.activePlanId ? s.sessions.find(x => x.id === s.activePlanId) : null;
   }
 
   /* ── Points ── */
@@ -383,7 +384,6 @@
     if (screen === 'loading') return `<div class="loading">Loading…</div>`;
     if (screen === 'history') return htmlHistory();
     if (screen === 'tasks')   return htmlTaskPool();
-    if (screen === 'review')  return htmlReview();
     if (screen === 'pick')    return htmlPick();
     return htmlActive();
   }
@@ -413,7 +413,7 @@
 
   /* ── Active ── */
   function htmlActive() {
-    const todaySess = s.sessions.find(x => x.date === s.today);
+    const todaySess = activePlan();
     const tasks = (todaySess?.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
     const completedIds = todaySess?.completed_ids || [];
     const allDone = tasks.length > 0 && tasks.every(t => completedIds.includes(t.id));
@@ -681,17 +681,6 @@
       document.getElementById('btn-restart')?.addEventListener('click', restartDay);
     }
 
-    if (screen === 'review') {
-      document.querySelectorAll('[data-review]').forEach(el =>
-        el.addEventListener('click', () => {
-          const id = el.dataset.review;
-          if (s.reviewChecked.includes(id)) s.reviewChecked = s.reviewChecked.filter(x => x !== id);
-          else s.reviewChecked.push(id);
-          render();
-        }));
-      document.getElementById('btn-submit-review')?.addEventListener('click', submitReview);
-    }
-
     if (screen === 'tasks') {
       document.querySelectorAll('[data-edit-task]').forEach(el =>
         el.addEventListener('click', () => {
@@ -757,6 +746,7 @@
     };
     s.sessions = s.sessions.filter(x => x.date !== s.today);
     s.sessions.push(session);
+    s.activePlanId = session.id;
     s.picked = [];
     render();
     await sql`
@@ -770,7 +760,7 @@
   }
 
   async function completeTask(taskId) {
-    const todaySess = s.sessions.find(x => x.date === s.today);
+    const todaySess = activePlan();
     if (!todaySess) return;
     const newCompleted = [...new Set([...(todaySess.completed_ids || []), taskId])];
     const allDone = newCompleted.length === todaySess.picked_ids.length;
@@ -786,13 +776,14 @@
   }
 
   async function restartDay() {
-    const todaySess = s.sessions.find(x => x.date === s.today);
-    s.sessions = s.sessions.filter(x => x.date !== s.today);
+    const plan = activePlan();
+    s.activePlanId = null;
+    s.sessions = s.sessions.filter(x => x.id !== plan?.id);
     s.offered = [];
     s.picked = [];
     s.confirmTask = null;
     render();
-    if (todaySess) await sql`DELETE FROM daily_sessions WHERE date = ${s.today}`;
+    if (plan) await sql`DELETE FROM daily_sessions WHERE id = ${plan.id}`;
   }
 
   async function submitReview() {
@@ -901,8 +892,13 @@
       }
 
       s.loading = false;
-      const todaySess = s.sessions.find(x => x.date === s.today);
-      if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
+      const activeSess = s.sessions.find(x => x.status === 'active');
+      if (activeSess) {
+        s.activePlanId = activeSess.id;
+      } else {
+        const todaySess = s.sessions.find(x => x.date === s.today);
+        if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
+      }
       render();
     } catch (err) {
       document.getElementById('app').innerHTML =
