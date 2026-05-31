@@ -216,6 +216,7 @@
 
     /* Back button */
     .btn-back { background: none; border: none; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); cursor: pointer; padding: 0 0 6px 0; display: block; }
+    .btn-profile-icon { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 4px; line-height: 1; }
 
     /* Profile menu */
     .profile-menu { display: flex; flex-direction: column; gap: 2px; }
@@ -309,9 +310,8 @@
 <body>
 <div class="content" id="app"></div>
 <div class="tab-bar">
-  <button class="tab-btn" data-tab="tasks"><span class="tab-icon">👤</span><span>Profile</span></button>
-  <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Plan</span></button>
   <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>Record</span></button>
+  <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Plan</span></button>
   <button class="tab-btn" data-tab="store"><span class="tab-icon">🛒</span><span>Store</span></button>
 </div>
 <script type="module">
@@ -369,8 +369,9 @@
     profileScreen: 'menu', // 'menu' | 'taskpool'
     wallet: { common: 99, legendary: 99, mythic: 99 },
     lastPurchaseDate: null,
-    lastPurchasedItem: null,  // { name, rarity } — persists until next day
-    selectedStoreItem: null,  // item id selected in store, cleared on purchase/tab change
+    lastPurchasedItem: null,   // { name, rarity } — persists until next day
+    selectedStoreItem: null,   // item id selected in store, cleared on purchase/tab change
+    showPurchasedScreen: false, // true after purchase, false when "Back to Store"
   };
 
   function todayStr() { return new Date().toISOString().slice(0,10); }
@@ -694,7 +695,7 @@
 
     return `
       <div class="section-header" style="padding-bottom:8px">
-        <button class="btn-back" id="btn-back-profile">‹ Profile</button>
+        <button class="btn-back" id="btn-back-profile">‹ Record</button>
         <div class="section-title">Task Pool</div>
         <div class="section-sub">${active.length} active · ${common.length} common · ${legendary.length} legendary${archived.length ? ` · ${archived.length} archived` : ''}</div>
       </div>
@@ -717,8 +718,8 @@
     const w = s.wallet;
     const alreadyBoughtToday = s.lastPurchaseDate === s.today;
 
-    // Show purchased screen for the rest of the day
-    if (alreadyBoughtToday && s.lastPurchasedItem) {
+    // Show purchased screen for the rest of the day (until user taps "Back to Store")
+    if (alreadyBoughtToday && s.lastPurchasedItem && s.showPurchasedScreen) {
       const p = s.lastPurchasedItem;
       return `
         <div class="purchased-screen bg-${p.rarity}">
@@ -728,7 +729,11 @@
         </div>`;
     }
 
-    const sel = s.selectedStoreItem;
+    // On store list: if already bought today, auto-highlight purchased item
+    const purchasedItemId = alreadyBoughtToday && s.lastPurchasedItem
+      ? STORE_ITEMS.find(x => x.name === s.lastPurchasedItem.name)?.id
+      : null;
+    const sel = alreadyBoughtToday ? purchasedItemId : s.selectedStoreItem;
     const selItem = STORE_ITEMS.find(x => x.id === sel);
     const canPurchase = selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday;
     return `
@@ -745,9 +750,9 @@
         const isSelected = sel === item.id;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
         const selClass = isSelected ? ` selected-${item.rarity}` : '';
-        const affordOpacity = !canAfford ? ' style="opacity:0.5"' : '';
+        const affordOpacity = !canAfford && !isSelected ? ' style="opacity:0.5"' : '';
         return `
-        <div class="store-card${selClass}" data-store-select="${item.id}"${affordOpacity}>
+        <div class="store-card${selClass}"${!alreadyBoughtToday ? ` data-store-select="${item.id}"` : ''}${affordOpacity}>
           <div class="store-card-top">
             <div>
               <div class="store-card-name">${item.name}</div>
@@ -759,7 +764,7 @@
       }).join('')}
       <div class="store-purchase-cta">
         <button class="btn-purchase${canPurchase ? ` ready-${selItem.rarity}` : ''}"${canPurchase ? '' : ' disabled'} id="btn-purchase">
-          ${selItem ? `Purchase — ${selItem.name}` : 'Select an item'}
+          ${alreadyBoughtToday ? 'See you next time' : selItem ? `Purchase — ${selItem.name}` : 'Select an item'}
         </button>
       </div>
       <button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>`;
@@ -770,8 +775,9 @@
     const pts = computePoints();
     const sorted = s.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
     return `
-      <div class="section-header" style="padding-bottom:20px">
+      <div class="section-header" style="padding-bottom:20px; display:flex; align-items:center; justify-content:space-between">
         <div class="section-title">Record</div>
+        <button class="btn-profile-icon" id="btn-open-profile" title="Profile">👤</button>
       </div>
       <div class="points-bar">
         <div class="points-card">
@@ -841,15 +847,24 @@
         if (s.selectedStoreItem) purchaseItem(s.selectedStoreItem);
       });
       document.getElementById('btn-back-store')?.addEventListener('click', () => {
-        s.selectedStoreItem = null;
+        s.showPurchasedScreen = false;
         render();
       });
       document.getElementById('btn-restore-purchase')?.addEventListener('click', async () => {
         s.lastPurchaseDate = null;
         s.lastPurchasedItem = null;
         s.selectedStoreItem = null;
+        s.showPurchasedScreen = false;
         render();
         await saveWallet();
+      });
+    }
+
+    if (screen === 'history') {
+      document.getElementById('btn-open-profile')?.addEventListener('click', () => {
+        s.tab = 'tasks';
+        s.profileScreen = 'taskpool';
+        render();
       });
     }
 
@@ -897,6 +912,7 @@
         render();
       });
       document.getElementById('btn-back-profile')?.addEventListener('click', () => {
+        s.tab = 'history';
         s.profileScreen = 'menu';
         s.editingTask = null;
         s.deletingTask = null;
@@ -1039,6 +1055,7 @@
     s.lastPurchaseDate = s.today;
     s.lastPurchasedItem = { name: item.name, rarity: item.rarity };
     s.selectedStoreItem = null;
+    s.showPurchasedScreen = true;
     render();
     await saveWallet();
   }
@@ -1156,6 +1173,7 @@
         s.lastPurchasedItem = w.last_purchase_item_name
           ? { name: w.last_purchase_item_name, rarity: w.last_purchase_item_rarity }
           : null;
+        s.showPurchasedScreen = w.last_purchase_date === todayStr() && !!w.last_purchase_item_name;
       } else {
         // Seed wallet with 99 of each for testing
         await saveWallet();
