@@ -280,21 +280,30 @@
     .store-cost.common    { color: var(--common-dark); }
     .store-cost.legendary { color: var(--legendary); }
     .store-cost.mythic    { color: var(--mythic); }
-    .btn-buy { padding: 7px 16px; border: none; border-radius: 10px; font-family: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
-    .btn-buy:disabled { opacity: 0.35; pointer-events: none; }
-    .btn-buy-common    { background: var(--common-light); color: var(--common-dark); }
-    .btn-buy-legendary { background: var(--legendary-bg); color: var(--legendary-dark); }
-    .btn-buy-mythic    { background: var(--mythic-bg);    color: var(--mythic); }
+    .store-card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+    .store-card.selected-common    { border-color: var(--common);    box-shadow: 0 0 0 2px var(--common); }
+    .store-card.selected-legendary { border-color: var(--legendary); box-shadow: 0 0 0 2px var(--legendary); }
+    .store-card.selected-mythic    { border-color: var(--mythic);    box-shadow: 0 0 0 2px var(--mythic); }
+    .store-card.selected-common    .store-card-name { color: var(--common-dark); }
+    .store-card.selected-legendary .store-card-name { color: var(--legendary-dark); }
+    .store-card.selected-mythic    .store-card-name { color: var(--mythic); }
+    .store-purchase-cta { position: sticky; bottom: calc(88px + env(safe-area-inset-bottom)); width: 100%; margin-top: 8px; }
+    .btn-purchase { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(79,70,229,0.3); transition: background 0.15s, transform 0.1s; }
+    .btn-purchase:active { transform: scale(0.98); }
+    .btn-purchase:disabled { opacity: 0.35; pointer-events: none; }
+    .btn-purchase.ready-common    { background: var(--common);    box-shadow: 0 4px 16px color-mix(in srgb, var(--common) 35%, transparent); }
+    .btn-purchase.ready-legendary { background: var(--legendary); box-shadow: 0 4px 16px color-mix(in srgb, var(--legendary) 35%, transparent); }
+    .btn-purchase.ready-mythic    { background: var(--mythic);    box-shadow: 0 4px 16px color-mix(in srgb, var(--mythic) 35%, transparent); }
+    .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
 
-    /* Purchase flash overlay */
-    @keyframes flash-in  { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
-    @keyframes flash-out { from { opacity:1; } to { opacity:0; } }
-    .purchase-flash { position: fixed; inset: 0; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; animation: flash-in 0.25s ease forwards; }
-    .purchase-flash.flash-common    { background: var(--common); }
-    .purchase-flash.flash-legendary { background: var(--legendary); }
-    .purchase-flash.flash-mythic    { background: var(--mythic); }
-    .flash-name { font-size: 1.8rem; font-weight: 700; color: #fff; text-align: center; padding: 0 32px; }
-    .flash-sub  { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.75); margin-top: 8px; }
+    /* Purchased screen */
+    .purchased-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); padding: 40px 24px; text-align: center; }
+    .purchased-screen.bg-common    { background: var(--common); }
+    .purchased-screen.bg-legendary { background: var(--legendary); }
+    .purchased-screen.bg-mythic    { background: var(--mythic); }
+    .purchased-item-name { font-size: 1.9rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .purchased-label { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.75); margin-bottom: 40px; }
+    .btn-back-store { padding: 14px 32px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.4); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -360,7 +369,8 @@
     profileScreen: 'menu', // 'menu' | 'taskpool'
     wallet: { common: 99, legendary: 99, mythic: 99 },
     lastPurchaseDate: null,
-    purchaseFlash: null, // { itemName, rarity } shown briefly after purchase
+    lastPurchasedItem: null,  // { name, rarity } — persists until next day
+    selectedStoreItem: null,  // item id selected in store, cleared on purchase/tab change
   };
 
   function todayStr() { return new Date().toISOString().slice(0,10); }
@@ -472,19 +482,6 @@
         if (labelEl) labelEl.textContent = 'Plan';
       }
       todayBtn.classList.toggle('mythic-active', isMythicPlan);
-    }
-    // Purchase flash overlay
-    let flashEl = document.getElementById('purchase-flash');
-    if (s.purchaseFlash) {
-      if (!flashEl) {
-        flashEl = document.createElement('div');
-        flashEl.id = 'purchase-flash';
-        document.body.appendChild(flashEl);
-      }
-      flashEl.className = `purchase-flash flash-${s.purchaseFlash.rarity}`;
-      flashEl.innerHTML = `<div class="flash-name">${s.purchaseFlash.itemName}</div><div class="flash-sub">Purchased!</div>`;
-    } else {
-      flashEl?.remove();
     }
     bind(screen);
   }
@@ -719,6 +716,21 @@
   function htmlStore() {
     const w = s.wallet;
     const alreadyBoughtToday = s.lastPurchaseDate === s.today;
+
+    // Show purchased screen for the rest of the day
+    if (alreadyBoughtToday && s.lastPurchasedItem) {
+      const p = s.lastPurchasedItem;
+      return `
+        <div class="purchased-screen bg-${p.rarity}">
+          <div class="purchased-item-name">${p.name}</div>
+          <div class="purchased-label">Purchased!</div>
+          <button class="btn-back-store" id="btn-back-store">Back to Store</button>
+        </div>`;
+    }
+
+    const sel = s.selectedStoreItem;
+    const selItem = STORE_ITEMS.find(x => x.id === sel);
+    const canPurchase = selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday;
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Store</div>
@@ -730,23 +742,27 @@
         <div class="store-wallet-chip mythic">${w.mythic} <span class="store-wallet-label">Mythic</span></div>
       </div>
       ${STORE_ITEMS.map(item => {
-        const balance = w[item.rarity] || 0;
-        const canAfford = balance >= item.cost;
-        const disabled = !canAfford || alreadyBoughtToday;
+        const isSelected = sel === item.id;
+        const canAfford = (w[item.rarity] || 0) >= item.cost;
+        const selClass = isSelected ? ` selected-${item.rarity}` : '';
+        const affordOpacity = !canAfford ? ' style="opacity:0.5"' : '';
         return `
-        <div class="store-card">
+        <div class="store-card${selClass}" data-store-select="${item.id}"${affordOpacity}>
           <div class="store-card-top">
             <div>
               <div class="store-card-name">${item.name}</div>
               <div class="store-card-desc">${item.desc}</div>
             </div>
-            <div class="store-card-right">
-              <div class="store-cost ${item.rarity}">${item.cost} <span class="store-cost-label">${item.rarity}</span></div>
-              <button class="btn-buy btn-buy-${item.rarity}"${disabled ? ' disabled' : ''} data-buy="${item.id}">Buy</button>
-            </div>
+            <div class="store-cost ${item.rarity}" style="flex-shrink:0">${item.cost} <span class="store-cost-label">${item.rarity}</span></div>
           </div>
         </div>`;
-      }).join('')}`;
+      }).join('')}
+      <div class="store-purchase-cta">
+        <button class="btn-purchase${canPurchase ? ` ready-${selItem.rarity}` : ''}"${canPurchase ? '' : ' disabled'} id="btn-purchase">
+          ${selItem ? `Purchase — ${selItem.name}` : 'Select an item'}
+        </button>
+      </div>
+      <button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>`;
   }
 
   /* ── History ── */
@@ -815,8 +831,26 @@
   function bind(screen) {
 
     if (screen === 'store') {
-      document.querySelectorAll('[data-buy]').forEach(btn =>
-        btn.addEventListener('click', () => purchaseItem(btn.dataset.buy)));
+      document.querySelectorAll('[data-store-select]').forEach(card =>
+        card.addEventListener('click', () => {
+          const id = card.dataset.storeSelect;
+          s.selectedStoreItem = s.selectedStoreItem === id ? null : id;
+          render();
+        }));
+      document.getElementById('btn-purchase')?.addEventListener('click', () => {
+        if (s.selectedStoreItem) purchaseItem(s.selectedStoreItem);
+      });
+      document.getElementById('btn-back-store')?.addEventListener('click', () => {
+        s.selectedStoreItem = null;
+        render();
+      });
+      document.getElementById('btn-restore-purchase')?.addEventListener('click', async () => {
+        s.lastPurchaseDate = null;
+        s.lastPurchasedItem = null;
+        s.selectedStoreItem = null;
+        render();
+        await saveWallet();
+      });
     }
 
     if (screen === 'pick') {
@@ -981,14 +1015,18 @@
   }
 
   async function saveWallet() {
+    const itemName = s.lastPurchasedItem?.name || null;
+    const itemRarity = s.lastPurchasedItem?.rarity || null;
     await sql`
-      INSERT INTO wallet (id, common, legendary, mythic, last_purchase_date)
-      VALUES ('main', ${s.wallet.common}, ${s.wallet.legendary}, ${s.wallet.mythic}, ${s.lastPurchaseDate})
+      INSERT INTO wallet (id, common, legendary, mythic, last_purchase_date, last_purchase_item_name, last_purchase_item_rarity)
+      VALUES ('main', ${s.wallet.common}, ${s.wallet.legendary}, ${s.wallet.mythic}, ${s.lastPurchaseDate}, ${itemName}, ${itemRarity})
       ON CONFLICT (id) DO UPDATE SET
         common = EXCLUDED.common,
         legendary = EXCLUDED.legendary,
         mythic = EXCLUDED.mythic,
-        last_purchase_date = EXCLUDED.last_purchase_date
+        last_purchase_date = EXCLUDED.last_purchase_date,
+        last_purchase_item_name = EXCLUDED.last_purchase_item_name,
+        last_purchase_item_rarity = EXCLUDED.last_purchase_item_rarity
     `;
   }
 
@@ -999,11 +1037,10 @@
     if ((s.wallet[item.rarity] || 0) < item.cost) return;
     s.wallet[item.rarity] -= item.cost;
     s.lastPurchaseDate = s.today;
-    s.purchaseFlash = { itemName: item.name, rarity: item.rarity };
+    s.lastPurchasedItem = { name: item.name, rarity: item.rarity };
+    s.selectedStoreItem = null;
     render();
     await saveWallet();
-    // Clear flash after 2.2s
-    setTimeout(() => { s.purchaseFlash = null; render(); }, 2200);
   }
 
   async function restartDay() {
@@ -1098,9 +1135,13 @@
           common int not null default 0,
           legendary int not null default 0,
           mythic int not null default 0,
-          last_purchase_date text
+          last_purchase_date text,
+          last_purchase_item_name text,
+          last_purchase_item_rarity text
         )
       `;
+      await sql`ALTER TABLE wallet ADD COLUMN IF NOT EXISTS last_purchase_item_name text`;
+      await sql`ALTER TABLE wallet ADD COLUMN IF NOT EXISTS last_purchase_item_rarity text`;
 
       const [sessionRows, taskRows, walletRows] = await Promise.all([
         sql`SELECT * FROM daily_sessions`,
@@ -1112,6 +1153,9 @@
         const w = walletRows[0];
         s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic };
         s.lastPurchaseDate = w.last_purchase_date || null;
+        s.lastPurchasedItem = w.last_purchase_item_name
+          ? { name: w.last_purchase_item_name, rarity: w.last_purchase_item_rarity }
+          : null;
       } else {
         // Seed wallet with 99 of each for testing
         await saveWallet();
@@ -1157,7 +1201,7 @@
 
   // Tab listeners attached once — tab-bar lives outside #app and persists across renders
   document.querySelectorAll('.tab-btn').forEach(b =>
-    b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; render(); }));
+    b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; render(); }));
 
   render();
   load();
