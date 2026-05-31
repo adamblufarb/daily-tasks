@@ -212,6 +212,9 @@
     .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-bottom: 4px; transition: border-color 0.15s, color 0.15s; }
     .btn-add-task:hover { border-color: var(--common); color: var(--common); }
 
+    /* Back button */
+    .btn-back { background: none; border: none; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); cursor: pointer; padding: 0 0 6px 0; display: block; }
+
     /* Profile menu */
     .profile-menu { display: flex; flex-direction: column; gap: 2px; }
     .profile-menu-item { width: 100%; padding: 16px 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); transition: background 0.12s; }
@@ -468,7 +471,7 @@
       <div class="home-header">
         <div class="home-emoji">${allDone ? '🏆' : isMythic ? '🔱' : '⚡'}</div>
         <div class="home-title"${isMythic && !allDone ? ` style="color:var(--mythic)"` : ''}>${allDone ? 'All Done!' : isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
-        <div class="home-sub">${allDone ? 'Great work today' : 'Tap a task to mark it complete'}</div>
+        <div class="home-sub">${allDone ? 'Come Back Tomorrow' : 'Tap a task to mark it complete'}</div>
       </div>
       <div class="tasks-label">Today's Tasks</div>
       ${tasks.map((t, i) => {
@@ -478,7 +481,7 @@
         const glowIdAttr = t.type === 'legendary' && !done ? ` data-glow-id="${t.id}"` : '';
         const confirmingClass = confirming ? ' selected' : '';
         return `
-        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}${confirmingClass}"${!done?` data-confirm-task="${t.id}" data-task-type="${t.type}"`:''} ${glowIdAttr}>
+        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}${confirmingClass}" data-confirm-task="${t.id}" data-task-type="${t.type}" data-done="${done}" ${glowIdAttr}>
           <div class="active-task-row">
             ${done
               ? `<div class="active-task-check">✓</div>`
@@ -489,12 +492,20 @@
             </div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
           </div>
-          ${confirming ? `
+          ${confirming && !done ? `
           <div class="task-confirm">
             <span class="task-confirm-text">Did you complete this?</span>
             <div style="display:flex;gap:8px">
               <button class="btn-confirm-no" data-confirm-no>No</button>
               <button class="btn-confirm-yes" data-confirm-yes="${t.id}">Yes ✓</button>
+            </div>
+          </div>` : ''}
+          ${confirming && done ? `
+          <div class="task-confirm">
+            <span class="task-confirm-text">Mark as incomplete?</span>
+            <div style="display:flex;gap:8px">
+              <button class="btn-confirm-no" data-confirm-no>Cancel</button>
+              <button class="btn-confirm-yes" data-uncomplete-yes="${t.id}">Undo ✕</button>
             </div>
           </div>` : ''}
         </div>`;
@@ -625,6 +636,7 @@
 
     return `
       <div class="section-header" style="padding-bottom:8px">
+        <button class="btn-back" id="btn-back-profile">‹ Profile</button>
         <div class="section-title">Task Pool</div>
         <div class="section-sub">${active.length} active · ${common.length} common · ${legendary.length} legendary${archived.length ? ` · ${archived.length} archived` : ''}</div>
       </div>
@@ -738,12 +750,22 @@
       if (yesBtn) yesBtn.addEventListener('click', e => {
         e.stopPropagation(); completeTask(yesBtn.dataset.confirmYes);
       });
+      const undoBtn = document.querySelector('[data-uncomplete-yes]');
+      if (undoBtn) undoBtn.addEventListener('click', e => {
+        e.stopPropagation(); uncompleteTask(undoBtn.dataset.uncompleteYes);
+      });
       document.getElementById('btn-restart')?.addEventListener('click', restartDay);
     }
 
     if (screen === 'tasks') {
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
         s.profileScreen = 'taskpool';
+        render();
+      });
+      document.getElementById('btn-back-profile')?.addEventListener('click', () => {
+        s.profileScreen = 'menu';
+        s.editingTask = null;
+        s.deletingTask = null;
         render();
       });
       document.querySelectorAll('[data-edit-task]').forEach(el =>
@@ -835,6 +857,20 @@
     render();
     await sql`
       UPDATE daily_sessions SET completed_ids = ${newCompleted}, status = ${newStatus}
+      WHERE id = ${todaySess.id}
+    `;
+  }
+
+  async function uncompleteTask(taskId) {
+    const todaySess = activePlan();
+    if (!todaySess) return;
+    const newCompleted = (todaySess.completed_ids || []).filter(id => id !== taskId);
+    s.sessions = s.sessions.map(x => x.id === todaySess.id
+      ? { ...x, completed_ids: newCompleted, status: 'active' } : x);
+    s.confirmTask = null;
+    render();
+    await sql`
+      UPDATE daily_sessions SET completed_ids = ${newCompleted}, status = 'active'
       WHERE id = ${todaySess.id}
     `;
   }
