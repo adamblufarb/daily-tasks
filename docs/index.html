@@ -212,6 +212,12 @@
     .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-bottom: 4px; transition: border-color 0.15s, color 0.15s; }
     .btn-add-task:hover { border-color: var(--common); color: var(--common); }
 
+    /* Profile menu */
+    .profile-menu { display: flex; flex-direction: column; gap: 2px; }
+    .profile-menu-item { width: 100%; padding: 16px 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); transition: background 0.12s; }
+    .profile-menu-item:active { background: var(--border); }
+    .profile-menu-arrow { font-size: 1.2rem; color: var(--subtext); }
+
     /* New task card at top */
     .new-task-card { background: var(--card); border: 1.5px dashed var(--common); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); }
     .new-task-label { font-size: 0.88rem; font-weight: 700; color: var(--subtext); margin-bottom: 4px; }
@@ -227,8 +233,8 @@
     .history-tasks { display: flex; flex-direction: column; gap: 6px; }
     .history-task-row { font-size: 0.84rem; display: flex; align-items: center; gap: 8px; color: var(--subtext); }
     .history-task-row.done { color: var(--text); font-weight: 600; }
-    .history-pts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--subtext); display: flex; gap: 12px; }
-    .pts-earned { font-weight: 700; }
+    .history-pts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; line-height: 1.4; color: var(--subtext); display: flex; gap: 12px; align-items: center; }
+    .pts-earned { font-weight: 700; font-size: 0.8rem; line-height: 1.4; }
     .pts-common { color: var(--common); }
     .pts-legendary { color: var(--legendary); }
     .pts-mythic { color: var(--mythic); }
@@ -305,6 +311,7 @@
     editingTask: null,   // null | { id, title, description, type }  (id==='' → new)
     deletingTask: null,  // task id pending delete confirmation
     newTaskType: 'common',
+    profileScreen: 'menu', // 'menu' | 'taskpool'
   };
 
   function todayStr() { return new Date().toISOString().slice(0,10); }
@@ -395,12 +402,19 @@
     // Dynamic plan tab: update icon/label and mythic glow based on active plan
     const plan = activePlan();
     const isPlanActive = plan?.status === 'active';
-    const isMythicPlan = isPlanActive && (plan.picked_ids || []).length === 5;
+    const isPlanDone = plan?.status === 'done';
+    const planTasks = plan ? (plan.picked_ids || []) : [];
+    const planCompleted = plan ? (plan.completed_ids || []) : [];
+    const isPlanCompleted = isPlanDone && planCompleted.length === planTasks.length && planTasks.length > 0;
+    const isMythicPlan = isPlanActive && planTasks.length === 5;
     const todayBtn = document.querySelector('.tab-btn[data-tab="today"]');
     if (todayBtn) {
       const iconEl = todayBtn.querySelector('.tab-icon');
       const labelEl = todayBtn.querySelector('#tab-today-label');
-      if (isPlanActive) {
+      if (isPlanCompleted) {
+        if (iconEl) iconEl.textContent = '🏆';
+        if (labelEl) labelEl.textContent = 'Done';
+      } else if (isPlanActive) {
         if (iconEl) iconEl.textContent = isMythicPlan ? '🔱' : '⚡';
         if (labelEl) labelEl.textContent = 'Active';
       } else {
@@ -415,7 +429,7 @@
   function buildHtml(screen) {
     if (screen === 'loading') return `<div class="loading">Loading…</div>`;
     if (screen === 'history') return htmlHistory();
-    if (screen === 'tasks')   return htmlTaskPool();
+    if (screen === 'tasks')   return s.profileScreen === 'taskpool' ? htmlTaskPool() : htmlProfile();
     if (screen === 'pick')    return htmlPick();
     return htmlActive();
   }
@@ -452,7 +466,7 @@
     const isMythic = tasks.length === 5;
     return `
       <div class="home-header">
-        <div class="home-emoji">${allDone ? '🏆' : isMythic ? '🔱' : ''}</div>
+        <div class="home-emoji">${allDone ? '🏆' : isMythic ? '🔱' : '⚡'}</div>
         <div class="home-title"${isMythic && !allDone ? ` style="color:var(--mythic)"` : ''}>${allDone ? 'All Done!' : isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
         <div class="home-sub">${allDone ? 'Great work today' : 'Tap a task to mark it complete'}</div>
       </div>
@@ -515,6 +529,20 @@
       <button class="btn-primary" id="btn-submit-review">
         ${allChecked ? '🏆 Claim Points' : 'Submit — no points today'}
       </button>`;
+  }
+
+  /* ── Profile ── */
+  function htmlProfile() {
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <div class="section-title">Profile</div>
+      </div>
+      <div class="profile-menu">
+        <button class="profile-menu-item" id="btn-profile-taskpool">
+          <span class="profile-menu-label">Task Pool</span>
+          <span class="profile-menu-arrow">›</span>
+        </button>
+      </div>`;
   }
 
   /* ── Task Pool tab ── */
@@ -620,7 +648,7 @@
     const sorted = s.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
     return `
       <div class="section-header" style="padding-bottom:20px">
-        <div class="section-title">History</div>
+        <div class="section-title">Record</div>
       </div>
       <div class="points-bar">
         <div class="points-card">
@@ -669,7 +697,7 @@
             ${isDone ? `<div class="history-pts">
               ${cPts ? `<span class="pts-earned pts-common">+${cPts} common</span>` : ''}
               ${lPts ? `<span class="pts-earned pts-legendary">+${lPts} legendary</span>` : ''}
-              ${isMythic ? `<span class="pts-earned pts-mythic">+1 mythic ✨</span>` : ''}
+              ${isMythic ? `<span class="pts-earned pts-mythic">+1 mythic</span>` : ''}
               ${!cPts && !lPts ? `<span>No points earned</span>` : ''}
             </div>` : ''}
           </div>`;
@@ -714,6 +742,10 @@
     }
 
     if (screen === 'tasks') {
+      document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
+        s.profileScreen = 'taskpool';
+        render();
+      });
       document.querySelectorAll('[data-edit-task]').forEach(el =>
         el.addEventListener('click', () => {
           const t = getTask(el.dataset.editTask);
@@ -940,7 +972,7 @@
 
   // Tab listeners attached once — tab-bar lives outside #app and persists across renders
   document.querySelectorAll('.tab-btn').forEach(b =>
-    b.addEventListener('click', () => { s.tab = b.dataset.tab; render(); }));
+    b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; render(); }));
 
   render();
   load();
