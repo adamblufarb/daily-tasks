@@ -262,6 +262,39 @@
     .loading { text-align: center; padding: 80px 20px; color: var(--subtext); font-size: 1rem; }
     .empty { text-align: center; padding: 60px 20px; color: var(--subtext); }
     .empty-emoji { font-size: 3rem; margin-bottom: 12px; }
+
+    /* Store */
+    .store-wallet { display: flex; gap: 8px; margin-bottom: 20px; }
+    .store-wallet-chip { flex: 1; padding: 10px 8px; border-radius: 14px; text-align: center; font-size: 1.3rem; font-weight: 700; line-height: 1; }
+    .store-wallet-chip .store-wallet-label { display: block; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; opacity: 0.75; }
+    .store-wallet-chip.common    { background: var(--common-light); color: var(--common-dark); }
+    .store-wallet-chip.legendary { background: var(--legendary-bg); color: var(--legendary-dark); }
+    .store-wallet-chip.mythic    { background: var(--mythic-bg);    color: var(--mythic); }
+    .store-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; box-shadow: var(--shadow); }
+    .store-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .store-card-name { font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
+    .store-card-desc { font-size: 0.82rem; color: var(--subtext); }
+    .store-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .store-cost { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+    .store-cost-label { text-transform: uppercase; letter-spacing: 0.05em; }
+    .store-cost.common    { color: var(--common-dark); }
+    .store-cost.legendary { color: var(--legendary); }
+    .store-cost.mythic    { color: var(--mythic); }
+    .btn-buy { padding: 7px 16px; border: none; border-radius: 10px; font-family: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
+    .btn-buy:disabled { opacity: 0.35; pointer-events: none; }
+    .btn-buy-common    { background: var(--common-light); color: var(--common-dark); }
+    .btn-buy-legendary { background: var(--legendary-bg); color: var(--legendary-dark); }
+    .btn-buy-mythic    { background: var(--mythic-bg);    color: var(--mythic); }
+
+    /* Purchase flash overlay */
+    @keyframes flash-in  { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+    @keyframes flash-out { from { opacity:1; } to { opacity:0; } }
+    .purchase-flash { position: fixed; inset: 0; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; animation: flash-in 0.25s ease forwards; }
+    .purchase-flash.flash-common    { background: var(--common); }
+    .purchase-flash.flash-legendary { background: var(--legendary); }
+    .purchase-flash.flash-mythic    { background: var(--mythic); }
+    .flash-name { font-size: 1.8rem; font-weight: 700; color: #fff; text-align: center; padding: 0 32px; }
+    .flash-sub  { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.75); margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -270,11 +303,19 @@
   <button class="tab-btn" data-tab="tasks"><span class="tab-icon">👤</span><span>Profile</span></button>
   <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Plan</span></button>
   <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>Record</span></button>
+  <button class="tab-btn" data-tab="store"><span class="tab-icon">🛒</span><span>Store</span></button>
 </div>
 <script type="module">
   const CONNECTION_STRING = 'postgresql://neondb_owner:npg_ZpcMwu79JeSV@ep-noisy-tree-aq773vyi-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require';
   const { neon } = await import('https://esm.sh/@neondatabase/serverless');
   const sql = neon(CONNECTION_STRING);
+
+  /* ── Store items ── */
+  const STORE_ITEMS = [
+    { id: 's1', name: 'Rest Day Pass',   cost: 2, rarity: 'common',    desc: 'Skip a day guilt-free'         },
+    { id: 's2', name: 'Bonus Legendary', cost: 1, rarity: 'legendary', desc: 'Add a legendary slot for a day' },
+    { id: 's3', name: 'Mythic Boost',    cost: 1, rarity: 'mythic',    desc: 'Double points for your next plan' },
+  ];
 
   /* ── Default task pool (seed data) ── */
   const DEFAULT_TASKS = [
@@ -317,6 +358,9 @@
     deletingTask: null,  // task id pending delete confirmation
     newTaskType: 'common',
     profileScreen: 'menu', // 'menu' | 'taskpool'
+    wallet: { common: 99, legendary: 99, mythic: 99 },
+    lastPurchaseDate: null,
+    purchaseFlash: null, // { itemName, rarity } shown briefly after purchase
   };
 
   function todayStr() { return new Date().toISOString().slice(0,10); }
@@ -393,6 +437,7 @@
   function render() {
     const screen = s.tab === 'history' ? 'history'
                  : s.tab === 'tasks'   ? 'tasks'
+                 : s.tab === 'store'   ? 'store'
                  : getScreen();
     document.body.classList.toggle('mythic-bg', screen === 'pick' && s.picked.length === 5);
     document.getElementById('app').innerHTML = buildHtml(screen);
@@ -428,12 +473,26 @@
       }
       todayBtn.classList.toggle('mythic-active', isMythicPlan);
     }
+    // Purchase flash overlay
+    let flashEl = document.getElementById('purchase-flash');
+    if (s.purchaseFlash) {
+      if (!flashEl) {
+        flashEl = document.createElement('div');
+        flashEl.id = 'purchase-flash';
+        document.body.appendChild(flashEl);
+      }
+      flashEl.className = `purchase-flash flash-${s.purchaseFlash.rarity}`;
+      flashEl.innerHTML = `<div class="flash-name">${s.purchaseFlash.itemName}</div><div class="flash-sub">Purchased!</div>`;
+    } else {
+      flashEl?.remove();
+    }
     bind(screen);
   }
 
   function buildHtml(screen) {
     if (screen === 'loading') return `<div class="loading">Loading…</div>`;
     if (screen === 'history') return htmlHistory();
+    if (screen === 'store')   return htmlStore();
     if (screen === 'tasks')   return s.profileScreen === 'taskpool' ? htmlTaskPool() : htmlProfile();
     if (screen === 'pick')    return htmlPick();
     return htmlActive();
@@ -656,6 +715,40 @@
         ${archived.map(archivedRow).join('')}` : ''}`;
   }
 
+  /* ── Store ── */
+  function htmlStore() {
+    const w = s.wallet;
+    const alreadyBoughtToday = s.lastPurchaseDate === s.today;
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <div class="section-title">Store</div>
+        <div class="section-sub">${alreadyBoughtToday ? '1 purchase used today' : '1 purchase available today'}</div>
+      </div>
+      <div class="store-wallet">
+        <div class="store-wallet-chip common">${w.common} <span class="store-wallet-label">Common</span></div>
+        <div class="store-wallet-chip legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
+        <div class="store-wallet-chip mythic">${w.mythic} <span class="store-wallet-label">Mythic</span></div>
+      </div>
+      ${STORE_ITEMS.map(item => {
+        const balance = w[item.rarity] || 0;
+        const canAfford = balance >= item.cost;
+        const disabled = !canAfford || alreadyBoughtToday;
+        return `
+        <div class="store-card">
+          <div class="store-card-top">
+            <div>
+              <div class="store-card-name">${item.name}</div>
+              <div class="store-card-desc">${item.desc}</div>
+            </div>
+            <div class="store-card-right">
+              <div class="store-cost ${item.rarity}">${item.cost} <span class="store-cost-label">${item.rarity}</span></div>
+              <button class="btn-buy btn-buy-${item.rarity}"${disabled ? ' disabled' : ''} data-buy="${item.id}">Buy</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}`;
+  }
+
   /* ── History ── */
   function htmlHistory() {
     const pts = computePoints();
@@ -720,6 +813,11 @@
 
   /* ── Bind ── */
   function bind(screen) {
+
+    if (screen === 'store') {
+      document.querySelectorAll('[data-buy]').forEach(btn =>
+        btn.addEventListener('click', () => purchaseItem(btn.dataset.buy)));
+    }
 
     if (screen === 'pick') {
       document.querySelectorAll('[data-pick]').forEach(el =>
@@ -850,17 +948,22 @@
   async function completeTask(taskId) {
     const todaySess = activePlan();
     if (!todaySess) return;
+    const task = getTaskForHistory(todaySess, taskId);
     const newCompleted = [...new Set([...(todaySess.completed_ids || []), taskId])];
     const allDone = newCompleted.length === todaySess.picked_ids.length;
     const newStatus = allDone ? 'done' : 'active';
     s.sessions = s.sessions.map(x => x.id === todaySess.id
       ? { ...x, completed_ids: newCompleted, status: newStatus } : x);
+    // Credit wallet: +1 of task's rarity
+    if (task?.type === 'legendary') s.wallet.legendary++;
+    else if (task?.type === 'mythic') s.wallet.mythic++;
+    else s.wallet.common++;
     s.confirmTask = null;
     render();
-    await sql`
-      UPDATE daily_sessions SET completed_ids = ${newCompleted}, status = ${newStatus}
-      WHERE id = ${todaySess.id}
-    `;
+    await Promise.all([
+      sql`UPDATE daily_sessions SET completed_ids = ${newCompleted}, status = ${newStatus} WHERE id = ${todaySess.id}`,
+      saveWallet(),
+    ]);
   }
 
   async function uncompleteTask(taskId) {
@@ -875,6 +978,32 @@
       UPDATE daily_sessions SET completed_ids = ${newCompleted}, status = 'active'
       WHERE id = ${todaySess.id}
     `;
+  }
+
+  async function saveWallet() {
+    await sql`
+      INSERT INTO wallet (id, common, legendary, mythic, last_purchase_date)
+      VALUES ('main', ${s.wallet.common}, ${s.wallet.legendary}, ${s.wallet.mythic}, ${s.lastPurchaseDate})
+      ON CONFLICT (id) DO UPDATE SET
+        common = EXCLUDED.common,
+        legendary = EXCLUDED.legendary,
+        mythic = EXCLUDED.mythic,
+        last_purchase_date = EXCLUDED.last_purchase_date
+    `;
+  }
+
+  async function purchaseItem(itemId) {
+    const item = STORE_ITEMS.find(x => x.id === itemId);
+    if (!item) return;
+    if (s.lastPurchaseDate === s.today) return;
+    if ((s.wallet[item.rarity] || 0) < item.cost) return;
+    s.wallet[item.rarity] -= item.cost;
+    s.lastPurchaseDate = s.today;
+    s.purchaseFlash = { itemName: item.name, rarity: item.rarity };
+    render();
+    await saveWallet();
+    // Clear flash after 2.2s
+    setTimeout(() => { s.purchaseFlash = null; render(); }, 2200);
   }
 
   async function restartDay() {
@@ -963,12 +1092,30 @@
       // Add columns introduced after initial schema (idempotent)
       await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false`;
       await sql`ALTER TABLE daily_sessions ADD COLUMN IF NOT EXISTS task_snapshots jsonb DEFAULT '[]'`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS wallet (
+          id text primary key,
+          common int not null default 0,
+          legendary int not null default 0,
+          mythic int not null default 0,
+          last_purchase_date text
+        )
+      `;
 
-      const [sessionRows, taskRows] = await Promise.all([
+      const [sessionRows, taskRows, walletRows] = await Promise.all([
         sql`SELECT * FROM daily_sessions`,
         sql`SELECT * FROM tasks`,
+        sql`SELECT * FROM wallet WHERE id = 'main'`,
       ]);
       s.sessions = sessionRows;
+      if (walletRows.length > 0) {
+        const w = walletRows[0];
+        s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic };
+        s.lastPurchaseDate = w.last_purchase_date || null;
+      } else {
+        // Seed wallet with 99 of each for testing
+        await saveWallet();
+      }
 
       if (taskRows.length === 0) {
         await sql`
