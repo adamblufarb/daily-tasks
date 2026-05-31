@@ -46,9 +46,24 @@
     body.mythic-bg .pick-count strong { color: #fff; }
 
     .tab-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border); display: flex; align-items: flex-end; z-index: 100; padding: 0 12px calc(16px + env(safe-area-inset-bottom)) 12px; box-shadow: 0 -2px 12px rgba(0,0,0,0.05); overflow: visible; }
-    .tab-btn { flex: 1; padding: 12px 8px; background: none; border: none; color: var(--subtext); font-size: 0.72rem; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.15s; }
+    .tab-btn { flex: 1; padding: 12px 8px; background: none; border: none; color: var(--subtext); font-size: 0.72rem; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.15s; position: relative; }
     .tab-icon { font-size: 1.4rem; line-height: 1; }
     .tab-btn.active { color: var(--accent); }
+    @keyframes tab-mythic-breathe {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 0.8; }
+    }
+    .tab-btn.mythic-active { isolation: isolate; }
+    .tab-btn.mythic-active::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(184,122,215,0.6) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+      animation: tab-mythic-breathe 3s ease-in-out infinite;
+    }
 
     .content { padding: 0 20px calc(120px + env(safe-area-inset-bottom)) 20px; }
 
@@ -241,9 +256,9 @@
 <body>
 <div class="content" id="app"></div>
 <div class="tab-bar">
-  <button class="tab-btn" data-tab="tasks"><span class="tab-icon">📋</span><span>Tasks</span></button>
-  <button class="tab-btn" data-tab="today"><span class="tab-icon">☀️</span><span>Today</span></button>
-  <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>History</span></button>
+  <button class="tab-btn" data-tab="tasks"><span class="tab-icon">👤</span><span>Profile</span></button>
+  <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Plan</span></button>
+  <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>Record</span></button>
 </div>
 <script type="module">
   const CONNECTION_STRING = 'postgresql://neondb_owner:npg_ZpcMwu79JeSV@ep-noisy-tree-aq773vyi-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require';
@@ -377,6 +392,23 @@
       el.style.setProperty('--glow-duration', `${glowDuration(id)}ms`);
       el.style.setProperty('--glow-delay', `-${glowDelay(id)}ms`);
     });
+    // Dynamic plan tab: update icon/label and mythic glow based on active plan
+    const plan = activePlan();
+    const isPlanActive = plan?.status === 'active';
+    const isMythicPlan = isPlanActive && (plan.picked_ids || []).length === 5;
+    const todayBtn = document.querySelector('.tab-btn[data-tab="today"]');
+    if (todayBtn) {
+      const iconEl = todayBtn.querySelector('.tab-icon');
+      const labelEl = todayBtn.querySelector('#tab-today-label');
+      if (isPlanActive) {
+        if (iconEl) iconEl.textContent = isMythicPlan ? '🔱' : '⚡';
+        if (labelEl) labelEl.textContent = 'Active';
+      } else {
+        if (iconEl) iconEl.textContent = '🎲';
+        if (labelEl) labelEl.textContent = 'Plan';
+      }
+      todayBtn.classList.toggle('mythic-active', isMythicPlan);
+    }
     bind(screen);
   }
 
@@ -395,7 +427,7 @@
     const n = s.picked.length;
     return `
       <div class="section-header">
-        <div class="section-title">Pick Your Tasks</div>
+        <div class="section-title">Build Your Plan</div>
         <div class="section-sub">${fmtDate(s.today)}</div>
       </div>
       <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
@@ -408,7 +440,7 @@
           <div class="task-desc">${t.description}</div>
         </div>`).join('')}
       <div style="height:16px"></div>
-      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Day →</button>`;
+      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Plan →</button>`;
   }
 
   /* ── Active ── */
