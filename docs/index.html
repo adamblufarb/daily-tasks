@@ -15,8 +15,8 @@
     :root {
       --bg: #f0f4ff;
       --card: #ffffff;
-      --accent: #4f46e5;
-      --accent2: #818cf8;
+      --accent: #6a5c51;
+      --accent2: #9c8f85;
       --legendary: #c4712d;
       --legendary-bg: #fce8d4;
       --legendary-dark: #6d3a11;
@@ -86,7 +86,7 @@
     /* Task option cards (pick screen) */
     .task-card { background: var(--card); border: 2px solid #d1d5db; border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; box-shadow: var(--shadow); position: relative; }
     .task-card:active { transform: scale(0.98); }
-    .task-card.selected { border-color: var(--common); box-shadow: var(--shadow); }
+    .task-card.selected { border-color: var(--common); background: var(--common-light); box-shadow: var(--shadow); }
     /* ── Legendary glow via ::before so it always sits behind card backgrounds ── */
     @keyframes legendary-breathe {
       0%, 100% { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 40%, transparent); }
@@ -104,7 +104,7 @@
     }
     .legendary-glow { }
     .task-card.legendary-card { border: 2px solid color-mix(in srgb, var(--legendary) 35%, transparent); }
-    .task-card.legendary-card.selected { border-color: color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
+    .task-card.legendary-card.selected { border-color: color-mix(in srgb, var(--legendary) 80%, transparent); background: var(--legendary-bg); box-shadow: var(--shadow); }
     .task-card.legendary-card.selected::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
