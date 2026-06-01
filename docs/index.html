@@ -679,7 +679,7 @@
   function htmlProfile() {
     const graceEnd = RESET_HOUR + GRACE_HOURS;
     const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
-    const hours = Array.from({length: 24}, (_, i) => i);
+    const hours = Array.from({length: 6}, (_, i) => i + 6);
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Profile</div>
