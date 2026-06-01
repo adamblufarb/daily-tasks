@@ -147,13 +147,17 @@
     .btn-confirm-no.btn-white  { background: var(--card); }
 
     /* Review */
-    .review-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
+    .review-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
     .review-task.checked { border-color: var(--success); box-shadow: 0 0 0 1px var(--success), var(--shadow); }
+    .review-task.declined { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger), var(--shadow); }
+    .review-task-main { display: flex; align-items: center; gap: 14px; }
     .review-checkbox { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem; transition: all 0.15s; }
     .review-task.checked .review-checkbox { background: var(--success); border-color: var(--success); color: #fff; }
+    .review-task.declined .review-checkbox { background: var(--danger); border-color: var(--danger); color: #fff; }
     .review-task-info { flex: 1; }
     .review-task-title { font-size: 1rem; font-weight: 700; }
     .review-task-sub { font-size: 0.82rem; color: var(--subtext); margin-top: 2px; }
+    .review-task-confirm { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 
     /* Warning */
     .warning-banner { background: var(--warning-bg); border: 1px solid #fde68a; border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start; }
@@ -429,6 +433,7 @@
     selectedStoreItem: null,
     showPurchasedScreen: false,
     reviewChecked: [],
+    reviewDeclined: [],
   };
 
   /* ── Screen logic ── */
@@ -650,7 +655,8 @@
   function htmlReview() {
     const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
     const tasks = (pending?.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
-    const allChecked = s.reviewChecked.length === tasks.length && tasks.length > 0;
+    const allAnswered = tasks.length > 0 && tasks.every(t => s.reviewChecked.includes(t.id) || s.reviewDeclined.includes(t.id));
+    const allYes = allAnswered && tasks.every(t => s.reviewChecked.includes(t.id));
     return `
       <div class="section-header">
         <div class="section-title">How'd it go?</div>
@@ -658,21 +664,35 @@
       </div>
       <div class="warning-banner">
         <div>⚠️</div>
-        <div class="warning-text">You need to complete all 3 tasks to earn points. Failing even one means no points for the day.</div>
+        <div class="warning-text">You need to complete all tasks to earn points. Failing even one means no points for the day.</div>
       </div>
-      ${tasks.map(t => `
-        <div class="review-task${s.reviewChecked.includes(t.id)?' checked':''}" data-review="${t.id}">
-          <div class="review-checkbox">${s.reviewChecked.includes(t.id)?'✓':''}</div>
-          <div class="review-task-info">
-            <div class="review-task-title">${t.title}</div>
-            <div class="review-task-sub">${t.description}</div>
+      ${tasks.map(t => {
+        const yes = s.reviewChecked.includes(t.id);
+        const no  = s.reviewDeclined.includes(t.id);
+        return `
+        <div class="review-task${yes?' checked':no?' declined':''}">
+          <div class="review-task-main">
+            <div class="review-checkbox">${yes?'✓':no?'✕':''}</div>
+            <div class="review-task-info">
+              <div class="review-task-title">${t.title}</div>
+              <div class="review-task-sub">${t.description}</div>
+            </div>
+            <span class="task-badge badge-${t.type}">${t.type}</span>
           </div>
-          <span class="task-badge badge-${t.type}">${t.type}</span>
-        </div>`).join('')}
-      <div style="height:16px"></div>
+          ${!yes && !no ? `
+          <div class="review-task-confirm">
+            <span class="task-confirm-text">Did you complete this?</span>
+            <div style="display:flex;gap:8px">
+              <button class="btn-confirm-no" data-review-no="${t.id}">No</button>
+              <button class="btn-confirm-yes" data-review-yes="${t.id}">Yes ✓</button>
+            </div>
+          </div>` : ''}
+        </div>`;
+      }).join('')}
+      ${allAnswered ? `<div style="height:16px"></div>
       <button class="btn-primary" id="btn-submit-review">
-        ${allChecked ? '🏆 Claim Points' : 'Submit — no points today'}
-      </button>`;
+        ${allYes ? '🏆 Claim Points' : 'Submit — no points today'}
+      </button>` : ''}`;
   }
 
   /* ── Profile ── */
@@ -1006,6 +1026,24 @@
       });
     }
 
+    if (screen === 'review') {
+      document.querySelectorAll('[data-review-yes]').forEach(el =>
+        el.addEventListener('click', () => {
+          const id = el.dataset.reviewYes;
+          if (!s.reviewChecked.includes(id)) s.reviewChecked.push(id);
+          s.reviewDeclined = s.reviewDeclined.filter(x => x !== id);
+          render();
+        }));
+      document.querySelectorAll('[data-review-no]').forEach(el =>
+        el.addEventListener('click', () => {
+          const id = el.dataset.reviewNo;
+          if (!s.reviewDeclined.includes(id)) s.reviewDeclined.push(id);
+          s.reviewChecked = s.reviewChecked.filter(x => x !== id);
+          render();
+        }));
+      document.getElementById('btn-submit-review')?.addEventListener('click', submitReview);
+    }
+
     if (screen === 'pick') {
       document.getElementById('btn-generate')?.addEventListener('click', async () => {
         const active = s.tasks.filter(t => !t.archived);
@@ -1330,6 +1368,7 @@
     s.sessions = s.sessions.map(x => x.id === pending.id
       ? { ...x, completed_ids: completedIds, status: 'done' } : x);
     s.reviewChecked = [];
+    s.reviewDeclined = [];
     render();
     await sql`
       UPDATE daily_sessions SET completed_ids = ${completedIds}, status = 'done'
