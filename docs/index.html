@@ -271,12 +271,12 @@
     .generate-title { font-size: 1.8rem; font-weight: 700; color: var(--text); }
     .generate-sub   { font-size: 0.9rem; color: var(--subtext); margin-bottom: 24px; }
     @keyframes card-reveal {
-      from { opacity: 0; transform: translateY(14px); }
+      from { opacity: 0; transform: translateY(18px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     .task-card-reveal {
       opacity: 0;
-      animation: card-reveal 0.32s ease forwards;
+      animation: card-reveal 0.45s ease forwards;
     }
 
     /* Store */
@@ -536,7 +536,7 @@
       </div>
       <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${i*160}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${i*260}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
@@ -897,14 +897,23 @@
     }
 
     if (screen === 'pick') {
-      document.getElementById('btn-generate')?.addEventListener('click', () => {
+      document.getElementById('btn-generate')?.addEventListener('click', async () => {
         const active = s.tasks.filter(t => !t.archived);
         s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
-        // After animation completes, switch to normal 'pick' state (cards stay, animation class gone)
-        setTimeout(() => { s.planBuildState = 'pick'; render(); }, (5 * 160) + 400);
+        // After animation completes, switch to normal 'pick' state
+        setTimeout(() => { s.planBuildState = 'pick'; render(); }, (5 * 260) + 600);
+        // Persist offered tasks so they survive a refresh
+        const draftId = `draft-${s.today}`;
+        await sql`
+          INSERT INTO daily_sessions (id, date, offered_ids, picked_ids, completed_ids, status)
+          VALUES (${draftId}, ${s.today}, ${s.offered}, '{}', '{}', 'draft')
+          ON CONFLICT (date) DO UPDATE SET
+            offered_ids = EXCLUDED.offered_ids, id = EXCLUDED.id, status = 'draft'
+          WHERE daily_sessions.status NOT IN ('active', 'done')
+        `;
       });
       document.querySelectorAll('[data-pick]').forEach(el =>
         el.addEventListener('click', () => {
@@ -1246,7 +1255,11 @@
         s.activePlanId = activeSess.id;
       } else {
         const todaySess = s.sessions.find(x => x.date === s.today);
-        if (todaySess?.offered_ids?.length) s.offered = todaySess.offered_ids;
+        if (todaySess?.offered_ids?.length) {
+          s.offered = todaySess.offered_ids;
+          // Skip generate screen if tasks were already generated today
+          s.planBuildState = 'pick';
+        }
       }
       render();
     } catch (err) {
