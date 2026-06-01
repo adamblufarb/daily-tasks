@@ -832,7 +832,7 @@
 
     return `
       <div class="section-header" style="padding-bottom:8px">
-        <button class="btn-back" id="btn-back-profile">‹ Record</button>
+        <button class="btn-back" id="btn-back-profile">‹ Profile</button>
         <div class="section-title">Task Pool</div>
         <div class="section-sub">${active.length} active · ${common.length} common · ${legendary.length} legendary${archived.length ? ` · ${archived.length} archived` : ''}</div>
       </div>
@@ -1001,7 +1001,7 @@
     if (screen === 'history') {
       document.getElementById('btn-open-profile')?.addEventListener('click', () => {
         s.tab = 'tasks';
-        s.profileScreen = 'taskpool';
+        s.profileScreen = 'menu';
         render();
       });
     }
@@ -1092,9 +1092,9 @@
         s.profileScreen = 'storemanage'; s.editingStoreItem = null; render();
       });
 
-      // Back from task pool → Record
+      // Back from task pool → Profile menu
       document.getElementById('btn-back-profile')?.addEventListener('click', () => {
-        s.tab = 'history'; s.profileScreen = 'menu'; s.editingTask = null; s.deletingTask = null; render();
+        s.profileScreen = 'menu'; s.editingTask = null; s.deletingTask = null; render();
       });
 
       // Back from store manage → Profile menu
