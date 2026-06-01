@@ -265,6 +265,20 @@
     .empty { text-align: center; padding: 60px 20px; color: var(--subtext); }
     .empty-emoji { font-size: 3rem; margin-bottom: 12px; }
 
+    /* Plan generate screen */
+    .generate-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 160px); text-align: center; gap: 8px; }
+    .generate-emoji { font-size: 3.5rem; margin-bottom: 8px; }
+    .generate-title { font-size: 1.8rem; font-weight: 700; color: var(--text); }
+    .generate-sub   { font-size: 0.9rem; color: var(--subtext); margin-bottom: 24px; }
+    @keyframes card-reveal {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .task-card-reveal {
+      opacity: 0;
+      animation: card-reveal 0.32s ease forwards;
+    }
+
     /* Store */
     .store-wallet { display: flex; gap: 8px; margin-bottom: 20px; }
     .store-wallet-chip { flex: 1; padding: 10px 8px; border-radius: 14px; text-align: center; font-size: 1.3rem; font-weight: 700; line-height: 1; }
@@ -293,9 +307,9 @@
     .btn-purchase { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(79,70,229,0.3); transition: background 0.15s, transform 0.1s; }
     .btn-purchase:active { transform: scale(0.98); }
     .btn-purchase:disabled { opacity: 0.35; pointer-events: none; }
-    .btn-purchase.ready-common    { background: var(--common);    box-shadow: 0 4px 16px color-mix(in srgb, var(--common) 35%, transparent); }
-    .btn-purchase.ready-legendary { background: var(--legendary); box-shadow: 0 4px 16px color-mix(in srgb, var(--legendary) 35%, transparent); }
-    .btn-purchase.ready-mythic    { background: var(--mythic);    box-shadow: 0 4px 16px color-mix(in srgb, var(--mythic) 35%, transparent); }
+    .btn-purchase.ready-common,
+    .btn-purchase.ready-legendary,
+    .btn-purchase.ready-mythic    { background: var(--accent); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent); }
     .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
 
     /* Purchased screen */
@@ -363,6 +377,7 @@
     activePlanId: null,  // id of the current plan; null = on pick screen
     offered: [],
     picked: [],
+    planBuildState: 'generate', // 'generate' | 'pick'
     confirmTask: null,
     editingTask: null,   // null | { id, title, description, type }  (id==='' → new)
     deletingTask: null,  // task id pending delete confirmation
@@ -499,9 +514,21 @@
 
   /* ── Pick ── */
   function htmlPick() {
+    if (s.planBuildState === 'generate') {
+      return `
+        <div class="generate-screen">
+          <div class="generate-emoji">🎲</div>
+          <div class="generate-title">Build Your Plan</div>
+          <div class="generate-sub">${fmtDate(s.today)}</div>
+          <button class="btn-primary" id="btn-generate" style="width:100%;max-width:280px">Generate Tasks →</button>
+        </div>`;
+    }
+
     ensureOffered();
     const tasks = s.offered.map(id => getTask(id)).filter(Boolean);
     const n = s.picked.length;
+    // revealedAt is used to stagger animation on first reveal only
+    const isRevealing = s.planBuildState === 'revealing';
     return `
       <div class="section-header">
         <div class="section-title">Build Your Plan</div>
@@ -509,7 +536,7 @@
       </div>
       <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''}${s.picked.length>=5&&!s.picked.includes(t.id)?' style="opacity:0.45;pointer-events:none"':''}>
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${i*160}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
@@ -765,7 +792,7 @@
       }).join('')}
       <div class="store-purchase-cta">
         <button class="btn-purchase${canPurchase ? ` ready-${selItem.rarity}` : ''}"${canPurchase ? '' : ' disabled'} id="btn-purchase">
-          ${alreadyBoughtToday ? 'See you next time' : selItem ? `Purchase — ${selItem.name}` : 'Select an item'}
+          ${alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select an item'}
         </button>
       </div>
       <button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>`;
@@ -870,6 +897,15 @@
     }
 
     if (screen === 'pick') {
+      document.getElementById('btn-generate')?.addEventListener('click', () => {
+        const active = s.tasks.filter(t => !t.archived);
+        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+        s.picked = [];
+        s.planBuildState = 'revealing';
+        render();
+        // After animation completes, switch to normal 'pick' state (cards stay, animation class gone)
+        setTimeout(() => { s.planBuildState = 'pick'; render(); }, (5 * 160) + 400);
+      });
       document.querySelectorAll('[data-pick]').forEach(el =>
         el.addEventListener('click', () => {
           const id = el.dataset.pick;
@@ -1068,6 +1104,7 @@
     s.offered = [];
     s.picked = [];
     s.confirmTask = null;
+    s.planBuildState = 'generate';
     render();
     if (plan) await sql`DELETE FROM daily_sessions WHERE id = ${plan.id}`;
   }
