@@ -1,4 +1,4 @@
-const V = '1748580034';
+const V = '1748580035';
 
 self.addEventListener('install', () => self.skipWaiting());
 

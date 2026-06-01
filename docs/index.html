@@ -221,6 +221,20 @@
     .btn-back { background: none; border: none; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); cursor: pointer; padding: 0 0 6px 0; display: block; }
     .btn-profile-icon { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 4px; line-height: 1; }
 
+    /* Profile settings */
+    .settings-section { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .settings-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .settings-select { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; font-family: inherit; font-size: 0.88rem; font-weight: 600; color: var(--text); cursor: pointer; }
+    .settings-sub { font-size: 0.78rem; color: var(--subtext); margin-top: 6px; }
+
+    /* Store manage */
+    .store-manage-row { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: var(--shadow); }
+    .store-manage-info { flex: 1; min-width: 0; }
+    .store-manage-name { font-size: 0.95rem; font-weight: 700; }
+    .store-manage-meta { font-size: 0.78rem; color: var(--subtext); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .store-manage-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
     /* Profile menu */
     .profile-menu { display: flex; flex-direction: column; gap: 2px; }
     .profile-menu-item { width: 100%; padding: 16px 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); transition: background 0.12s; }
@@ -372,7 +386,7 @@
   }
 
   /* ── Day reset helpers (must be before state init) ── */
-  const RESET_HOUR = 8;
+  let RESET_HOUR = 8;
   const GRACE_HOURS = 3;
 
   function localDateStr(d) {
@@ -406,7 +420,9 @@
     editingTask: null,
     deletingTask: null,
     newTaskType: 'common',
-    profileScreen: 'menu',
+    profileScreen: 'menu', // 'menu' | 'taskpool' | 'storemanage'
+    storeItems: [],        // loaded from DB; falls back to STORE_ITEMS seed
+    editingStoreItem: null,
     wallet: { common: 99, legendary: 99, mythic: 99 },
     lastPurchaseDate: null,
     lastPurchasedItem: null,
@@ -535,7 +551,7 @@
     if (screen === 'loading') return `<div class="loading">Loading…</div>`;
     if (screen === 'history') return htmlHistory();
     if (screen === 'store')   return htmlStore();
-    if (screen === 'tasks')   return s.profileScreen === 'taskpool' ? htmlTaskPool() : htmlProfile();
+    if (screen === 'tasks')   return s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
     if (screen === 'review')  return htmlReview();
     if (screen === 'pick')    return htmlPick();
     return htmlActive();
@@ -661,6 +677,9 @@
 
   /* ── Profile ── */
   function htmlProfile() {
+    const graceEnd = RESET_HOUR + GRACE_HOURS;
+    const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
+    const hours = Array.from({length: 24}, (_, i) => i);
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Profile</div>
@@ -670,7 +689,67 @@
           <span class="profile-menu-label">Task Pool</span>
           <span class="profile-menu-arrow">›</span>
         </button>
+        <button class="profile-menu-item" id="btn-profile-storemanage">
+          <span class="profile-menu-label">Store Items</span>
+          <span class="profile-menu-arrow">›</span>
+        </button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-row">
+          <div class="settings-label">Day Reset Time</div>
+          <select class="settings-select" id="select-reset-hour">
+            ${hours.map(h => `<option value="${h}"${h===RESET_HOUR?' selected':''}>${fmtHour(h)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="settings-sub">Grace period until ${fmtHour(graceEnd >= 24 ? graceEnd - 24 : graceEnd)} to enter previous day's results</div>
       </div>`;
+  }
+
+  /* ── Store Management ── */
+  function htmlStoreManage() {
+    const items = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+    const isAdding = s.editingStoreItem && s.editingStoreItem.id === '';
+    const editId = s.editingStoreItem?.id;
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <button class="btn-back" id="btn-back-storemanage">‹ Profile</button>
+        <div class="section-title">Store Items</div>
+      </div>
+      ${!isAdding ? `<button class="btn-add-task" id="btn-add-store-item">+ Add Item</button>` : `
+      <div class="new-task-card">
+        <div class="new-task-label">New Item</div>
+        ${storeItemForm(s.editingStoreItem)}
+      </div>`}
+      ${items.map(item => editId === item.id ? `
+      <div class="new-task-card">
+        ${storeItemForm(s.editingStoreItem)}
+      </div>` : `
+      <div class="store-manage-row">
+        <div class="store-manage-info">
+          <div class="store-manage-name">${item.name}</div>
+          <div class="store-manage-meta">${item.cost} ${item.rarity} · ${item.desc}</div>
+        </div>
+        <div class="store-manage-actions">
+          <button class="btn-icon edit" data-edit-store="${item.id}">✏️</button>
+          <button class="btn-icon delete" data-delete-store="${item.id}">🗑</button>
+        </div>
+      </div>`).join('')}`;
+  }
+
+  function storeItemForm(item) {
+    return `
+      <input class="form-input" id="si-name"  placeholder="Item name"   value="${item.name||''}">
+      <input class="form-input" id="si-desc"  placeholder="Description" value="${item.desc||''}">
+      <div class="form-row">
+        <input class="form-input" id="si-cost" type="number" min="1" placeholder="Cost" value="${item.cost||1}" style="width:80px">
+        <select class="form-input settings-select" id="si-rarity">
+          ${['common','legendary','mythic'].map(r => `<option value="${r}"${r===item.rarity?' selected':''}>${r}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" data-cancel-store-edit>Cancel</button>
+        <button class="btn-save save-${item.rarity||'common'}" data-save-store>Save</button>
+      </div>`
   }
 
   /* ── Task Pool tab ── */
@@ -788,11 +867,12 @@
     }
 
     // On store list: if already bought today, auto-highlight purchased item
+    const activeItems = s.storeItems.length ? s.storeItems : STORE_ITEMS;
     const purchasedItemId = alreadyBoughtToday && s.lastPurchasedItem
-      ? STORE_ITEMS.find(x => x.name === s.lastPurchasedItem.name)?.id
+      ? activeItems.find(x => x.name === s.lastPurchasedItem.name)?.id
       : null;
     const sel = alreadyBoughtToday ? purchasedItemId : s.selectedStoreItem;
-    const selItem = STORE_ITEMS.find(x => x.id === sel);
+    const selItem = activeItems.find(x => x.id === sel);
     const canPurchase = selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday;
     return `
       <div class="section-header" style="padding-bottom:8px">
@@ -804,7 +884,7 @@
         <div class="store-wallet-chip legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic">${w.mythic} <span class="store-wallet-label">Mythic</span></div>
       </div>
-      ${STORE_ITEMS.map(item => {
+      ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
         const selClass = isSelected ? ` selected-${item.rarity}` : '';
@@ -1004,16 +1084,54 @@
     }
 
     if (screen === 'tasks') {
+      // Profile menu navigation
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
-        s.profileScreen = 'taskpool';
-        render();
+        s.profileScreen = 'taskpool'; render();
       });
+      document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
+        s.profileScreen = 'storemanage'; s.editingStoreItem = null; render();
+      });
+
+      // Back from task pool → Record
       document.getElementById('btn-back-profile')?.addEventListener('click', () => {
-        s.tab = 'history';
-        s.profileScreen = 'menu';
-        s.editingTask = null;
-        s.deletingTask = null;
+        s.tab = 'history'; s.profileScreen = 'menu'; s.editingTask = null; s.deletingTask = null; render();
+      });
+
+      // Back from store manage → Profile menu
+      document.getElementById('btn-back-storemanage')?.addEventListener('click', () => {
+        s.profileScreen = 'menu'; s.editingStoreItem = null; render();
+      });
+
+      // Reset hour select (Profile menu)
+      document.getElementById('select-reset-hour')?.addEventListener('change', async e => {
+        RESET_HOUR = parseInt(e.target.value);
+        s.today = todayStr();
         render();
+        await saveSettings();
+      });
+
+      // Store item add/edit/delete
+      document.getElementById('btn-add-store-item')?.addEventListener('click', () => {
+        s.editingStoreItem = { id: '', name: '', desc: '', cost: 1, rarity: 'common' }; render();
+      });
+      document.querySelectorAll('[data-edit-store]').forEach(el =>
+        el.addEventListener('click', () => {
+          const items = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+          const item = items.find(x => x.id === el.dataset.editStore);
+          s.editingStoreItem = item ? { ...item } : null; render();
+        }));
+      document.querySelectorAll('[data-delete-store]').forEach(el =>
+        el.addEventListener('click', () => deleteStoreItem(el.dataset.deleteStore)));
+      document.querySelector('[data-cancel-store-edit]')?.addEventListener('click', () => {
+        s.editingStoreItem = null; render();
+      });
+      document.querySelector('[data-save-store]')?.addEventListener('click', () => {
+        const name = document.getElementById('si-name')?.value.trim();
+        const desc = document.getElementById('si-desc')?.value.trim();
+        const cost = parseInt(document.getElementById('si-cost')?.value) || 1;
+        const rarity = document.getElementById('si-rarity')?.value || 'common';
+        if (!name) return;
+        saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity });
       });
       document.querySelectorAll('[data-edit-task]').forEach(el =>
         el.addEventListener('click', () => {
@@ -1065,6 +1183,40 @@
   }
 
   /* ── Today actions ── */
+  async function saveSettings() {
+    await sql`
+      INSERT INTO settings (id, reset_hour)
+      VALUES ('main', ${RESET_HOUR})
+      ON CONFLICT (id) DO UPDATE SET reset_hour = EXCLUDED.reset_hour
+    `;
+  }
+
+  async function saveStoreItem(item) {
+    const isNew = !item.id;
+    if (isNew) item.id = `si-${Date.now()}`;
+    if (isNew) {
+      s.storeItems = [...(s.storeItems.length ? s.storeItems : STORE_ITEMS), item];
+    } else {
+      s.storeItems = (s.storeItems.length ? s.storeItems : STORE_ITEMS).map(x => x.id === item.id ? item : x);
+    }
+    s.editingStoreItem = null;
+    render();
+    await sql`
+      INSERT INTO store_items (id, name, description, cost, rarity)
+      VALUES (${item.id}, ${item.name}, ${item.desc}, ${item.cost}, ${item.rarity})
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name, description = EXCLUDED.description,
+        cost = EXCLUDED.cost, rarity = EXCLUDED.rarity
+    `;
+  }
+
+  async function deleteStoreItem(itemId) {
+    s.storeItems = (s.storeItems.length ? s.storeItems : STORE_ITEMS).filter(x => x.id !== itemId);
+    s.editingStoreItem = null;
+    render();
+    await sql`DELETE FROM store_items WHERE id = ${itemId}`;
+  }
+
   async function startDay() {
     if (s.picked.length < 3) return;
     const pickedTasks = s.tasks.filter(t => s.picked.includes(t.id));
@@ -1144,7 +1296,8 @@
   }
 
   async function purchaseItem(itemId) {
-    const item = STORE_ITEMS.find(x => x.id === itemId);
+    const activeItems = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+    const item = activeItems.find(x => x.id === itemId);
     if (!item) return;
     if (s.lastPurchaseDate === s.today) return;
     if ((s.wallet[item.rarity] || 0) < item.cost) return;
@@ -1257,11 +1410,28 @@
       `;
       await sql`ALTER TABLE wallet ADD COLUMN IF NOT EXISTS last_purchase_item_name text`;
       await sql`ALTER TABLE wallet ADD COLUMN IF NOT EXISTS last_purchase_item_rarity text`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS settings (
+          id text primary key,
+          reset_hour int not null default 8
+        )
+      `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS store_items (
+          id text primary key,
+          name text not null,
+          description text,
+          cost int not null default 1,
+          rarity text not null default 'common'
+        )
+      `;
 
-      const [sessionRows, taskRows, walletRows] = await Promise.all([
+      const [sessionRows, taskRows, walletRows, settingsRows, storeItemRows] = await Promise.all([
         sql`SELECT * FROM daily_sessions`,
         sql`SELECT * FROM tasks`,
         sql`SELECT * FROM wallet WHERE id = 'main'`,
+        sql`SELECT * FROM settings WHERE id = 'main'`,
+        sql`SELECT * FROM store_items`,
       ]);
       s.sessions = sessionRows;
       if (walletRows.length > 0) {
@@ -1275,6 +1445,15 @@
       } else {
         // Seed wallet with 99 of each for testing
         await saveWallet();
+      }
+
+      if (settingsRows.length > 0) {
+        RESET_HOUR = settingsRows[0].reset_hour;
+        s.today = todayStr(); // recompute with user's reset hour
+      }
+
+      if (storeItemRows.length > 0) {
+        s.storeItems = storeItemRows.map(r => ({ id: r.id, name: r.name, desc: r.description, cost: r.cost, rarity: r.rarity }));
       }
 
       if (taskRows.length === 0) {
