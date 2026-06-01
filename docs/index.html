@@ -371,31 +371,9 @@
     return getTask(id);
   }
 
-  /* ── State ── */
-  const s = {
-    tab: 'today',
-    loading: true,
-    sessions: [],
-    tasks: [],
-    today: todayStr(),
-    activePlanId: null,  // id of the current plan; null = on pick screen
-    offered: [],
-    picked: [],
-    planBuildState: 'generate', // 'generate' | 'pick'
-    confirmTask: null,
-    editingTask: null,   // null | { id, title, description, type }  (id==='' → new)
-    deletingTask: null,  // task id pending delete confirmation
-    newTaskType: 'common',
-    profileScreen: 'menu', // 'menu' | 'taskpool'
-    wallet: { common: 99, legendary: 99, mythic: 99 },
-    lastPurchaseDate: null,
-    lastPurchasedItem: null,   // { name, rarity } — persists until next day
-    selectedStoreItem: null,   // item id selected in store, cleared on purchase/tab change
-    showPurchasedScreen: false, // true after purchase, false when "Back to Store"
-  };
-
-  const RESET_HOUR = 8;   // 8:00am day resets
-  const GRACE_HOURS = 3; // until 11:00am grace period for yesterday's review
+  /* ── Day reset helpers (must be before state init) ── */
+  const RESET_HOUR = 8;
+  const GRACE_HOURS = 3;
 
   function localDateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -412,6 +390,30 @@
     const h = new Date().getHours();
     return h >= RESET_HOUR && h < RESET_HOUR + GRACE_HOURS;
   }
+
+  /* ── State ── */
+  const s = {
+    tab: 'today',
+    loading: true,
+    sessions: [],
+    tasks: [],
+    today: todayStr(),
+    activePlanId: null,
+    offered: [],
+    picked: [],
+    planBuildState: 'generate',
+    confirmTask: null,
+    editingTask: null,
+    deletingTask: null,
+    newTaskType: 'common',
+    profileScreen: 'menu',
+    wallet: { common: 99, legendary: 99, mythic: 99 },
+    lastPurchaseDate: null,
+    lastPurchasedItem: null,
+    selectedStoreItem: null,
+    showPurchasedScreen: false,
+    reviewChecked: [],
+  };
 
   /* ── Screen logic ── */
   function getScreen() {
