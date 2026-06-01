@@ -394,11 +394,33 @@
     showPurchasedScreen: false, // true after purchase, false when "Back to Store"
   };
 
-  function todayStr() { return new Date().toISOString().slice(0,10); }
+  const RESET_HOUR = 8;   // 8:00am day resets
+  const GRACE_HOURS = 3; // until 11:00am grace period for yesterday's review
+
+  function localDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function todayStr() {
+    const now = new Date();
+    // Before reset hour, it's still "yesterday"
+    if (now.getHours() < RESET_HOUR) {
+      return localDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+    }
+    return localDateStr(now);
+  }
+  function isInGracePeriod() {
+    const h = new Date().getHours();
+    return h >= RESET_HOUR && h < RESET_HOUR + GRACE_HOURS;
+  }
 
   /* ── Screen logic ── */
   function getScreen() {
     if (s.loading) return 'loading';
+    // During grace period, show review screen if there's an incomplete session from previous day
+    if (isInGracePeriod()) {
+      const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+      if (pending) return 'review';
+    }
     if (s.activePlanId && s.sessions.find(x => x.id === s.activePlanId)) return 'active';
     return 'pick';
   }
@@ -512,6 +534,7 @@
     if (screen === 'history') return htmlHistory();
     if (screen === 'store')   return htmlStore();
     if (screen === 'tasks')   return s.profileScreen === 'taskpool' ? htmlTaskPool() : htmlProfile();
+    if (screen === 'review')  return htmlReview();
     if (screen === 'pick')    return htmlPick();
     return htmlActive();
   }
@@ -1276,14 +1299,32 @@
       }
 
       s.loading = false;
-      const activeSess = s.sessions.find(x => x.status === 'active');
+
+      // Auto-fail any active session older than yesterday if outside grace period
+      if (!isInGracePeriod()) {
+        const stale = s.sessions.filter(x => x.status === 'active' && x.date !== s.today);
+        if (stale.length) {
+          s.sessions = s.sessions.map(x =>
+            stale.find(st => st.id === x.id) ? { ...x, status: 'done', completed_ids: [] } : x);
+          await Promise.all(stale.map(x =>
+            sql`UPDATE daily_sessions SET status = 'done', completed_ids = '{}' WHERE id = ${x.id}`
+          ));
+        }
+      }
+
+      const activeSess = s.sessions.find(x => x.status === 'active' && x.date === s.today);
+      const doneTodaySess = s.sessions.find(x => x.status === 'done' && x.date === s.today &&
+        (x.completed_ids||[]).length === (x.picked_ids||[]).length && (x.picked_ids||[]).length > 0);
+
       if (activeSess) {
         s.activePlanId = activeSess.id;
+      } else if (doneTodaySess) {
+        // Completed plan stays visible until next reset
+        s.activePlanId = doneTodaySess.id;
       } else {
         const todaySess = s.sessions.find(x => x.date === s.today);
         if (todaySess?.offered_ids?.length) {
           s.offered = todaySess.offered_ids;
-          // Skip generate screen if tasks were already generated today
           s.planBuildState = 'pick';
         }
       }
