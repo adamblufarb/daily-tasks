@@ -311,6 +311,8 @@
     .btn-purchase.ready-legendary,
     .btn-purchase.ready-mythic    { background: var(--accent); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent); }
     .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
+    .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
+    .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
 
     /* Purchased screen */
     .purchased-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); padding: 40px 24px; text-align: center; }
@@ -536,7 +538,7 @@
       </div>
       <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${i*260}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${i*1000}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
@@ -544,7 +546,8 @@
           <div class="task-desc">${t.description}</div>
         </div>`).join('')}
       <div style="height:16px"></div>
-      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Plan →</button>`;
+      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Plan →</button>
+      <button class="btn-reroll" id="btn-reroll"${isRevealing||s.wallet.common<1?' disabled':''}>↺ Re-Roll Tasks (${s.wallet.common} common)</button>`;
   }
 
   /* ── Active ── */
@@ -904,7 +907,7 @@
         s.planBuildState = 'revealing';
         render();
         // After animation completes, switch to normal 'pick' state
-        setTimeout(() => { s.planBuildState = 'pick'; render(); }, (5 * 260) + 600);
+        setTimeout(() => { s.planBuildState = 'pick'; render(); }, (5 * 1000) + 600);
         // Persist offered tasks so they survive a refresh
         const draftId = `draft-${s.today}`;
         await sql`
@@ -923,6 +926,27 @@
           render();
         }));
       document.getElementById('btn-start')?.addEventListener('click', startDay);
+      document.getElementById('btn-reroll')?.addEventListener('click', async () => {
+        if (s.wallet.common < 1 || s.planBuildState === 'revealing') return;
+        s.wallet.common--;
+        const active = s.tasks.filter(t => !t.archived);
+        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+        s.picked = [];
+        s.planBuildState = 'revealing';
+        render();
+        setTimeout(() => { s.planBuildState = 'pick'; render(); }, (5 * 1000) + 600);
+        const draftId = `draft-${s.today}`;
+        await Promise.all([
+          saveWallet(),
+          sql`
+            INSERT INTO daily_sessions (id, date, offered_ids, picked_ids, completed_ids, status)
+            VALUES (${draftId}, ${s.today}, ${s.offered}, '{}', '{}', 'draft')
+            ON CONFLICT (date) DO UPDATE SET
+              offered_ids = EXCLUDED.offered_ids, id = EXCLUDED.id, status = 'draft'
+            WHERE daily_sessions.status NOT IN ('active', 'done')
+          `,
+        ]);
+      });
       document.getElementById('btn-shuffle')?.addEventListener('click', () => {
         const active = s.tasks.filter(t => !t.archived);
         s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
