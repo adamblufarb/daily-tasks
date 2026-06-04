@@ -344,7 +344,7 @@
     .btn-back-store { padding: 14px 32px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.4); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
 
     /* Reward / bad-luck screens */
-    .reward-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
+    .reward-screen { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
     .reward-emoji  { font-size: 5rem; line-height: 1; margin-bottom: 16px; }
     .reward-title  { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
     .reward-earned { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 40px; line-height: 1.5; }
@@ -605,7 +605,7 @@
       </div>
       <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*1000}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
@@ -753,9 +753,7 @@
     const tasks = sess ? (sess.picked_ids || []).map(id => getTaskForHistory(sess, id)).filter(Boolean) : [];
     const completedIds = sess?.completed_ids || [];
     const completedTasks = completedIds.map(id => getTaskForHistory(sess, id)).filter(Boolean);
-    const hasMythic    = tasks.length === 5 && completedIds.length === 5;
-    const hasLegendary = !hasMythic && completedTasks.some(t => t?.type === 'legendary');
-    const bgColor = hasMythic ? 'var(--mythic)' : hasLegendary ? 'var(--legendary)' : 'var(--common)';
+    const bgColor = r.mythic > 0 ? 'var(--mythic)' : r.legendary > 0 ? 'var(--legendary)' : 'var(--common)';
     const parts = [];
     if (r.mythic)    parts.push(`+${r.mythic} Mythic`);
     if (r.legendary) parts.push(`+${r.legendary} Legendary`);
@@ -1139,7 +1137,7 @@
         s.planBuildState = 'revealing';
         render();
         // After animation completes, switch to normal 'pick' state
-        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (5 * 1000) + 600);
+        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (5 * 500) + 600);
         // Persist offered tasks so they survive a refresh
         const draftId = `draft-${s.today}`;
         await sql`
@@ -1166,7 +1164,7 @@
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
-        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (5 * 1000) + 600);
+        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (5 * 500) + 600);
         const draftId = `draft-${s.today}`;
         await Promise.all([
           saveWallet(),
