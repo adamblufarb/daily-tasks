@@ -1137,7 +1137,7 @@
         s.planBuildState = 'revealing';
         render();
         // After animation completes, switch to normal 'pick' state
-        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (5 * 500) + 600);
+        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 700);
         // Persist offered tasks so they survive a refresh
         const draftId = `draft-${s.today}`;
         await sql`
@@ -1164,7 +1164,7 @@
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
-        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (5 * 500) + 600);
+        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 700);
         const draftId = `draft-${s.today}`;
         await Promise.all([
           saveWallet(),
