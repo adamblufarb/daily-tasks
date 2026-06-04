@@ -342,6 +342,22 @@
     .purchased-item-name { font-size: 1.9rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
     .purchased-label { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.75); margin-bottom: 40px; }
     .btn-back-store { padding: 14px 32px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.4); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
+
+    /* Reward / bad-luck screens */
+    .reward-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
+    .reward-emoji  { font-size: 5rem; line-height: 1; margin-bottom: 16px; }
+    .reward-title  { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .reward-earned { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 40px; line-height: 1.5; }
+    .btn-claim     { padding: 17px 48px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+
+    /* Concluded-screen: declined task (red) */
+    .active-task.task-declined { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--card)); }
+    .active-task.task-declined .active-task-desc { color: color-mix(in srgb, var(--danger) 60%, var(--subtext)); }
+    .active-task-check.check-x { background: var(--danger); }
+
+    /* Done-for-today: incomplete task indicator */
+    .active-task.task-incomplete { border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+    .active-task.task-incomplete .active-task-desc { color: var(--subtext); }
   </style>
 </head>
 <body>
@@ -432,17 +448,18 @@
     lastPurchasedItem: null,
     selectedStoreItem: null,
     showPurchasedScreen: false,
-    reviewChecked: [],
-    reviewDeclined: [],
+    reviewDeclined: [],   // grace-period explicit "No" answers
+    overlayScreen: null,  // 'reward' | 'bad-luck' | null
+    pendingReward: null,  // { common, legendary, mythic } earned but not yet claimed
   };
 
   /* ── Screen logic ── */
   function getScreen() {
     if (s.loading) return 'loading';
-    // During grace period, show review screen if there's an incomplete session from previous day
+    if (s.overlayScreen) return s.overlayScreen;
     if (isInGracePeriod()) {
       const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
-      if (pending) return 'review';
+      if (pending) return 'concluded';
     }
     if (s.activePlanId && s.sessions.find(x => x.id === s.activePlanId)) return 'active';
     return 'pick';
@@ -527,24 +544,24 @@
     });
     // Dynamic plan tab: update icon/label and mythic glow based on active plan
     const plan = activePlan();
-    const isPlanActive = plan?.status === 'active';
-    const isPlanDone = plan?.status === 'done';
-    const planTasks = plan ? (plan.picked_ids || []) : [];
+    const planTasks     = plan ? (plan.picked_ids || []) : [];
     const planCompleted = plan ? (plan.completed_ids || []) : [];
-    const isPlanCompleted = isPlanDone && planCompleted.length === planTasks.length && planTasks.length > 0;
-    const isMythicPlan = isPlanActive && planTasks.length === 5;
+    const isPlanDone    = plan?.status === 'done';
+    const isPlanActive  = plan?.status === 'active';
+    const isMythicPlan  = isPlanActive && planTasks.length === 5;
+    const isDoneForToday = isPlanDone;
     const todayBtn = document.querySelector('.tab-btn[data-tab="today"]');
     if (todayBtn) {
-      const iconEl = todayBtn.querySelector('.tab-icon');
+      const iconEl  = todayBtn.querySelector('.tab-icon');
       const labelEl = todayBtn.querySelector('#tab-today-label');
-      if (isPlanCompleted) {
-        if (iconEl) iconEl.textContent = '🏆';
+      if (isDoneForToday) {
+        if (iconEl)  iconEl.textContent  = '🏆';
         if (labelEl) labelEl.textContent = 'Done';
       } else if (isPlanActive) {
-        if (iconEl) iconEl.textContent = isMythicPlan ? '🔱' : '⚡';
+        if (iconEl)  iconEl.textContent  = isMythicPlan ? '🔱' : '⚡';
         if (labelEl) labelEl.textContent = 'Active';
       } else {
-        if (iconEl) iconEl.textContent = '🎲';
+        if (iconEl)  iconEl.textContent  = '🎲';
         if (labelEl) labelEl.textContent = 'Plan';
       }
       todayBtn.classList.toggle('mythic-active', isMythicPlan);
@@ -553,12 +570,14 @@
   }
 
   function buildHtml(screen) {
-    if (screen === 'loading') return `<div class="loading">Loading…</div>`;
-    if (screen === 'history') return htmlHistory();
-    if (screen === 'store')   return htmlStore();
-    if (screen === 'tasks')   return s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
-    if (screen === 'review')  return htmlReview();
-    if (screen === 'pick')    return htmlPick();
+    if (screen === 'loading')   return `<div class="loading">Loading…</div>`;
+    if (screen === 'history')   return htmlHistory();
+    if (screen === 'store')     return htmlStore();
+    if (screen === 'tasks')     return s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
+    if (screen === 'concluded') return htmlConcluded();
+    if (screen === 'reward')    return htmlReward();
+    if (screen === 'bad-luck')  return htmlBadLuck();
+    if (screen === 'pick')      return htmlPick();
     return htmlActive();
   }
 
@@ -601,25 +620,54 @@
   /* ── Active ── */
   function htmlActive() {
     const todaySess = activePlan();
-    const tasks = (todaySess?.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
-    const completedIds = todaySess?.completed_ids || [];
-    const allDone = tasks.length > 0 && tasks.every(t => completedIds.includes(t.id));
+    if (!todaySess) return '';
+    const tasks = (todaySess.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
+    const completedIds = todaySess.completed_ids || [];
     const isMythic = tasks.length === 5;
+
+    // ── Done-for-today (already submitted) ──
+    if (todaySess.status === 'done') {
+      return `
+        <div class="home-header">
+          <div class="home-emoji">🏆</div>
+          <div class="home-title">Done For Today</div>
+          <div class="home-sub">Come back tomorrow</div>
+        </div>
+        <div class="tasks-label">Today's Tasks</div>
+        ${tasks.map(t => {
+          const done = completedIds.includes(t.id);
+          return `
+          <div class="active-task${done?' completed':' task-incomplete'} type-${t.type}" style="cursor:default">
+            <div class="active-task-row">
+              ${done
+                ? `<div class="active-task-check">✓</div>`
+                : `<div class="active-task-check check-x">✕</div>`}
+              <div class="active-task-info">
+                <div class="active-task-title">${t.title}</div>
+                <div class="active-task-desc">${t.description}</div>
+              </div>
+              <span class="task-badge badge-${t.type}">${t.type}</span>
+            </div>
+          </div>`;
+        }).join('')}`;
+    }
+
+    // ── Active plan ──
+    const allDone = tasks.length > 0 && tasks.every(t => completedIds.includes(t.id));
     return `
       <div class="home-header">
-        <div class="home-emoji">${allDone ? '🏆' : isMythic ? '🔱' : '⚡'}</div>
-        <div class="home-title"${isMythic && !allDone ? ` style="color:var(--mythic)"` : ''}>${allDone ? 'All Done!' : isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
-        <div class="home-sub">${allDone ? 'Come Back Tomorrow' : 'Tap a task to mark it complete'}</div>
+        <div class="home-emoji">${isMythic ? '🔱' : '⚡'}</div>
+        <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
+        <div class="home-sub">Tap a task to mark it complete</div>
       </div>
       <div class="tasks-label">Today's Tasks</div>
-      ${tasks.map((t, i) => {
+      ${tasks.map(t => {
         const done = completedIds.includes(t.id);
         const confirming = s.confirmTask === t.id;
         const glowClass = t.type === 'legendary' && !done ? ' legendary-glow' : '';
         const glowIdAttr = t.type === 'legendary' && !done ? ` data-glow-id="${t.id}"` : '';
-        const confirmingClass = confirming ? ' selected' : '';
         return `
-        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}${confirmingClass}" data-confirm-task="${t.id}" data-task-type="${t.type}" data-done="${done}" ${glowIdAttr}>
+        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}${confirming?' selected':''}" data-confirm-task="${t.id}"${glowIdAttr}>
           <div class="active-task-row">
             ${done
               ? `<div class="active-task-check">✓</div>`
@@ -630,69 +678,105 @@
             </div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
           </div>
-          ${confirming && !done ? `
+          ${confirming ? `
           <div class="task-confirm">
             <span class="task-confirm-text">Did you complete this?</span>
             <div style="display:flex;gap:8px">
-              <button class="btn-confirm-no" data-confirm-no>No</button>
+              <button class="btn-confirm-no" data-confirm-no="${t.id}">No</button>
               <button class="btn-confirm-yes" data-confirm-yes="${t.id}">Yes ✓</button>
             </div>
           </div>` : ''}
-          ${confirming && done ? `
-          <div class="task-confirm">
-            <span class="task-confirm-text">Mark as incomplete?</span>
-            <div style="display:flex;gap:8px">
-              <button class="btn-confirm-no btn-white" data-confirm-no>Cancel</button>
-              <button class="btn-confirm-yes btn-danger" data-uncomplete-yes="${t.id}">Undo ✕</button>
-            </div>
-          </div>` : ''}
         </div>`;
       }).join('')}
+      ${allDone ? `<div style="height:16px"></div>
+      <button class="btn-primary" id="btn-submit-results">Submit Results</button>` : ''}
       <button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>`;
   }
 
-  /* ── Review ── */
-  function htmlReview() {
+  /* ── Grace-period: Concluded screen ── */
+  function htmlConcluded() {
     const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
-    const tasks = (pending?.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
-    const allAnswered = tasks.length > 0 && tasks.every(t => s.reviewChecked.includes(t.id) || s.reviewDeclined.includes(t.id));
-    const allYes = allAnswered && tasks.every(t => s.reviewChecked.includes(t.id));
+    if (!pending) return '';
+    const tasks = (pending.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
+    const completedIds = pending.completed_ids || [];
+    const isMythic = tasks.length === 5;
+    const graceEndHour = RESET_HOUR + GRACE_HOURS;
+    const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
+    const graceEndStr = fmtHour(graceEndHour >= 24 ? graceEndHour - 24 : graceEndHour);
+    const planType = isMythic ? 'mythical' : 'daily';
     return `
-      <div class="section-header">
-        <div class="section-title">How'd it go?</div>
-        <div class="section-sub">${fmtDate(pending?.date || '')}</div>
+      <div class="home-header">
+        <div class="home-emoji">${isMythic ? '🔱' : '⚡'}</div>
+        <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Plan Concluded' : 'Daily Plan Concluded'}</div>
+        <div class="home-sub">Please submit your ${planType} plan results. The day resets at ${graceEndStr}.</div>
       </div>
-      <div class="warning-banner">
-        <div>⚠️</div>
-        <div class="warning-text">You need to complete all tasks to earn points. Failing even one means no points for the day.</div>
-      </div>
+      <div class="tasks-label">Yesterday's Tasks</div>
       ${tasks.map(t => {
-        const yes = s.reviewChecked.includes(t.id);
-        const no  = s.reviewDeclined.includes(t.id);
+        const done     = completedIds.includes(t.id);
+        const declined = s.reviewDeclined.includes(t.id);
+        const unanswered = !done && !declined;
+        const glowClass  = t.type === 'legendary' && unanswered ? ' legendary-glow' : '';
+        const glowAttr   = t.type === 'legendary' && unanswered ? ` data-glow-id="${t.id}"` : '';
         return `
-        <div class="review-task${yes?' checked':no?' declined':''}">
-          <div class="review-task-main">
-            <div class="review-checkbox">${yes?'✓':no?'✕':''}</div>
-            <div class="review-task-info">
-              <div class="review-task-title">${t.title}</div>
-              <div class="review-task-sub">${t.description}</div>
+        <div class="active-task${done?' completed':declined?' task-declined':''} type-${t.type}${glowClass}"${glowAttr}>
+          <div class="active-task-row">
+            ${done
+              ? `<div class="active-task-check">✓</div>`
+              : declined
+                ? `<div class="active-task-check check-x">✕</div>`
+                : `<div class="active-task-dot dot-${t.type}"></div>`}
+            <div class="active-task-info">
+              <div class="active-task-title">${t.title}</div>
+              <div class="active-task-desc">${t.description}</div>
             </div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
           </div>
-          ${!yes && !no ? `
-          <div class="review-task-confirm">
+          ${unanswered ? `
+          <div class="task-confirm">
             <span class="task-confirm-text">Did you complete this?</span>
             <div style="display:flex;gap:8px">
-              <button class="btn-confirm-no" data-review-no="${t.id}">No</button>
-              <button class="btn-confirm-yes" data-review-yes="${t.id}">Yes ✓</button>
+              <button class="btn-confirm-no" data-grace-no="${t.id}">No</button>
+              <button class="btn-confirm-yes" data-grace-yes="${t.id}">Yes ✓</button>
             </div>
           </div>` : ''}
         </div>`;
       }).join('')}
-      ${allAnswered ? `<div style="height:16px"></div>
-      <button class="btn-primary" id="btn-submit-review">
-        ${allYes ? '🏆 Claim Points' : 'Submit — no points today'}
-      </button>` : ''}`;
+      <div style="height:16px"></div>
+      <button class="btn-primary" id="btn-submit-grace">Submit Results</button>`;
+  }
+
+  /* ── Reward screen ── */
+  function htmlReward() {
+    const r = s.pendingReward || { common: 0, legendary: 0, mythic: 0 };
+    const sess = s.sessions.find(x => x.status === 'done' && (x.date === s.today || x.date !== s.today));
+    const tasks = sess ? (sess.picked_ids || []).map(id => getTaskForHistory(sess, id)).filter(Boolean) : [];
+    const completedIds = sess?.completed_ids || [];
+    const completedTasks = completedIds.map(id => getTaskForHistory(sess, id)).filter(Boolean);
+    const hasMythic    = tasks.length === 5 && completedIds.length === 5;
+    const hasLegendary = !hasMythic && completedTasks.some(t => t?.type === 'legendary');
+    const bgColor = hasMythic ? 'var(--mythic)' : hasLegendary ? 'var(--legendary)' : 'var(--common)';
+    const parts = [];
+    if (r.mythic)    parts.push(`+${r.mythic} Mythic`);
+    if (r.legendary) parts.push(`+${r.legendary} Legendary`);
+    if (r.common)    parts.push(`+${r.common} Common`);
+    return `
+      <div class="reward-screen" style="background:${bgColor}">
+        <div class="reward-emoji">🏆</div>
+        <div class="reward-title">All Done!</div>
+        <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
+        <button class="btn-claim" id="btn-claim-rewards">Claim Rewards</button>
+      </div>`;
+  }
+
+  /* ── Better Luck Next Time screen ── */
+  function htmlBadLuck() {
+    return `
+      <div class="reward-screen" style="background:var(--common)">
+        <div class="reward-emoji">😔</div>
+        <div class="reward-title">Better Luck Next Time</div>
+        <div class="reward-earned">All tasks must be completed in order to earn rewards.</div>
+        <button class="btn-claim" id="btn-acknowledge">Got It</button>
+      </div>`;
   }
 
   /* ── Profile ── */
@@ -975,7 +1059,7 @@
               ${tasks.map(t => {
                 const done = (sess.completed_ids||[]).includes(t.id);
                 return `<div class="history-task-row${done?' done':''}">
-                  <span>${done?'✓':'○'}</span>
+                  <span style="color:${done?'var(--success)':'var(--danger)'}">${done?'✓':'✗'}</span>
                   <span style="flex:1">${t.title}</span>
                   <span class="task-badge badge-${t.type}">${t.type}</span>
                 </div>`;
@@ -1026,22 +1110,24 @@
       });
     }
 
-    if (screen === 'review') {
-      document.querySelectorAll('[data-review-yes]').forEach(el =>
-        el.addEventListener('click', () => {
-          const id = el.dataset.reviewYes;
-          if (!s.reviewChecked.includes(id)) s.reviewChecked.push(id);
-          s.reviewDeclined = s.reviewDeclined.filter(x => x !== id);
-          render();
-        }));
-      document.querySelectorAll('[data-review-no]').forEach(el =>
-        el.addEventListener('click', () => {
-          const id = el.dataset.reviewNo;
-          if (!s.reviewDeclined.includes(id)) s.reviewDeclined.push(id);
-          s.reviewChecked = s.reviewChecked.filter(x => x !== id);
-          render();
-        }));
-      document.getElementById('btn-submit-review')?.addEventListener('click', submitReview);
+    if (screen === 'concluded') {
+      document.querySelectorAll('[data-grace-yes]').forEach(el =>
+        el.addEventListener('click', () => graceCompleteTask(el.dataset.graceYes)));
+      document.querySelectorAll('[data-grace-no]').forEach(el =>
+        el.addEventListener('click', () => graceDeclineTask(el.dataset.graceNo)));
+      document.getElementById('btn-submit-grace')?.addEventListener('click', submitGrace);
+    }
+
+    if (screen === 'reward') {
+      document.getElementById('btn-claim-rewards')?.addEventListener('click', claimRewards);
+    }
+
+    if (screen === 'bad-luck') {
+      document.getElementById('btn-acknowledge')?.addEventListener('click', () => {
+        s.pendingReward = null;
+        s.overlayScreen = null;
+        render();
+      });
     }
 
     if (screen === 'pick') {
@@ -1107,17 +1193,18 @@
           s.confirmTask = s.confirmTask === taskId ? null : taskId;
           render();
         }));
-      document.querySelector('[data-confirm-no]')?.addEventListener('click', e => {
-        e.stopPropagation(); s.confirmTask = null; render();
-      });
-      const yesBtn = document.querySelector('[data-confirm-yes]');
-      if (yesBtn) yesBtn.addEventListener('click', e => {
-        e.stopPropagation(); completeTask(yesBtn.dataset.confirmYes);
-      });
-      const undoBtn = document.querySelector('[data-uncomplete-yes]');
-      if (undoBtn) undoBtn.addEventListener('click', e => {
-        e.stopPropagation(); uncompleteTask(undoBtn.dataset.uncompleteYes);
-      });
+      document.querySelectorAll('[data-confirm-no]').forEach(btn =>
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          s.confirmTask = null;
+          uncompleteTask(btn.dataset.confirmNo);
+        }));
+      document.querySelectorAll('[data-confirm-yes]').forEach(btn =>
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          completeTask(btn.dataset.confirmYes);
+        }));
+      document.getElementById('btn-submit-results')?.addEventListener('click', submitResults);
       document.getElementById('btn-restart')?.addEventListener('click', restartDay);
     }
 
@@ -1285,22 +1372,12 @@
   async function completeTask(taskId) {
     const todaySess = activePlan();
     if (!todaySess) return;
-    const task = getTaskForHistory(todaySess, taskId);
     const newCompleted = [...new Set([...(todaySess.completed_ids || []), taskId])];
-    const allDone = newCompleted.length === todaySess.picked_ids.length;
-    const newStatus = allDone ? 'done' : 'active';
     s.sessions = s.sessions.map(x => x.id === todaySess.id
-      ? { ...x, completed_ids: newCompleted, status: newStatus } : x);
-    // Credit wallet: +1 of task's rarity
-    if (task?.type === 'legendary') s.wallet.legendary++;
-    else if (task?.type === 'mythic') s.wallet.mythic++;
-    else s.wallet.common++;
+      ? { ...x, completed_ids: newCompleted } : x);
     s.confirmTask = null;
     render();
-    await Promise.all([
-      sql`UPDATE daily_sessions SET completed_ids = ${newCompleted}, status = ${newStatus} WHERE id = ${todaySess.id}`,
-      saveWallet(),
-    ]);
+    await sql`UPDATE daily_sessions SET completed_ids = ${newCompleted} WHERE id = ${todaySess.id}`;
   }
 
   async function uncompleteTask(taskId) {
@@ -1308,13 +1385,80 @@
     if (!todaySess) return;
     const newCompleted = (todaySess.completed_ids || []).filter(id => id !== taskId);
     s.sessions = s.sessions.map(x => x.id === todaySess.id
-      ? { ...x, completed_ids: newCompleted, status: 'active' } : x);
+      ? { ...x, completed_ids: newCompleted } : x);
     s.confirmTask = null;
     render();
-    await sql`
-      UPDATE daily_sessions SET completed_ids = ${newCompleted}, status = 'active'
-      WHERE id = ${todaySess.id}
-    `;
+    await sql`UPDATE daily_sessions SET completed_ids = ${newCompleted} WHERE id = ${todaySess.id}`;
+  }
+
+  async function submitResults() {
+    const todaySess = activePlan();
+    if (!todaySess) return;
+    const tasks = (todaySess.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
+    const completedIds = todaySess.completed_ids || [];
+    const allCompleted = completedIds.length === tasks.length && tasks.length > 0;
+    let earnedCommon = 0, earnedLegendary = 0, earnedMythic = 0;
+    if (allCompleted) {
+      if (tasks.length === 5) earnedMythic = 1;
+      for (const id of completedIds) {
+        const t = getTaskForHistory(todaySess, id);
+        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
+      }
+    }
+    s.pendingReward  = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
+    s.overlayScreen  = allCompleted ? 'reward' : 'bad-luck';
+    s.sessions = s.sessions.map(x => x.id === todaySess.id ? { ...x, status: 'done' } : x);
+    render();
+    await sql`UPDATE daily_sessions SET status = 'done' WHERE id = ${todaySess.id}`;
+  }
+
+  async function claimRewards() {
+    if (s.pendingReward) {
+      s.wallet.common    += s.pendingReward.common;
+      s.wallet.legendary += s.pendingReward.legendary;
+      s.wallet.mythic    += s.pendingReward.mythic;
+    }
+    s.pendingReward = null;
+    s.overlayScreen = null;
+    render();
+    await saveWallet();
+  }
+
+  function graceCompleteTask(taskId) {
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (!pending) return;
+    const newCompleted = [...new Set([...(pending.completed_ids || []), taskId])];
+    s.sessions = s.sessions.map(x => x.id === pending.id ? { ...x, completed_ids: newCompleted } : x);
+    s.reviewDeclined = s.reviewDeclined.filter(id => id !== taskId);
+    render();
+  }
+
+  function graceDeclineTask(taskId) {
+    if (!s.reviewDeclined.includes(taskId)) s.reviewDeclined.push(taskId);
+    render();
+  }
+
+  async function submitGrace() {
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (!pending) return;
+    const tasks = (pending.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
+    const completedIds = pending.completed_ids || [];
+    const allCompleted = completedIds.length === tasks.length && tasks.length > 0;
+    let earnedCommon = 0, earnedLegendary = 0, earnedMythic = 0;
+    if (allCompleted) {
+      if (tasks.length === 5) earnedMythic = 1;
+      for (const id of completedIds) {
+        const t = getTaskForHistory(pending, id);
+        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
+      }
+    }
+    s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
+    s.overlayScreen = allCompleted ? 'reward' : 'bad-luck';
+    s.reviewDeclined = [];
+    s.sessions = s.sessions.map(x => x.id === pending.id
+      ? { ...x, completed_ids: completedIds, status: 'done' } : x);
+    render();
+    await sql`UPDATE daily_sessions SET completed_ids = ${completedIds}, status = 'done' WHERE id = ${pending.id}`;
   }
 
   async function saveWallet() {
@@ -1360,21 +1504,6 @@
     if (plan) await sql`DELETE FROM daily_sessions WHERE id = ${plan.id}`;
   }
 
-  async function submitReview() {
-    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
-    if (!pending) return;
-    const allCompleted = s.reviewChecked.length === pending.picked_ids.length;
-    const completedIds = allCompleted ? [...s.reviewChecked] : [];
-    s.sessions = s.sessions.map(x => x.id === pending.id
-      ? { ...x, completed_ids: completedIds, status: 'done' } : x);
-    s.reviewChecked = [];
-    s.reviewDeclined = [];
-    render();
-    await sql`
-      UPDATE daily_sessions SET completed_ids = ${completedIds}, status = 'done'
-      WHERE id = ${pending.id}
-    `;
-  }
 
   /* ── Task pool actions ── */
   async function savePoolTask(task) {
@@ -1532,14 +1661,13 @@
         }
       }
 
-      const activeSess = s.sessions.find(x => x.status === 'active' && x.date === s.today);
-      const doneTodaySess = s.sessions.find(x => x.status === 'done' && x.date === s.today &&
-        (x.completed_ids||[]).length === (x.picked_ids||[]).length && (x.picked_ids||[]).length > 0);
+      const activeSess    = s.sessions.find(x => x.status === 'active' && x.date === s.today);
+      const doneTodaySess = s.sessions.find(x => x.status === 'done'   && x.date === s.today && (x.picked_ids||[]).length > 0);
 
       if (activeSess) {
         s.activePlanId = activeSess.id;
       } else if (doneTodaySess) {
-        // Completed plan stays visible until next reset
+        // Submitted plan stays visible as "Done For Today" until next reset
         s.activePlanId = doneTodaySess.id;
       } else {
         const todaySess = s.sessions.find(x => x.date === s.today);
