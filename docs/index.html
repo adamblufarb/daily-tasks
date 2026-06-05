@@ -351,8 +351,9 @@
     .btn-claim     { padding: 17px 48px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
 
     /* Concluded-screen: declined task (red) */
-    .active-task.task-declined { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--card)); }
-    .active-task.task-declined .active-task-desc { color: color-mix(in srgb, var(--danger) 60%, var(--subtext)); }
+    .active-task.task-declined { border-color: var(--danger); background: var(--danger); color: #fff; cursor: pointer; }
+    .active-task.task-declined .active-task-desc { color: rgba(255,255,255,0.75); }
+    .active-task.task-declined .task-badge { background: rgba(0,0,0,0.2); color: #fff; }
     .active-task-check.check-x { background: var(--danger); }
 
     /* Done-for-today: incomplete task indicator */
@@ -448,9 +449,10 @@
     lastPurchasedItem: null,
     selectedStoreItem: null,
     showPurchasedScreen: false,
-    reviewDeclined: [],   // grace-period explicit "No" answers
-    overlayScreen: null,  // 'reward' | 'bad-luck' | null
-    pendingReward: null,  // { common, legendary, mythic } earned but not yet claimed
+    reviewDeclined: [],    // grace-period explicit "No" answers
+    graceConfirmTask: null, // task being re-answered on concluded screen
+    overlayScreen: null,   // 'reward' | 'bad-luck' | null
+    pendingReward: null,   // { common, legendary, mythic } earned but not yet claimed
   };
 
   /* ── Screen logic ── */
@@ -713,17 +715,19 @@
       </div>
       <div class="tasks-label">Yesterday's Tasks</div>
       ${tasks.map(t => {
-        const done     = completedIds.includes(t.id);
-        const declined = s.reviewDeclined.includes(t.id);
+        const done       = completedIds.includes(t.id);
+        const declined   = s.reviewDeclined.includes(t.id);
         const unanswered = !done && !declined;
-        const glowClass  = t.type === 'legendary' && unanswered ? ' legendary-glow' : '';
-        const glowAttr   = t.type === 'legendary' && unanswered ? ` data-glow-id="${t.id}"` : '';
+        const confirming = s.graceConfirmTask === t.id;
+        const showPrompt = unanswered || confirming;
+        const glowClass  = t.type === 'legendary' && unanswered && !confirming ? ' legendary-glow' : '';
+        const glowAttr   = t.type === 'legendary' && unanswered && !confirming ? ` data-glow-id="${t.id}"` : '';
         return `
-        <div class="active-task${done?' completed':declined?' task-declined':''} type-${t.type}${glowClass}"${glowAttr}>
+        <div class="active-task${done&&!confirming?' completed':declined&&!confirming?' task-declined':''} type-${t.type}${glowClass}${confirming?' selected':''}" data-grace-tap="${t.id}"${glowAttr}>
           <div class="active-task-row">
-            ${done
+            ${done && !confirming
               ? `<div class="active-task-check">✓</div>`
-              : declined
+              : declined && !confirming
                 ? `<div class="active-task-check check-x">✕</div>`
                 : `<div class="active-task-dot dot-${t.type}"></div>`}
             <div class="active-task-info">
@@ -732,7 +736,7 @@
             </div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
           </div>
-          ${unanswered ? `
+          ${showPrompt ? `
           <div class="task-confirm">
             <span class="task-confirm-text">Did you complete this?</span>
             <div style="display:flex;gap:8px">
@@ -770,7 +774,7 @@
   /* ── Better Luck Next Time screen ── */
   function htmlBadLuck() {
     return `
-      <div class="reward-screen" style="background:var(--common)">
+      <div class="reward-screen" style="background:var(--accent)">
         <div class="reward-emoji">😔</div>
         <div class="reward-title">Better Luck Next Time</div>
         <div class="reward-earned">All tasks must be completed in order to earn rewards.</div>
@@ -1064,11 +1068,10 @@
                 </div>`;
               }).join('')}
             </div>
-            ${isDone ? `<div class="history-pts">
+            ${isWin ? `<div class="history-pts">
               ${cPts ? `<span class="pts-earned pts-common">+${cPts} common</span>` : ''}
               ${lPts ? `<span class="pts-earned pts-legendary">+${lPts} legendary</span>` : ''}
               ${isMythic ? `<span class="pts-earned pts-mythic">+1 mythic</span>` : ''}
-              ${!cPts && !lPts ? `<span>No points earned</span>` : ''}
             </div>` : ''}
           </div>`;
       }).join('')}`;
@@ -1110,10 +1113,24 @@
     }
 
     if (screen === 'concluded') {
+      document.querySelectorAll('[data-grace-tap]').forEach(el =>
+        el.addEventListener('click', () => {
+          const id = el.dataset.graceTap;
+          s.graceConfirmTask = s.graceConfirmTask === id ? null : id;
+          render();
+        }));
       document.querySelectorAll('[data-grace-yes]').forEach(el =>
-        el.addEventListener('click', () => graceCompleteTask(el.dataset.graceYes)));
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          s.graceConfirmTask = null;
+          graceCompleteTask(el.dataset.graceYes);
+        }));
       document.querySelectorAll('[data-grace-no]').forEach(el =>
-        el.addEventListener('click', () => graceDeclineTask(el.dataset.graceNo)));
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          s.graceConfirmTask = null;
+          graceDeclineTask(el.dataset.graceNo);
+        }));
       document.getElementById('btn-submit-grace')?.addEventListener('click', submitGrace);
     }
 
@@ -1454,6 +1471,7 @@
     s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
     s.overlayScreen = allCompleted ? 'reward' : 'bad-luck';
     s.reviewDeclined = [];
+    s.graceConfirmTask = null;
     s.sessions = s.sessions.map(x => x.id === pending.id
       ? { ...x, completed_ids: completedIds, status: 'done' } : x);
     render();
