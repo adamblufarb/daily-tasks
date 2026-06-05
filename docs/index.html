@@ -194,6 +194,9 @@
     .pool-task-title { font-size: 0.95rem; font-weight: 700; }
     .pool-task-desc { font-size: 0.8rem; color: var(--subtext); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pool-task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .pool-task-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+    .pool-stat { font-size: 0.7rem; font-weight: 600; color: var(--subtext); white-space: nowrap; }
+    .pool-stat span { color: var(--text); }
     .btn-icon { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px; border-radius: 8px; color: var(--subtext); transition: background 0.15s, color 0.15s; }
     .btn-icon:hover { background: var(--bg); }
     .btn-icon.del:hover { color: var(--danger); }
@@ -442,6 +445,7 @@
     deletingTask: null,
     newTaskType: 'common',
     profileScreen: 'menu', // 'menu' | 'taskpool' | 'storemanage'
+    poolEditMode: false,
     storeItems: [],        // loaded from DB; falls back to STORE_ITEMS seed
     editingStoreItem: null,
     wallet: { common: 99, legendary: 99, mythic: 99 },
@@ -861,15 +865,31 @@
 
   /* ── Task Pool tab ── */
   function htmlTaskPool() {
-    const active     = s.tasks.filter(t => !t.archived);
-    const common     = active.filter(t => t.type === 'common');
-    const legendary  = active.filter(t => t.type === 'legendary');
-    const archived   = s.tasks.filter(t => t.archived);
-    const isAdding   = s.editingTask?.id === '';
+    const active    = s.tasks.filter(t => !t.archived);
+    const common    = active.filter(t => t.type === 'common');
+    const legendary = active.filter(t => t.type === 'legendary');
+    const archived  = s.tasks.filter(t => t.archived);
+    const isAdding  = s.editingTask?.id === '';
+    const editing   = s.poolEditMode;
 
-    function taskRow(t, i, arr) {
-      const editing  = s.editingTask?.id === t.id;
-      const deleting = s.deletingTask === t.id;
+    // Compute per-task stats from session history
+    const stats = {};
+    for (const sess of s.sessions) {
+      if (sess.status === 'draft') continue;
+      for (const id of (sess.picked_ids || [])) {
+        if (!stats[id]) stats[id] = { chosen: 0, completed: 0 };
+        stats[id].chosen++;
+      }
+      for (const id of (sess.completed_ids || [])) {
+        if (!stats[id]) stats[id] = { chosen: 0, completed: 0 };
+        stats[id].completed++;
+      }
+    }
+
+    function taskRow(t) {
+      const isEditing  = s.editingTask?.id === t.id;
+      const isDeleting = s.deletingTask === t.id;
+      const st = stats[t.id] || { chosen: 0, completed: 0 };
       return `
         <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''}>
           <div class="pool-task-row">
@@ -877,13 +897,18 @@
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
             </div>
+            ${editing ? `
             <div class="pool-task-actions">
               <button class="btn-icon" data-edit-task="${t.id}" title="Edit">✏️</button>
               <button class="btn-icon" data-archive-task="${t.id}" title="Archive">📦</button>
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
-            </div>
+            </div>` : `
+            <div class="pool-task-stats">
+              <div class="pool-stat">Chosen <span>${st.chosen}×</span></div>
+              <div class="pool-stat">Done <span>${st.completed}×</span></div>
+            </div>`}
           </div>
-          ${deleting ? `
+          ${isDeleting ? `
           <div class="delete-confirm">
             <span class="delete-confirm-text">Delete forever?</span>
             <div style="display:flex;gap:6px">
@@ -891,12 +916,12 @@
               <button class="btn-del-yes" data-confirm-delete="${t.id}">Delete</button>
             </div>
           </div>` : ''}
-          ${editing ? editForm(s.editingTask) : ''}
+          ${isEditing ? editForm(s.editingTask) : ''}
         </div>`;
     }
 
     function archivedRow(t) {
-      const deleting = s.deletingTask === t.id;
+      const isDeleting = s.deletingTask === t.id;
       return `
         <div class="pool-task-card card-archived">
           <div class="pool-task-row">
@@ -909,7 +934,7 @@
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
             </div>
           </div>
-          ${deleting ? `
+          ${isDeleting ? `
           <div class="delete-confirm">
             <span class="delete-confirm-text">Delete forever?</span>
             <div style="display:flex;gap:6px">
@@ -943,18 +968,19 @@
         <div class="section-title">Task Pool</div>
         <div class="section-sub">${active.length} active · ${common.length} common · ${legendary.length} legendary${archived.length ? ` · ${archived.length} archived` : ''}</div>
       </div>
-      ${isAdding ? `
+      ${editing && isAdding ? `
         <div class="new-task-card">
           <div class="new-task-label">New Task</div>
           ${editForm(s.editingTask)}
-        </div>` : `<button class="btn-add-task" id="btn-add-task">+ Add Task</button>`}
+        </div>` : editing ? `<button class="btn-add-task" id="btn-add-task">+ Add Task</button>` : ''}
       <div class="pool-section-label label-common">Common</div>
       ${common.map(taskRow).join('')}
       <div class="pool-section-label label-legendary">Legendary</div>
       ${legendary.map(taskRow).join('')}
-      ${archived.length ? `
+      ${editing && archived.length ? `
         <div class="pool-section-label label-archived">Archived</div>
-        ${archived.map(archivedRow).join('')}` : ''}`;
+        ${archived.map(archivedRow).join('')}` : ''}
+      ${!editing ? `<div style="height:16px"></div><button class="btn-primary" id="btn-edit-pool">Edit Task Pool</button>` : ''}`;
   }
 
   /* ── Store ── */
@@ -1227,7 +1253,7 @@
     if (screen === 'tasks') {
       // Profile menu navigation
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
-        s.profileScreen = 'taskpool'; render();
+        s.profileScreen = 'taskpool'; s.poolEditMode = false; render();
       });
       document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
         s.profileScreen = 'storemanage'; s.editingStoreItem = null; render();
@@ -1235,7 +1261,12 @@
 
       // Back from task pool → Profile menu
       document.getElementById('btn-back-profile')?.addEventListener('click', () => {
-        s.profileScreen = 'menu'; s.editingTask = null; s.deletingTask = null; render();
+        s.profileScreen = 'menu'; s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; render();
+      });
+
+      // Enter edit mode
+      document.getElementById('btn-edit-pool')?.addEventListener('click', () => {
+        s.poolEditMode = true; render();
       });
 
       // Back from store manage → Profile menu
