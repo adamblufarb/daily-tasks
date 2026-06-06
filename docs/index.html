@@ -178,7 +178,11 @@
     .home-emoji { font-size: 5.5rem; line-height: 1; margin-bottom: 12px; }
     .home-title { font-size: 1.8rem; font-weight: 700; }
     .home-sub { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
-    .deadline-msg { font-size: 0.82rem; color: var(--subtext); text-align: center; margin: -12px 0 20px; }
+    .reset-confirm-box { margin-top: 20px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: var(--radius); padding: 16px 18px; }
+    .reset-confirm-label { font-size: 0.88rem; font-weight: 700; color: #dc2626; margin-bottom: 10px; }
+    .reset-confirm-sub { font-size: 0.8rem; color: #991b1b; margin-bottom: 12px; line-height: 1.4; }
+    .btn-reset-danger { width: 100%; padding: 14px; background: var(--danger); color: #fff; font-weight: 700; font-size: 0.95rem; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; margin-top: 16px; }
+    .btn-reset-cancel { width: 100%; padding: 12px; background: none; color: var(--subtext); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
     .tasks-label { font-size: 0.68rem; color: var(--subtext); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
 
     /* Task pool tab */
@@ -447,6 +451,7 @@
     newTaskType: 'common',
     profileScreen: 'menu', // 'menu' | 'taskpool' | 'storemanage'
     poolEditMode: false,
+    showResetConfirm: false,
     storeItems: [],        // loaded from DB; falls back to STORE_ITEMS seed
     editingStoreItem: null,
     wallet: { common: 99, legendary: 99, mythic: 99 },
@@ -672,9 +677,8 @@
       <div class="home-header">
         <div class="home-emoji">${isMythic ? '🔱' : '⚡'}</div>
         <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
-        <div class="home-sub">Tap a task to mark it complete</div>
+        <div class="home-sub">All tasks must be completed by ${resetStr} ${deadlineDay}.</div>
       </div>
-      <div class="deadline-msg">All tasks must be completed by ${resetStr} ${deadlineDay}.</div>
       <div class="tasks-label">Today's Tasks</div>
       ${tasks.map(t => {
         const done = completedIds.includes(t.id);
@@ -821,7 +825,17 @@
           </select>
         </div>
         <div class="settings-sub">Grace period until ${fmtHour(graceEnd >= 24 ? graceEnd - 24 : graceEnd)} to enter previous day's results</div>
-      </div>`;
+      </div>
+      ${s.showResetConfirm ? `
+      <div class="reset-confirm-box">
+        <div class="reset-confirm-label">Reset Records & Currency</div>
+        <div class="reset-confirm-sub">This will permanently delete all plan history and reset your store currency to 0. Type <strong>reset</strong> to confirm.</div>
+        <input class="form-input" id="reset-confirm-input" placeholder="Type reset to confirm" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn-reset-danger" id="btn-confirm-reset">Reset Everything</button>
+        <button class="btn-reset-cancel" id="btn-cancel-reset">Cancel</button>
+      </div>` : `
+      <div style="height:16px"></div>
+      <button class="btn-danger-ghost" id="btn-show-reset">Reset Records</button>`}`;
   }
 
   /* ── Store Management ── */
@@ -1288,6 +1302,23 @@
         s.profileScreen = 'menu'; s.editingStoreItem = null; render();
       });
 
+      // Reset records flow
+      document.getElementById('btn-show-reset')?.addEventListener('click', () => {
+        s.showResetConfirm = true; render();
+      });
+      document.getElementById('btn-cancel-reset')?.addEventListener('click', () => {
+        s.showResetConfirm = false; render();
+      });
+      document.getElementById('btn-confirm-reset')?.addEventListener('click', async () => {
+        const val = document.getElementById('reset-confirm-input')?.value.trim().toLowerCase();
+        if (val !== 'reset') {
+          const input = document.getElementById('reset-confirm-input');
+          if (input) { input.style.borderColor = 'var(--danger)'; input.focus(); }
+          return;
+        }
+        await resetEverything();
+      });
+
       // Reset hour select (Profile menu)
       document.getElementById('select-reset-hour')?.addEventListener('change', async e => {
         RESET_HOUR = parseInt(e.target.value);
@@ -1552,6 +1583,28 @@
     s.showPurchasedScreen = true;
     render();
     await saveWallet();
+  }
+
+  async function resetEverything() {
+    s.sessions       = [];
+    s.activePlanId   = null;
+    s.offered        = [];
+    s.picked         = [];
+    s.planBuildState = 'generate';
+    s.wallet         = { common: 0, legendary: 0, mythic: 0 };
+    s.lastPurchaseDate  = null;
+    s.lastPurchasedItem = null;
+    s.showPurchasedScreen = false;
+    s.showResetConfirm = false;
+    s.overlayScreen  = null;
+    s.pendingReward  = null;
+    render();
+    await Promise.all([
+      sql`DELETE FROM daily_sessions`,
+      sql`UPDATE wallet SET common = 0, legendary = 0, mythic = 0,
+          last_purchase_date = null, last_purchase_item_name = null,
+          last_purchase_item_rarity = null WHERE id = 'main'`,
+    ]);
   }
 
   async function restartDay() {
