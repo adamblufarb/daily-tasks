@@ -178,6 +178,7 @@
     .home-emoji { font-size: 5.5rem; line-height: 1; margin-bottom: 12px; }
     .home-title { font-size: 1.8rem; font-weight: 700; }
     .home-sub { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
+    .deadline-msg { font-size: 0.82rem; color: var(--subtext); text-align: center; margin: -12px 0 20px; }
     .tasks-label { font-size: 0.68rem; color: var(--subtext); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
 
     /* Task pool tab */
@@ -480,8 +481,11 @@
     let common = 0, legendary = 0, mythic = 0;
     for (const sess of s.sessions) {
       if (sess.status !== 'done') continue;
-      if ((sess.picked_ids||[]).length === 5 && (sess.completed_ids||[]).length === 5) mythic++;
-      for (const id of (sess.completed_ids || [])) {
+      const picked = (sess.picked_ids || []).length;
+      const completed = (sess.completed_ids || []).length;
+      if (picked === 0 || completed < picked) continue; // only fully-completed plans earn points
+      if (picked === 5) mythic++;
+      for (const id of sess.completed_ids) {
         const t = getTaskForHistory(sess, id);
         if (t?.type === 'legendary') legendary++; else common++;
       }
@@ -661,12 +665,16 @@
 
     // ── Active plan ──
     const allDone = tasks.length > 0 && tasks.every(t => completedIds.includes(t.id));
+    const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
+    const resetStr = fmtHour(RESET_HOUR);
+    const deadlineDay = new Date().getHours() < RESET_HOUR ? 'today' : 'tomorrow';
     return `
       <div class="home-header">
         <div class="home-emoji">${isMythic ? '🔱' : '⚡'}</div>
         <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
         <div class="home-sub">Tap a task to mark it complete</div>
       </div>
+      <div class="deadline-msg">All tasks must be completed by ${resetStr} ${deadlineDay}.</div>
       <div class="tasks-label">Today's Tasks</div>
       ${tasks.map(t => {
         const done = completedIds.includes(t.id);
