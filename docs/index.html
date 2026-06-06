@@ -1114,8 +1114,11 @@
             <div class="history-tasks">
               ${tasks.map(t => {
                 const done = (sess.completed_ids||[]).includes(t.id);
+                const over = sess.status === 'done';
+                const icon  = done ? '✓' : over ? '✗' : '○';
+                const color = done ? 'var(--success)' : over ? 'var(--danger)' : 'var(--subtext)';
                 return `<div class="history-task-row${done?' done':''}">
-                  <span style="color:${done?'var(--success)':'var(--danger)'}">${done?'✓':'✗'}</span>
+                  <span style="color:${color}">${icon}</span>
                   <span style="flex:1">${t.title}</span>
                   <span class="task-badge badge-${t.type}">${t.type}</span>
                 </div>`;
