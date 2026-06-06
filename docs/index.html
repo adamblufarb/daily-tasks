@@ -708,8 +708,7 @@
         </div>`;
       }).join('')}
       ${allDone ? `<div style="height:16px"></div>
-      <button class="btn-primary" id="btn-submit-results">Submit Results</button>` : ''}
-      <button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>`;
+      <button class="btn-primary" id="btn-submit-results">Submit Results</button>` : ''}`;
   }
 
   /* ── Grace-period: Concluded screen ── */
@@ -835,7 +834,10 @@
         <button class="btn-reset-cancel" id="btn-cancel-reset">Cancel</button>
       </div>` : `
       <div style="height:16px"></div>
-      <button class="btn-danger-ghost" id="btn-show-reset">Reset Records</button>`}`;
+      <button class="profile-menu-item" id="btn-show-reset" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,var(--card));border-color:color-mix(in srgb,var(--danger) 40%,transparent)">
+        <span class="profile-menu-label">Reset Records</span>
+        <span class="profile-menu-arrow" style="color:var(--danger)">›</span>
+      </button>`}`;
   }
 
   /* ── Store Management ── */
