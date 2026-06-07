@@ -143,8 +143,8 @@
     .task-confirm-text { font-size: 0.88rem; font-weight: 600; color: var(--text); }
     .btn-confirm-yes { background: var(--success); color: #fff; border: none; border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .btn-confirm-yes.btn-danger { background: var(--danger); }
-    .btn-confirm-no  { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--subtext); }
-    .btn-confirm-no.btn-white  { background: var(--card); }
+    .btn-confirm-no  { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--text); }
+    .btn-confirm-no.btn-red    { background: var(--danger); border-color: var(--danger); color: #fff; }
 
     /* Review */
     .review-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
@@ -757,7 +757,7 @@
           <div class="task-confirm">
             <span class="task-confirm-text">Did you complete this?</span>
             <div style="display:flex;gap:8px">
-              <button class="btn-confirm-no" data-grace-no="${t.id}">No</button>
+              <button class="btn-confirm-no btn-red" data-grace-no="${t.id}">No ✕</button>
               <button class="btn-confirm-yes" data-grace-yes="${t.id}">Yes ✓</button>
             </div>
           </div>` : ''}
