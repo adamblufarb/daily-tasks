@@ -259,6 +259,8 @@
 
     /* History */
     .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
+    .history-card.card-win  { background: color-mix(in srgb, #22c55e 7%, var(--card)); border-color: color-mix(in srgb, #22c55e 25%, transparent); }
+    .history-card.card-fail { background: color-mix(in srgb, var(--danger) 7%, var(--card)); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
     .history-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .history-date { font-size: 0.95rem; font-weight: 700; }
     .history-result { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -1106,7 +1108,7 @@
           if (t?.type === 'legendary') lPts++; else cPts++;
         }
         return `
-          <div class="history-card">
+          <div class="history-card${isWin?' card-win':isDone&&!isWin?' card-fail':''}">
             <div class="history-card-top">
               <div class="history-date">${fmtDate(sess.date)}</div>
               <span class="history-result ${cls}">${label}</span>
@@ -1128,7 +1130,7 @@
               ${cPts ? `<span class="pts-earned pts-common">+${cPts} common</span>` : ''}
               ${lPts ? `<span class="pts-earned pts-legendary">+${lPts} legendary</span>` : ''}
               ${isMythic ? `<span class="pts-earned pts-mythic">+1 mythic</span>` : ''}
-            </div>` : ''}
+            </div>` : isDone ? `<div class="history-pts" style="color:var(--danger);border-top-color:color-mix(in srgb,var(--danger) 25%,transparent)">Failed plans don't earn any points or currency.</div>` : ''}
           </div>`;
       }).join('')}`;
   }
