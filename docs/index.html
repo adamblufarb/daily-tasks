@@ -762,7 +762,7 @@
         </div>`;
       }).join('')}
       <div style="height:16px"></div>
-      <button class="btn-primary" id="btn-submit-grace">Submit Results</button>`;
+      <button class="btn-primary" id="btn-submit-grace"${tasks.every(t => completedIds.includes(t.id) || s.reviewDeclined.includes(t.id)) ? '' : ' disabled'}>Submit Results</button>`;
   }
 
   /* ── Reward screen ── */
