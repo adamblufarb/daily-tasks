@@ -123,10 +123,12 @@
     .active-task.selected { border-color: var(--common); box-shadow: var(--shadow); }
     .active-task.selected.type-legendary { border: 2px solid color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
     .active-task.selected.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
-    .active-task.completed { cursor: default; animation: none !important; transition: none; }
+    .active-task.completed { cursor: pointer; animation: none !important; transition: none; }
     .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
     .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
     .active-task.completed .active-task-desc { color: rgba(255,255,255,0.7); }
+    .active-task.completed .task-confirm-text { color: #fff; }
+    .active-task.completed .task-confirm { border-top-color: rgba(255,255,255,0.3); }
     .active-task.completed.type-legendary .task-badge { background: var(--legendary-dark); color: #fff; }
     .active-task.completed.type-common    .task-badge { background: var(--common-dark); color: #fff; }
     .active-task-row { display: flex; align-items: center; gap: 14px; }
