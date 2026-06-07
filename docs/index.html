@@ -536,30 +536,36 @@
     const container = document.getElementById('reward-floaters');
     if (!container) return;
 
-    function spawnFloater(delay = 0) {
+    function spawnFloater(startBelow = 0, duration = null) {
       if (!container.isConnected) return;
-      const emoji    = emojis[Math.floor(Math.random() * emojis.length)];
-      const x        = 5 + Math.random() * 90;
-      const size     = 22 + Math.random() * 28;
-      const duration = 2500 + Math.random() * 1500;
-      const el = document.createElement('div');
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+      const x     = 5 + Math.random() * 90;
+      const size  = 22 + Math.random() * 28;
+      const dur   = duration ?? (2500 + Math.random() * 1500);
+      const el    = document.createElement('div');
       el.textContent = emoji;
-      el.style.cssText = `position:absolute;left:${x}%;top:100%;font-size:${size}px;line-height:1;pointer-events:none;user-select:none;`;
+      const topVal = startBelow > 0 ? `calc(100% + ${Math.round(startBelow)}px)` : '100%';
+      el.style.cssText = `position:absolute;left:${x}%;top:${topVal};font-size:${size}px;line-height:1;pointer-events:none;user-select:none;`;
       container.appendChild(el);
       el.animate([
         { transform:'translateY(0)' },
-        { transform:'translateY(calc(-100vh - 120px))' },
-      ], { duration, delay, easing:'ease-in', fill:'forwards' })
+        { transform:`translateY(calc(-100vh - ${120 + Math.round(startBelow)}px))` },
+      ], { duration:dur, easing:'ease-in', fill:'forwards' })
         .onfinish = () => el.remove();
     }
 
-    // Phase 1 — burst: all at once with tiny random offsets
-    for (let i = 0; i < 20; i++) spawnFloater(Math.random() * 200);
+    // Phase 1 — burst: 30 emojis, fast + wave stagger via random Y below screen
+    for (let i = 0; i < 30; i++) {
+      spawnFloater(
+        Math.random() * 200,          // 0–200px below bottom edge (wave)
+        1000 + Math.random() * 800    // 1–1.8s (explosive speed)
+      );
+    }
 
-    // Phase 2 — trickle: one every ~1 second
+    // Phase 2 — trickle: one every ~1 second, slower ambient pace
     function trickle() {
       if (!container.isConnected) return;
-      spawnFloater();
+      spawnFloater(0);
       setTimeout(trickle, 700 + Math.random() * 600);
     }
     setTimeout(trickle, 800);
