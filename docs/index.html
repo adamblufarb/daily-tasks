@@ -1322,7 +1322,7 @@
             if (newCard) {
               newCard.style.zIndex   = '70';       // above particles (z-65) and prev-completed (z-60)
               newCard.style.overflow = 'hidden';   // clips shine ribbon to card bounds
-              const GROW = 130, SHINE = 450, SNAP = 190;
+              const GROW = 130, SHINE = 550, SNAP = 190;
               // 2. Card grows
               newCard.animate(
                 [{ transform:'scale(1)' }, { transform:'scale(1.08)' }],
@@ -1330,7 +1330,7 @@
               ).onfinish = () => {
                 // 3. Shine ribbon sweeps diagonally across the card
                 const ribbon = document.createElement('div');
-                ribbon.style.cssText = 'position:absolute;top:-20%;left:0;width:40%;height:140%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.6),transparent);transform:skewX(-25deg) translateX(-250%);pointer-events:none;';
+                ribbon.style.cssText = 'position:absolute;top:-20%;left:0;width:40%;height:140%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.85),transparent);transform:skewX(-25deg) translateX(-250%);pointer-events:none;';
                 newCard.appendChild(ribbon);
                 ribbon.animate(
                   [{ transform:'skewX(-25deg) translateX(-250%)' }, { transform:'skewX(-25deg) translateX(420%)' }],
