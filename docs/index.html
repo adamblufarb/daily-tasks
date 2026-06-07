@@ -1315,32 +1315,40 @@
           const sess        = activePlan();
           const alreadyDone = (sess?.completed_ids || []).includes(taskId);
           const task        = getTaskForHistory(sess, taskId);
-          const card        = btn.closest('[data-confirm-task]');
-          if (!alreadyDone && task?.type === 'common' && card) {
-            const GROW = 130, SNAP = 190;
-            // 1. Card grows
-            card.animate(
-              [{ transform:'scale(1)' }, { transform:'scale(1.08)' }],
-              { duration:GROW, easing:'ease-out', fill:'forwards' }
-            ).onfinish = () => {
-              // 2. Burst fires at the moment of slam-back
-              burstParticles(card);
-              // 3. Card snaps back with spring easing
-              card.animate(
-                [{ transform:'scale(1.08)' }, { transform:'scale(1)' }],
-                { duration:SNAP, easing:'cubic-bezier(0.34,1.2,0.64,1)', fill:'forwards' }
-              );
-              // 4. State update after snap completes
-              setTimeout(() => {
-                completeTask(taskId);
-                // Elevate the just-completed card above particles (z-65) for animation duration
-                const newCard = document.querySelector(`[data-confirm-task="${taskId}"]`);
-                if (newCard) {
-                  newCard.style.zIndex = '70';
-                  setTimeout(() => { if (newCard.isConnected) newCard.style.zIndex = ''; }, 1500);
-                }
-              }, SNAP);
-            };
+          if (!alreadyDone && task?.type === 'common') {
+            // 1. State update first — card renders in completed state
+            completeTask(taskId);
+            const newCard = document.querySelector(`[data-confirm-task="${taskId}"]`);
+            if (newCard) {
+              newCard.style.zIndex   = '70';       // above particles (z-65) and prev-completed (z-60)
+              newCard.style.overflow = 'hidden';   // clips shine ribbon to card bounds
+              const GROW = 130, SHINE = 450, SNAP = 190;
+              // 2. Card grows
+              newCard.animate(
+                [{ transform:'scale(1)' }, { transform:'scale(1.08)' }],
+                { duration:GROW, easing:'ease-out', fill:'forwards' }
+              ).onfinish = () => {
+                // 3. Shine ribbon sweeps diagonally across the card
+                const ribbon = document.createElement('div');
+                ribbon.style.cssText = 'position:absolute;top:-20%;left:0;width:40%;height:140%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.6),transparent);transform:skewX(-25deg) translateX(-250%);pointer-events:none;';
+                newCard.appendChild(ribbon);
+                ribbon.animate(
+                  [{ transform:'skewX(-25deg) translateX(-250%)' }, { transform:'skewX(-25deg) translateX(420%)' }],
+                  { duration:SHINE, easing:'cubic-bezier(0.25,0.1,0.25,1)', fill:'forwards' }
+                ).onfinish = () => {
+                  ribbon.remove();
+                  // 4. Burst fires at the moment the card slams back
+                  burstParticles(newCard);
+                  // 5. Card snaps back with spring easing
+                  newCard.animate(
+                    [{ transform:'scale(1.08)' }, { transform:'scale(1)' }],
+                    { duration:SNAP, easing:'cubic-bezier(0.34,1.2,0.64,1)', fill:'forwards' }
+                  ).onfinish = () => { newCard.style.overflow = ''; };
+                };
+              };
+              // Reset z-index after particles finish (1.5s from now)
+              setTimeout(() => { if (newCard.isConnected) newCard.style.zIndex = ''; }, 1500);
+            }
           } else {
             completeTask(taskId);
           }
