@@ -532,6 +532,39 @@
     }
   }
 
+  function startRewardFloaters(emojis) {
+    const container = document.getElementById('reward-floaters');
+    if (!container) return;
+
+    function spawnFloater(delay = 0) {
+      if (!container.isConnected) return;
+      const emoji    = emojis[Math.floor(Math.random() * emojis.length)];
+      const x        = 5 + Math.random() * 90;
+      const size     = 22 + Math.random() * 28;
+      const duration = 2500 + Math.random() * 1500;
+      const el = document.createElement('div');
+      el.textContent = emoji;
+      el.style.cssText = `position:absolute;left:${x}%;top:100%;font-size:${size}px;line-height:1;pointer-events:none;user-select:none;`;
+      container.appendChild(el);
+      el.animate([
+        { transform:'translateY(0)' },
+        { transform:'translateY(calc(-100vh - 120px))' },
+      ], { duration, delay, easing:'ease-in', fill:'forwards' })
+        .onfinish = () => el.remove();
+    }
+
+    // Phase 1 — burst: all at once with tiny random offsets
+    for (let i = 0; i < 20; i++) spawnFloater(Math.random() * 200);
+
+    // Phase 2 — trickle: one every ~1 second
+    function trickle() {
+      if (!container.isConnected) return;
+      spawnFloater();
+      setTimeout(trickle, 700 + Math.random() * 600);
+    }
+    setTimeout(trickle, 800);
+  }
+
   function legendaryGlowBurst(cardEl) {
     const rect = cardEl.getBoundingClientRect();
     const el = document.createElement('div');
@@ -825,10 +858,13 @@
     if (r.common)    parts.push(`+${r.common} Common`);
     return `
       <div class="reward-screen" style="background:${bgColor}">
-        <div class="reward-emoji">🏆</div>
-        <div class="reward-title">All Done!</div>
-        <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
-        <button class="btn-claim" id="btn-claim-rewards">Claim Rewards</button>
+        <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
+        <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
+          <div class="reward-emoji">🏆</div>
+          <div class="reward-title">All Done!</div>
+          <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
+          <button class="btn-claim" id="btn-claim-rewards">Claim Rewards</button>
+        </div>
       </div>`;
   }
 
@@ -1238,6 +1274,11 @@
 
     if (screen === 'reward') {
       document.getElementById('btn-claim-rewards')?.addEventListener('click', claimRewards);
+      const r = s.pendingReward || {};
+      const floatEmojis = (r.mythic > 0 || r.legendary > 0)
+        ? ['🦧','🐦‍🔥','🐅','🔥','🍄‍🟫','🥃','🏈']
+        : ['🏐','🤍','🚰','🏁','🐏','🕊️','🌪️'];
+      startRewardFloaters(floatEmojis);
     }
 
     if (screen === 'bad-luck') {
