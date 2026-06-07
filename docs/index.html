@@ -360,7 +360,7 @@
     .reward-emoji  { font-size: 5rem; line-height: 1; margin-bottom: 16px; }
     .reward-title  { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
     .reward-earned { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 40px; line-height: 1.5; }
-    .btn-claim     { padding: 17px 48px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+    .btn-claim     { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
 
     /* Concluded-screen: declined task (red) */
     .active-task.task-declined { border-color: var(--danger); background: var(--danger); color: #fff; cursor: pointer; }
@@ -554,12 +554,25 @@
         .onfinish = () => el.remove();
     }
 
-    // Phase 1 — burst: 30 emojis, fast + wave stagger via random Y below screen
-    for (let i = 0; i < 30; i++) {
-      spawnFloater(
-        Math.random() * 200,          // 0–200px below bottom edge (wave)
-        1000 + Math.random() * 800    // 1–1.8s (explosive speed)
-      );
+    // Phase 1 — burst: 40 emojis, staggered across 1.5 s, gentler ease-in
+    for (let i = 0; i < 40; i++) {
+      const startBelow = Math.random() * 200;
+      const dur        = 1000 + Math.random() * 800;
+      const delay      = Math.random() * 1500;
+      if (!container.isConnected) return;
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+      const x     = 5 + Math.random() * 90;
+      const size  = 22 + Math.random() * 28;
+      const el    = document.createElement('div');
+      el.textContent = emoji;
+      const topVal = startBelow > 0 ? `calc(100% + ${Math.round(startBelow)}px)` : '100%';
+      el.style.cssText = `position:absolute;left:${x}%;top:${topVal};font-size:${size}px;line-height:1;pointer-events:none;user-select:none;`;
+      container.appendChild(el);
+      el.animate([
+        { transform:'translateY(0)' },
+        { transform:`translateY(calc(-100vh - ${120 + Math.round(startBelow)}px))` },
+      ], { duration:dur, delay, easing:'cubic-bezier(0.6,0,1,1)', fill:'forwards' })
+        .onfinish = () => el.remove();
     }
 
     // Phase 2 — trickle: one every ~1 second, slower ambient pace
@@ -688,7 +701,7 @@
           <div class="generate-emoji">🎲</div>
           <div class="generate-title">Build Your Plan</div>
           <div class="generate-sub">${fmtDate(s.today)}</div>
-          <button class="btn-primary" id="btn-generate" style="width:100%;max-width:280px">Generate Tasks →</button>
+          <button class="btn-primary" id="btn-generate">Generate Tasks →</button>
         </div>`;
     }
 
@@ -1378,7 +1391,7 @@
               ? ['🏐','🤍','🚰','🏁','🐏','🕊️','🌪️']
               : ['🦧','🐦‍🔥','🐅','🔥','🍄‍🟫','🥃','🏈'];
             const COUNT   = isCommon ? 14 : 28;
-            const PEAK    = isCommon ? 1.08 : 1.13;
+            const PEAK    = 1.08;
             const SNAP_CB = isCommon
               ? 'cubic-bezier(0.34,1.2,0.64,1)'
               : 'cubic-bezier(0.34,1.5,0.64,1)';
