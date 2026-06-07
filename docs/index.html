@@ -123,7 +123,7 @@
     .active-task.selected { border-color: var(--common); box-shadow: var(--shadow); }
     .active-task.selected.type-legendary { border: 2px solid color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
     .active-task.selected.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
-    .active-task.completed { cursor: pointer; animation: none !important; transition: none; }
+    .active-task.completed { cursor: pointer; animation: none !important; transition: none; z-index: 60; }
     .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
     .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
     .active-task.completed .active-task-desc { color: rgba(255,255,255,0.7); }
@@ -503,6 +503,31 @@
   }
 
   /* ── Helpers ── */
+  function burstParticles(cardEl) {
+    const EMOJIS = ['🏐','🤍','🚰','🏁','🐏','🕊️','🌪️'];
+    const COUNT  = 14;
+    const rect   = cardEl.getBoundingClientRect();
+    const cx     = rect.left + rect.width  / 2;
+    const cy     = rect.top  + rect.height / 2;
+    for (let i = 0; i < COUNT; i++) {
+      const emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+      const angle = Math.random() * 2 * Math.PI;
+      const dist  = 80 + Math.random() * 70;
+      const size  = 18 + Math.random() * 10;
+      const tx    = Math.cos(angle) * dist;
+      const ty    = Math.sin(angle) * dist;
+      const el    = document.createElement('div');
+      el.textContent = emoji;
+      el.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;font-size:${size}px;line-height:1;z-index:50;pointer-events:none;user-select:none;transform:translate(-50%,-50%);`;
+      document.body.appendChild(el);
+      el.animate([
+        { transform:`translate(-50%,-50%) translate(0,0)`,           opacity:1 },
+        { transform:`translate(-50%,-50%) translate(${tx}px,${ty}px)`, opacity:0 },
+      ], { duration:1500, easing:'cubic-bezier(0.15,0.85,0.35,1.0)', fill:'forwards' })
+        .onfinish = () => el.remove();
+    }
+  }
+
   function shuffle(arr) {
     const a = arr.slice();
     for (let i = a.length-1; i > 0; i--) {
@@ -1278,7 +1303,17 @@
       document.querySelectorAll('[data-confirm-yes]').forEach(btn =>
         btn.addEventListener('click', e => {
           e.stopPropagation();
-          completeTask(btn.dataset.confirmYes);
+          const taskId   = btn.dataset.confirmYes;
+          const sess     = activePlan();
+          const alreadyDone = (sess?.completed_ids || []).includes(taskId);
+          if (!alreadyDone) {
+            const task = getTaskForHistory(sess, taskId);
+            if (task?.type === 'common') {
+              const card = btn.closest('[data-confirm-task]');
+              if (card) burstParticles(card);
+            }
+          }
+          completeTask(taskId);
         }));
       document.getElementById('btn-submit-results')?.addEventListener('click', submitResults);
       document.getElementById('btn-restart')?.addEventListener('click', restartDay);
