@@ -356,7 +356,7 @@
     .btn-back-store { padding: 14px 32px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.4); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
 
     /* Reward / bad-luck screens */
-    .reward-screen { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
+    .reward-screen { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
     .reward-emoji  { font-size: 5rem; line-height: 1; margin-bottom: 16px; }
     .reward-title  { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
     .reward-earned { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 40px; line-height: 1.5; }
@@ -622,6 +622,7 @@
 
   /* ── Render ── */
   const GLOW_START = Date.now();
+  let revealTimeoutId = null;
   // Per-task duration: 2.0s – 3.2s, derived from ID
   function glowDuration(id) {
     let h = 0;
@@ -878,7 +879,7 @@
     return `
       <div class="reward-screen" style="background:${bgColor}">
         <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
-        <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
+        <div style="position:relative;z-index:1;width:100%;display:flex;flex-direction:column;align-items:stretch">
           <div class="reward-emoji">🏆</div>
           <div class="reward-title">All Done!</div>
           <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
@@ -1294,7 +1295,9 @@
     if (screen === 'reward') {
       document.getElementById('btn-claim-rewards')?.addEventListener('click', claimRewards);
       const r = s.pendingReward || {};
-      const floatEmojis = (r.mythic > 0 || r.legendary > 0)
+      const floatEmojis = r.mythic > 0
+        ? ['🔮','🍇','🪻','🦄','🧞‍♀️','🧬','😈']
+        : r.legendary > 0
         ? ['🦧','🐦‍🔥','🐅','🔥','🍄‍🟫','🥃','🏈']
         : ['🏐','🤍','🚰','🏁','🐏','🕊️','🌪️'];
       startRewardFloaters(floatEmojis);
@@ -1316,7 +1319,7 @@
         s.planBuildState = 'revealing';
         render();
         // After animation completes, switch to normal 'pick' state
-        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 700);
+        revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
         // Persist offered tasks so they survive a refresh
         const draftId = `draft-${s.today}`;
         await sql`
@@ -1330,6 +1333,11 @@
       document.querySelectorAll('[data-pick]').forEach(el =>
         el.addEventListener('click', () => {
           const id = el.dataset.pick;
+          if (s.planBuildState === 'revealing') {
+            clearTimeout(revealTimeoutId);
+            revealTimeoutId = null;
+            s.planBuildState = 'pick';
+          }
           if (s.picked.includes(id)) s.picked = s.picked.filter(x => x !== id);
           else if (s.picked.length < 5) s.picked.push(id);
           render();
@@ -1343,7 +1351,7 @@
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
-        setTimeout(() => { s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 700);
+        revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
         const draftId = `draft-${s.today}`;
         await Promise.all([
           saveWallet(),
