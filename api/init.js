@@ -2,19 +2,22 @@ const { sql } = require('./_db');
 const { withAuth } = require('./_auth');
 
 const DEFAULT_TASKS = [
-  { id: 'c1',  type: 'common',    title: 'Morning Walk',      description: 'Take a 20-minute walk outside' },
-  { id: 'c2',  type: 'common',    title: 'Hydrate',           description: 'Drink 8 glasses of water' },
-  { id: 'c3',  type: 'common',    title: 'Read',              description: 'Read for at least 20 minutes' },
-  { id: 'c4',  type: 'common',    title: 'Meditate',          description: '10 minutes of mindfulness' },
-  { id: 'c5',  type: 'common',    title: 'Journal',           description: 'Write 5 minutes in your journal' },
-  { id: 'c6',  type: 'common',    title: 'No Social Media',   description: 'Avoid social media until noon' },
-  { id: 'c7',  type: 'common',    title: 'Exercise',          description: 'Work out for 30 minutes' },
-  { id: 'c8',  type: 'common',    title: 'Healthy Breakfast', description: 'Eat a nutritious breakfast' },
-  { id: 'c9',  type: 'common',    title: 'Connect',           description: 'Reach out to someone you care about' },
-  { id: 'c10', type: 'common',    title: 'Early Bed',         description: 'In bed before midnight' },
-  { id: 'l1',  type: 'legendary', title: 'The Fast',          description: 'Complete a 16-hour fast' },
-  { id: 'l2',  type: 'legendary', title: 'Ice Bath',          description: 'Take a cold shower or ice bath' },
-  { id: 'l3',  type: 'legendary', title: 'Deep Work',         description: '3 hours of uninterrupted focused work' },
+  { id: 'c1',  type: 'common',    title: 'Long Walk',              description: 'Take a 45 minute walk outside' },
+  { id: 'c2',  type: 'common',    title: 'Hydrate',                description: 'Drink 8 glasses of water' },
+  { id: 'c3',  type: 'common',    title: 'Read',                   description: 'Read for at least 15 minutes' },
+  { id: 'c4',  type: 'common',    title: 'Light Phone Detox',      description: "Don't use your phone after 21:30" },
+  { id: 'c5',  type: 'common',    title: 'Social Media Breather',  description: 'Avoid social media until noon' },
+  { id: 'c6',  type: 'common',    title: 'Exercise',               description: 'Work out for 30 minutes' },
+  { id: 'c7',  type: 'common',    title: 'Connect',                description: 'Reach out to someone you care about' },
+  { id: 'c8',  type: 'common',    title: 'Early Bed',              description: 'Get in bed before 22:30' },
+  { id: 'c9',  type: 'common',    title: 'Little Chef',            description: 'Cook something' },
+  { id: 'c10', type: 'common',    title: 'Stretch',                description: '10 minutes of stretching' },
+  { id: 'c11', type: 'common',    title: 'Cold Shower',            description: 'Take a cold shower today' },
+  { id: 'c12', type: 'common',    title: 'No Sweets',              description: 'Avoid sugar and sweets for the day' },
+  { id: 'l1',  type: 'legendary', title: 'Social Media Ban',       description: 'Avoid social media all day' },
+  { id: 'l2',  type: 'legendary', title: 'Heavy Phone Detox',      description: "Don't use your phone after 18:00" },
+  { id: 'l3',  type: 'legendary', title: 'Schedule Dinner',        description: 'Schedule dinner with friends' },
+  { id: 'l4',  type: 'legendary', title: 'Big Chef',               description: 'Cook something new' },
 ];
 
 module.exports = withAuth(async (req, res, userId) => {
