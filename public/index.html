@@ -1964,6 +1964,7 @@
       }
       if (!authMounted) {
         clerk.mountSignIn(document.getElementById('clerk-auth'), {
+          routing: 'virtual',
           afterSignInUrl: window.location.origin,
           afterSignUpUrl: window.location.origin,
           appearance: {
