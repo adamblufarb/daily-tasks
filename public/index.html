@@ -1,0 +1,1974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f0f4ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Daily Tasks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #f0f4ff;
+      --card: #ffffff;
+      --accent: #6a5c51;
+      --accent2: #9c8f85;
+      --legendary: #c4712d;
+      --legendary-bg: #fce8d4;
+      --legendary-dark: #6d3a11;
+      --mythic: #b87ad7;
+      --mythic-bg: #f3e8fb;
+      --common: #999da6;
+      --common-dark: #6d727f;
+      --common-light: #f3f4f6;
+      --text: #1e1b4b;
+      --subtext: #6b7280;
+      --border: #e0e7ff;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning-bg: #fef3c7;
+      --radius: 20px;
+      --shadow: 0 2px 12px rgba(79,70,229,0.08);
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; transition: background 0.45s ease; }
+    body.mythic-bg { background: var(--mythic); }
+    body.mythic-bg .tab-bar { background: var(--mythic); border-top-color: rgba(255,255,255,0.2); transition: background 0.45s ease; }
+    body.mythic-bg .tab-btn { color: rgba(255,255,255,0.6); }
+    body.mythic-bg .tab-btn.active { color: #fff; }
+    body.mythic-bg .section-sub,
+    body.mythic-bg .pick-count,
+    body.mythic-bg .btn-ghost { color: rgba(255,255,255,0.75); }
+    body.mythic-bg .pick-count strong { color: #fff; }
+    body.mythic-bg .task-card .task-title { color: var(--text); }
+    body.mythic-bg .task-card .task-desc  { color: var(--subtext); }
+    body.mythic-bg .btn-reroll { color: rgba(255,255,255,0.85); }
+
+    .tab-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border); display: flex; align-items: flex-end; z-index: 100; padding: 0 12px calc(16px + env(safe-area-inset-bottom)) 12px; box-shadow: 0 -2px 12px rgba(0,0,0,0.05); overflow: visible; }
+    .tab-btn { flex: 1; padding: 12px 8px; background: none; border: none; color: var(--subtext); font-size: 0.72rem; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.15s; position: relative; }
+    .tab-icon { font-size: 1.4rem; line-height: 1; }
+    .tab-btn.active { color: var(--accent); }
+    .tab-btn.active span:last-child { text-decoration: underline; text-underline-offset: 3px; }
+    @keyframes tab-mythic-breathe {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 0.8; }
+    }
+    .tab-btn.mythic-active { isolation: isolate; }
+    .tab-btn.mythic-active::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(184,122,215,0.6) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+      animation: tab-mythic-breathe 3s ease-in-out infinite;
+    }
+
+    .content { padding: 0 20px calc(120px + env(safe-area-inset-bottom)) 20px; }
+
+    /* Buttons */
+    .btn-primary { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: transform 0.1s; touch-action: manipulation; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.4; pointer-events: none; }
+    .btn-ghost { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.9rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
+    .btn-danger-ghost { width: 100%; padding: 14px; background: none; color: var(--danger); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
+
+    /* Points bar */
+    .points-bar { display: flex; gap: 10px; margin-bottom: 28px; }
+    .points-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; text-align: center; box-shadow: var(--shadow); position: relative; }
+    .points-val { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .points-val.common { color: var(--common); }
+    .points-val.legendary { color: var(--legendary); }
+    .points-val.mythic { color: var(--mythic); }
+    .points-label { font-size: 0.68rem; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+    /* Task option cards (pick screen) */
+    .task-card { background: var(--card); border: 2px solid #d1d5db; border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; box-shadow: var(--shadow); position: relative; }
+    .task-card:active { transform: scale(0.98); }
+    .task-card.selected { border-color: var(--common); background: var(--common-light); box-shadow: var(--shadow); }
+    /* ── Legendary glow via ::before so it always sits behind card backgrounds ── */
+    @keyframes legendary-breathe {
+      0%, 100% { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 40%, transparent); }
+      50%       { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
+    }
+    .legendary-glow::before,
+    .task-card.legendary-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -1;
+      animation: legendary-breathe var(--glow-duration, 2400ms) ease-in-out infinite;
+      animation-delay: var(--glow-delay, 0ms);
+    }
+    .legendary-glow { }
+    .task-card.legendary-card { border: 2px solid color-mix(in srgb, var(--legendary) 35%, transparent); }
+    .task-card.legendary-card.selected { border-color: color-mix(in srgb, var(--legendary) 80%, transparent); background: var(--legendary-bg); box-shadow: var(--shadow); }
+    .task-card.legendary-card.selected::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
+    .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+    .task-title { font-size: 1.05rem; font-weight: 700; }
+    .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
+    .badge-common { background: var(--common-light); color: var(--subtext); }
+    .badge-legendary { background: var(--legendary-bg); color: var(--legendary-dark); }
+    .task-desc { font-size: 0.84rem; color: var(--subtext); }
+
+    /* Active task list */
+    .active-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); position: relative; }
+    /* idle = default; selected = tapped/highlighted */
+    .active-task.type-legendary { border: 2px solid color-mix(in srgb, var(--legendary) 35%, transparent); }
+    .active-task.selected { border-color: var(--common); box-shadow: var(--shadow); }
+    .active-task.selected.type-legendary { border: 2px solid color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
+    .active-task.selected.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
+    .active-task.completed { cursor: pointer; transition: none; z-index: 60; }
+    .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
+    .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
+    .active-task.completed .active-task-desc { color: rgba(255,255,255,0.7); }
+    .active-task.completed .task-confirm-text { color: #fff; }
+    .active-task.completed .task-confirm { border-top-color: rgba(255,255,255,0.3); }
+    .active-task.completed.type-legendary .task-badge { background: var(--legendary-dark); color: #fff; }
+    .active-task.completed.type-common    .task-badge { background: var(--common-dark); color: #fff; }
+    .active-task-row { display: flex; align-items: center; gap: 14px; }
+    .active-task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-common { background: var(--common); }
+    .dot-legendary { background: var(--legendary); }
+    .active-task-check { width: 24px; height: 24px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+    .type-legendary .active-task-check { background: var(--legendary-dark); }
+    .type-common    .active-task-check { background: var(--common-dark); }
+    .active-task-info { flex: 1; }
+    .active-task-title { font-size: 1rem; font-weight: 700; }
+    .active-task-desc { font-size: 0.82rem; color: var(--subtext); margin-top: 2px; }
+    .task-confirm { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .task-confirm-text { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+    .btn-confirm-yes { background: var(--success); color: #fff; border: none; border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-confirm-yes.btn-danger { background: var(--danger); }
+    .btn-confirm-no  { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--text); }
+    .btn-confirm-no.btn-red    { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+    /* Review */
+    .review-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
+    .review-task.checked { border-color: var(--success); box-shadow: 0 0 0 1px var(--success), var(--shadow); }
+    .review-task.declined { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger), var(--shadow); }
+    .review-task-main { display: flex; align-items: center; gap: 14px; }
+    .review-checkbox { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem; transition: all 0.15s; }
+    .review-task.checked .review-checkbox { background: var(--success); border-color: var(--success); color: #fff; }
+    .review-task.declined .review-checkbox { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .review-task-info { flex: 1; }
+    .review-task-title { font-size: 1rem; font-weight: 700; }
+    .review-task-sub { font-size: 0.82rem; color: var(--subtext); margin-top: 2px; }
+    .review-task-confirm { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+    /* Warning */
+    .warning-banner { background: var(--warning-bg); border: 1px solid #fde68a; border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start; }
+    .warning-text { font-size: 0.84rem; color: #92400e; font-weight: 600; line-height: 1.4; }
+
+    /* Section headers */
+    .section-header { padding: 48px 0 24px; }
+    .section-title { font-size: 1.6rem; font-weight: 700; }
+    .section-sub { font-size: 0.88rem; color: var(--subtext); margin-top: 4px; }
+
+    /* Pick count */
+    .pick-count { text-align: center; font-size: 0.88rem; color: var(--subtext); font-weight: 600; margin-bottom: 14px; }
+    .pick-count strong { color: var(--accent); }
+    .pick-count.mythic-pick strong { color: var(--mythic); text-shadow: 0 0 12px color-mix(in srgb, var(--mythic) 80%, transparent), 0 0 28px color-mix(in srgb, var(--mythic) 40%, transparent); }
+
+    /* Home / active header */
+    .home-header { padding: 52px 0 24px; text-align: center; }
+    .home-emoji { font-size: 5.5rem; line-height: 1; margin-bottom: 12px; }
+    .home-title { font-size: 1.8rem; font-weight: 700; }
+    .home-sub { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
+    .reset-confirm-box { margin-top: 20px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: var(--radius); padding: 16px 18px; }
+    .reset-confirm-label { font-size: 0.88rem; font-weight: 700; color: #dc2626; margin-bottom: 10px; }
+    .reset-confirm-sub { font-size: 0.8rem; color: #991b1b; margin-bottom: 12px; line-height: 1.4; }
+    .btn-reset-danger { width: 100%; padding: 14px; background: var(--danger); color: #fff; font-weight: 700; font-size: 0.95rem; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; margin-top: 16px; }
+    .btn-reset-cancel { width: 100%; padding: 12px; background: none; color: var(--subtext); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
+    .tasks-label { font-size: 0.68rem; color: var(--subtext); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+
+    /* Task pool tab */
+    .pool-section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin: 20px 0 8px; }
+    .pool-section-label.label-common { color: var(--subtext); }
+    .pool-section-label.label-legendary { color: var(--legendary); }
+    .pool-section-label.label-archived { color: var(--subtext); }
+    .pool-task-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); position: relative; }
+    .pool-task-card.card-common { border-color: color-mix(in srgb, var(--common) 35%, transparent); }
+    .pool-task-card.card-legendary { border-color: color-mix(in srgb, var(--legendary) 35%, transparent); }
+    .pool-task-card.card-archived { opacity: 0.55; }
+    .pool-task-row { display: flex; align-items: center; gap: 10px; }
+    .pool-task-info { flex: 1; min-width: 0; }
+    .pool-task-title { font-size: 0.95rem; font-weight: 700; }
+    .pool-task-desc { font-size: 0.8rem; color: var(--subtext); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pool-task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .pool-task-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+    .pool-stat { font-size: 0.7rem; font-weight: 600; color: var(--subtext); white-space: nowrap; }
+    .pool-stat span { color: var(--text); }
+    .btn-icon { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px; border-radius: 8px; color: var(--subtext); transition: background 0.15s, color 0.15s; }
+    .btn-icon:hover { background: var(--bg); }
+    .btn-icon.del:hover { color: var(--danger); }
+    .btn-icon.restore:hover { color: var(--common); }
+
+    /* Delete confirmation inline */
+    .delete-confirm { margin-top: 10px; padding: 10px 12px; background: #fee2e2; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .delete-confirm-text { font-size: 0.84rem; font-weight: 700; color: #dc2626; }
+    .btn-del-yes { background: var(--danger); color: #fff; border: none; border-radius: 10px; padding: 7px 16px; font-size: 0.84rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-del-no  { background: none; border: 1px solid #fca5a5; border-radius: 10px; padding: 7px 14px; font-size: 0.84rem; font-weight: 600; cursor: pointer; font-family: inherit; color: #dc2626; }
+
+    /* Task edit form */
+    .task-edit-form { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .form-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; color: var(--text); background: var(--bg); outline: none; }
+    .form-input:focus { border-color: var(--common); }
+    .form-row { display: flex; gap: 8px; align-items: center; }
+    .form-type-btn { flex: 1; padding: 8px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: none; color: var(--subtext); }
+    .form-type-btn.active-common { border-color: var(--common); background: var(--common-light); color: var(--subtext); }
+    .form-type-btn.active-legendary { border-color: var(--legendary); background: var(--legendary-bg); color: var(--legendary); }
+    .form-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .btn-save { flex: 1; padding: 10px; color: #fff; border: none; border-radius: 12px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; background: var(--border); opacity: 0.5; pointer-events: none; }
+    .btn-save.save-common { background: var(--common); opacity: 1; pointer-events: auto; }
+    .btn-save.save-legendary { background: var(--legendary); opacity: 1; pointer-events: auto; }
+    .btn-cancel { padding: 10px 16px; background: none; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; cursor: pointer; color: var(--subtext); }
+    .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-bottom: 4px; transition: border-color 0.15s, color 0.15s; }
+    .btn-add-task:hover { border-color: var(--common); color: var(--common); }
+
+    /* Back button */
+    .btn-back { background: none; border: none; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); cursor: pointer; padding: 0 0 6px 0; display: block; }
+    .btn-profile-icon { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 4px; line-height: 1; }
+
+    /* Profile settings */
+    .settings-section { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .settings-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .settings-select { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; font-family: inherit; font-size: 0.88rem; font-weight: 600; color: var(--text); cursor: pointer; }
+    .settings-sub { font-size: 0.78rem; color: var(--subtext); margin-top: 6px; }
+
+    /* Store manage */
+    .store-manage-row { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: var(--shadow); }
+    .store-manage-info { flex: 1; min-width: 0; }
+    .store-manage-name { font-size: 0.95rem; font-weight: 700; }
+    .store-manage-meta { font-size: 0.78rem; color: var(--subtext); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .store-manage-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* Profile menu */
+    .profile-menu { display: flex; flex-direction: column; gap: 2px; }
+    .profile-menu-item { width: 100%; padding: 16px 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); transition: background 0.12s; }
+    .profile-menu-item:active { background: var(--border); }
+    .profile-menu-arrow { font-size: 1.2rem; color: var(--subtext); }
+
+    /* New task card at top */
+    .new-task-card { background: var(--card); border: 1.5px dashed var(--common); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); }
+    .new-task-label { font-size: 0.88rem; font-weight: 700; color: var(--subtext); margin-bottom: 4px; }
+
+    /* History */
+    .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
+    .history-card.card-win  { background: color-mix(in srgb, #22c55e 7%, var(--card)); border-color: color-mix(in srgb, #22c55e 25%, transparent); }
+    .history-card.card-fail { background: color-mix(in srgb, var(--danger) 7%, var(--card)); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
+    .history-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .history-date { font-size: 0.95rem; font-weight: 700; }
+    .history-result { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .result-win { background: #dcfce7; color: #16a34a; }
+    .result-fail { background: #fee2e2; color: #dc2626; }
+    .result-active { background: #e0e7ff; color: var(--accent); }
+    .history-tasks { display: flex; flex-direction: column; gap: 6px; }
+    .history-task-row { font-size: 0.84rem; display: flex; align-items: center; gap: 8px; color: var(--subtext); }
+    .history-task-row.done { color: var(--text); font-weight: 600; }
+    .history-pts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; line-height: 1.4; color: var(--subtext); display: flex; gap: 12px; align-items: center; }
+    .pts-earned { font-weight: 700; font-size: 0.8rem; line-height: 1.4; }
+    .pts-common { color: var(--common); }
+    .pts-legendary { color: var(--legendary); }
+    .pts-mythic { color: var(--mythic); }
+
+    @keyframes mythic-breathe {
+      0%, 100% { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--mythic) 40%, transparent); }
+      50%       { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--mythic) 80%, transparent); }
+    }
+    .mythic-glow::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -1;
+      animation: mythic-breathe var(--glow-duration, 2400ms) ease-in-out infinite;
+      animation-delay: var(--glow-delay, 0ms);
+    }
+    .mythic-glow { }
+
+    .loading { text-align: center; padding: 80px 20px; color: var(--subtext); font-size: 1rem; }
+    .empty { text-align: center; padding: 60px 20px; color: var(--subtext); }
+    .empty-emoji { font-size: 3rem; margin-bottom: 12px; }
+
+    /* Plan generate screen */
+    .generate-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 160px); text-align: center; gap: 8px; }
+    .generate-emoji { font-size: 3.5rem; margin-bottom: 8px; }
+    .generate-title { font-size: 1.8rem; font-weight: 700; color: var(--text); }
+    .generate-sub   { font-size: 0.9rem; color: var(--subtext); margin-bottom: 24px; }
+    @keyframes card-reveal {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .task-card-reveal {
+      opacity: 0;
+      animation: card-reveal 0.45s ease forwards;
+    }
+
+    /* Store */
+    .store-wallet { display: flex; gap: 8px; margin-bottom: 20px; }
+    .store-wallet-chip { flex: 1; padding: 10px 8px; border-radius: 14px; text-align: center; font-size: 1.3rem; font-weight: 700; line-height: 1; }
+    .store-wallet-chip .store-wallet-label { display: block; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; opacity: 0.75; }
+    .store-wallet-chip.common    { background: var(--common-light); color: var(--common-dark); }
+    .store-wallet-chip.legendary { background: var(--legendary-bg); color: var(--legendary-dark); }
+    .store-wallet-chip.mythic    { background: var(--mythic-bg);    color: var(--mythic); }
+    .store-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; box-shadow: var(--shadow); }
+    .store-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .store-card-name { font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
+    .store-card-desc { font-size: 0.82rem; color: var(--subtext); }
+    .store-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .store-cost { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+    .store-cost-label { text-transform: uppercase; letter-spacing: 0.05em; }
+    .store-cost.common    { color: var(--common-dark); }
+    .store-cost.legendary { color: var(--legendary); }
+    .store-cost.mythic    { color: var(--mythic); }
+    .store-card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+    .store-card.selected-common    { border-color: var(--common);    box-shadow: 0 0 0 2px var(--common); }
+    .store-card.selected-legendary { border-color: var(--legendary); box-shadow: 0 0 0 2px var(--legendary); }
+    .store-card.selected-mythic    { border-color: var(--mythic);    box-shadow: 0 0 0 2px var(--mythic); }
+    .store-card.selected-common    .store-card-name { color: var(--common-dark); }
+    .store-card.selected-legendary .store-card-name { color: var(--legendary-dark); }
+    .store-card.selected-mythic    .store-card-name { color: var(--mythic); }
+    .store-purchase-cta { position: sticky; bottom: calc(88px + env(safe-area-inset-bottom)); width: 100%; margin-top: 8px; }
+    .btn-purchase { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: background 0.15s, transform 0.1s; }
+    .btn-purchase:active { transform: scale(0.98); }
+    .btn-purchase:disabled { opacity: 0.35; pointer-events: none; }
+    .btn-purchase.ready-common,
+    .btn-purchase.ready-legendary,
+    .btn-purchase.ready-mythic    { background: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
+    .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
+    .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
+
+    /* Purchased screen */
+    .purchased-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); padding: 40px 24px; text-align: center; }
+    .purchased-screen.bg-common    { background: var(--common); }
+    .purchased-screen.bg-legendary { background: var(--legendary); }
+    .purchased-screen.bg-mythic    { background: var(--mythic); }
+    .purchased-item-name { font-size: 1.9rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .purchased-label { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.75); margin-bottom: 40px; }
+    .btn-back-store { padding: 14px 32px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.4); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
+
+    /* Reward / bad-luck screens */
+    .reward-screen { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+    .reward-emoji  { font-size: 5rem; line-height: 1; margin-bottom: 16px; }
+    .reward-title  { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .reward-earned { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 40px; line-height: 1.5; }
+    .btn-claim     { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+
+    /* Concluded-screen: declined task (red) */
+    .active-task.task-declined { border-color: var(--danger); background: var(--danger); color: #fff; cursor: pointer; }
+    .active-task.task-declined .active-task-desc { color: rgba(255,255,255,0.75); }
+    .active-task.task-declined .task-badge { background: rgba(0,0,0,0.2); color: #fff; }
+    .active-task-check.check-x { background: var(--danger); }
+
+    /* Done-for-today: incomplete task indicator */
+    .active-task.task-incomplete { border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+    .active-task.task-incomplete .active-task-desc { color: var(--subtext); }
+
+    /* Auth screen */
+    #auth-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); padding: 24px 20px; }
+    .auth-inner  { width: 100%; max-width: 400px; }
+    .auth-brand  { text-align: center; margin-bottom: 32px; }
+    .auth-emoji  { font-size: 3.5rem; line-height: 1; }
+    .auth-title  { font-size: 1.8rem; font-weight: 700; color: var(--text); margin-top: 12px; }
+    .auth-sub    { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
+  </style>
+</head>
+<body>
+<!-- Auth screen — shown when not signed in -->
+<div id="auth-screen">
+  <div class="auth-inner">
+    <div class="auth-brand">
+      <div class="auth-emoji">🎲</div>
+      <div class="auth-title">Daily Tasks</div>
+      <div class="auth-sub">Your gamified daily planner</div>
+    </div>
+    <div id="clerk-auth"></div>
+  </div>
+</div>
+
+<!-- App — shown when signed in -->
+<div id="app-wrap" style="display:none">
+  <div class="content" id="app"></div>
+  <div class="tab-bar">
+    <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>Record</span></button>
+    <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Plan</span></button>
+    <button class="tab-btn" data-tab="store"><span class="tab-icon">🛒</span><span>Store</span></button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
+<script type="module">
+  // ── Clerk publishable key — replace with yours from https://dashboard.clerk.com ──
+  const CLERK_PUBLISHABLE_KEY = 'pk_test_REPLACE_WITH_YOUR_CLERK_PUBLISHABLE_KEY';
+  let clerk;
+
+  async function api(method, path, data) {
+    const token = await clerk?.session?.getToken();
+    const headers = { Authorization: `Bearer ${token}` };
+    let url = path, opts = { method, headers };
+    if (data !== undefined && (method === 'GET' || method === 'DELETE')) {
+      const qs = new URLSearchParams(data).toString();
+      if (qs) url += '?' + qs;
+    } else if (data !== undefined) {
+      headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(data);
+    }
+    const res = await fetch(url, opts);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  /* ── Store items ── */
+  const STORE_ITEMS = [
+    { id: 's1', name: 'Rest Day Pass',   cost: 2, rarity: 'common',    desc: 'Skip a day guilt-free'         },
+    { id: 's2', name: 'Bonus Legendary', cost: 1, rarity: 'legendary', desc: 'Add a legendary slot for a day' },
+    { id: 's3', name: 'Mythic Boost',    cost: 1, rarity: 'mythic',    desc: 'Double points for your next plan' },
+  ];
+
+  /* ── Default task pool (seed data) ── */
+  const DEFAULT_TASKS = [
+    { id:'c1',  type:'common',    title:'Morning Walk',      description:'Take a 20-minute walk outside' },
+    { id:'c2',  type:'common',    title:'Hydrate',           description:'Drink 8 glasses of water' },
+    { id:'c3',  type:'common',    title:'Read',              description:'Read for at least 20 minutes' },
+    { id:'c4',  type:'common',    title:'Meditate',          description:'10 minutes of mindfulness' },
+    { id:'c5',  type:'common',    title:'Journal',           description:'Write 5 minutes in your journal' },
+    { id:'c6',  type:'common',    title:'No Social Media',   description:'Avoid social media until noon' },
+    { id:'c7',  type:'common',    title:'Exercise',          description:'Work out for 30 minutes' },
+    { id:'c8',  type:'common',    title:'Healthy Breakfast', description:'Eat a nutritious breakfast' },
+    { id:'c9',  type:'common',    title:'Connect',           description:'Reach out to someone you care about' },
+    { id:'c10', type:'common',    title:'Early Bed',         description:'In bed before midnight' },
+    { id:'l1',  type:'legendary', title:'The Fast',          description:'Complete a 16-hour fast' },
+    { id:'l2',  type:'legendary', title:'Ice Bath',          description:'Take a cold shower or ice bath' },
+    { id:'l3',  type:'legendary', title:'Deep Work',         description:'3 hours of uninterrupted focused work' },
+  ];
+
+  function getTask(id) { return s.tasks.find(t => t.id === id); }
+  function getTaskForHistory(sess, id) {
+    if (sess.task_snapshots?.length) {
+      const snap = sess.task_snapshots.find(t => t.id === id);
+      if (snap) return snap;
+    }
+    return getTask(id);
+  }
+
+  /* ── Day reset helpers (must be before state init) ── */
+  let RESET_HOUR = 8;
+  const GRACE_HOURS = 3;
+
+  function localDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function todayStr() {
+    const now = new Date();
+    // Before reset hour, it's still "yesterday"
+    if (now.getHours() < RESET_HOUR) {
+      return localDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+    }
+    return localDateStr(now);
+  }
+  function isInGracePeriod() {
+    const h = new Date().getHours();
+    return h >= RESET_HOUR && h < RESET_HOUR + GRACE_HOURS;
+  }
+
+  /* ── State ── */
+  function initialState() {
+    return {
+      tab: 'today',
+      loading: true,
+      sessions: [],
+      tasks: [],
+      today: todayStr(),
+      activePlanId: null,
+      offered: [],
+      picked: [],
+      planBuildState: 'generate',
+      confirmTask: null,
+      editingTask: null,
+      deletingTask: null,
+      newTaskType: 'common',
+      profileScreen: 'menu',
+      poolEditMode: false,
+      showResetConfirm: false,
+      storeItems: [],
+      editingStoreItem: null,
+      wallet: { common: 99, legendary: 99, mythic: 99 },
+      lastPurchaseDate: null,
+      lastPurchasedItem: null,
+      selectedStoreItem: null,
+      showPurchasedScreen: false,
+      reviewDeclined: [],
+      suppressSubmitCta: false,
+      graceConfirmTask: null,
+      overlayScreen: null,
+      pendingReward: null,
+    };
+  }
+  let s = initialState();
+
+  /* ── Screen logic ── */
+  function getScreen() {
+    if (s.loading) return 'loading';
+    if (s.overlayScreen) return s.overlayScreen;
+    if (isInGracePeriod()) {
+      const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+      if (pending) return 'concluded';
+    }
+    if (s.activePlanId && s.sessions.find(x => x.id === s.activePlanId)) return 'active';
+    return 'pick';
+  }
+
+  function activePlan() {
+    return s.activePlanId ? s.sessions.find(x => x.id === s.activePlanId) : null;
+  }
+
+  /* ── Points ── */
+  function computePoints() {
+    let common = 0, legendary = 0, mythic = 0;
+    for (const sess of s.sessions) {
+      if (sess.status !== 'done') continue;
+      const picked = (sess.picked_ids || []).length;
+      const completed = (sess.completed_ids || []).length;
+      if (picked === 0 || completed < picked) continue; // only fully-completed plans earn points
+      if (picked === 5) mythic++;
+      for (const id of sess.completed_ids) {
+        const t = getTaskForHistory(sess, id);
+        if (t?.type === 'legendary') legendary++; else common++;
+      }
+    }
+    return { common, legendary, mythic };
+  }
+
+  /* ── Helpers ── */
+  function burstParticles(cardEl, emojis, count) {
+    const rect = cardEl.getBoundingClientRect();
+    for (let i = 0; i < count; i++) {
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+      const angle = Math.random() * 2 * Math.PI;
+      const dist  = 80 + Math.random() * 70;
+      const size  = 18 + Math.random() * 10;
+      const tx    = Math.cos(angle) * dist;
+      const ty    = Math.sin(angle) * dist;
+      const ox    = rect.left + Math.random() * rect.width;
+      const oy    = rect.top  + Math.random() * rect.height;
+      const el    = document.createElement('div');
+      el.textContent = emoji;
+      el.style.cssText = `position:fixed;left:${ox}px;top:${oy}px;font-size:${size}px;line-height:1;z-index:65;pointer-events:none;user-select:none;transform:translate(-50%,-50%);`;
+      document.body.appendChild(el);
+      el.animate([
+        { transform:`translate(-50%,-50%) translate(0,0)` },
+        { transform:`translate(-50%,-50%) translate(${tx}px,${ty}px)` },
+      ], { duration:1500, easing:'cubic-bezier(0.15,0.85,0.35,1.0)', fill:'forwards' });
+      el.animate([
+        { opacity:1, offset:0 },
+        { opacity:1, offset:0.667 },
+        { opacity:0, offset:1 },
+      ], { duration:1500, easing:'linear', fill:'forwards' })
+        .onfinish = () => el.remove();
+    }
+  }
+
+  function startRewardFloaters(emojis) {
+    const container = document.getElementById('reward-floaters');
+    if (!container) return;
+
+    function spawnFloater(startBelow = 0, duration = null) {
+      if (!container.isConnected) return;
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+      const x     = 5 + Math.random() * 90;
+      const size  = 22 + Math.random() * 28;
+      const dur   = duration ?? (2500 + Math.random() * 1500);
+      const el    = document.createElement('div');
+      el.textContent = emoji;
+      const topVal = startBelow > 0 ? `calc(100% + ${Math.round(startBelow)}px)` : '100%';
+      el.style.cssText = `position:absolute;left:${x}%;top:${topVal};font-size:${size}px;line-height:1;pointer-events:none;user-select:none;`;
+      container.appendChild(el);
+      el.animate([
+        { transform:'translateY(0)' },
+        { transform:`translateY(calc(-100vh - ${120 + Math.round(startBelow)}px))` },
+      ], { duration:dur, easing:'ease-in', fill:'forwards' })
+        .onfinish = () => el.remove();
+    }
+
+    // Phase 1 — burst: 40 emojis, staggered across 1.5 s, gentler ease-in
+    for (let i = 0; i < 40; i++) {
+      const startBelow = Math.random() * 200;
+      const dur        = 1000 + Math.random() * 800;
+      const delay      = Math.random() * 1500;
+      if (!container.isConnected) return;
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+      const x     = 5 + Math.random() * 90;
+      const size  = 22 + Math.random() * 28;
+      const el    = document.createElement('div');
+      el.textContent = emoji;
+      const topVal = startBelow > 0 ? `calc(100% + ${Math.round(startBelow)}px)` : '100%';
+      el.style.cssText = `position:absolute;left:${x}%;top:${topVal};font-size:${size}px;line-height:1;pointer-events:none;user-select:none;`;
+      container.appendChild(el);
+      el.animate([
+        { transform:'translateY(0)' },
+        { transform:`translateY(calc(-100vh - ${120 + Math.round(startBelow)}px))` },
+      ], { duration:dur, delay, easing:'cubic-bezier(0.6,0,1,1)', fill:'forwards' })
+        .onfinish = () => el.remove();
+    }
+
+    // Phase 2 — trickle: one every ~1 second, slower ambient pace
+    function trickle() {
+      if (!container.isConnected) return;
+      spawnFloater(0);
+      setTimeout(trickle, 700 + Math.random() * 600);
+    }
+    setTimeout(trickle, 800);
+  }
+
+  function legendaryGlowBurst(cardEl) {
+    const rect = cardEl.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:20px;z-index:64;pointer-events:none;`;
+    document.body.appendChild(el);
+    el.animate([
+      { boxShadow:'0 0 0 4px rgba(196,113,45,1), 0 0 50px 24px rgba(196,113,45,0.9)', opacity:1, transform:'scale(1)' },
+      { boxShadow:'0 0 0 0px rgba(196,113,45,0),  0 0 0px  0px rgba(196,113,45,0)',   opacity:0, transform:'scale(1.25)' },
+    ], { duration:700, easing:'ease-out', fill:'forwards' })
+      .onfinish = () => el.remove();
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function fmtDate(str) {
+    if (!str) return '';
+    return new Date(str + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  }
+
+  function ensureOffered() {
+    const todaySess = s.sessions.find(x => x.date === s.today);
+    if (todaySess?.offered_ids?.length) {
+      s.offered = todaySess.offered_ids;
+    } else if (!s.offered.length) {
+      const active = s.tasks.filter(t => !t.archived);
+      s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+    }
+  }
+
+  /* ── Render ── */
+  const GLOW_START = Date.now();
+  let revealTimeoutId = null;
+  // Per-task duration: 2.0s – 3.2s, derived from ID
+  function glowDuration(id) {
+    let h = 0;
+    for (const c of String(id)) h = ((h << 5) - h + c.charCodeAt(0) + 7) | 0;
+    return 2000 + (Math.abs(h) % 1200);
+  }
+
+  // Returns a stable per-task phase offset so re-renders don't reset the animation
+  function glowDelay(id) {
+    let h = 0;
+    for (const c of String(id)) h = ((h << 5) - h + c.charCodeAt(0)) | 0;
+    const dur = glowDuration(id);
+    const phase = Math.abs(h) % dur;
+    const elapsed = (Date.now() - GLOW_START) % dur;
+    return (phase + elapsed) % dur;
+  }
+
+  function render() {
+    const screen = s.tab === 'history' ? 'history'
+                 : s.tab === 'tasks'   ? 'tasks'
+                 : s.tab === 'store'   ? 'store'
+                 : getScreen();
+    document.body.classList.toggle('mythic-bg', screen === 'pick' && s.picked.length === 5);
+    document.getElementById('app').innerHTML = buildHtml(screen);
+    document.querySelectorAll('.tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === s.tab));
+    // Sync per-task glow phases via CSS custom property (used by ::before)
+    document.querySelectorAll('[data-glow-id]').forEach(el => {
+      const id = el.dataset.glowId;
+      el.style.setProperty('--glow-duration', `${glowDuration(id)}ms`);
+      el.style.setProperty('--glow-delay', `-${glowDelay(id)}ms`);
+    });
+    // Dynamic plan tab: update icon/label and mythic glow based on active plan
+    const plan = activePlan();
+    const planTasks     = plan ? (plan.picked_ids || []) : [];
+    const planCompleted = plan ? (plan.completed_ids || []) : [];
+    const isPlanDone    = plan?.status === 'done';
+    const isPlanActive  = plan?.status === 'active';
+    const isMythicPlan  = isPlanActive && planTasks.length === 5;
+    const isDoneForToday = isPlanDone;
+    const todayBtn = document.querySelector('.tab-btn[data-tab="today"]');
+    if (todayBtn) {
+      const iconEl  = todayBtn.querySelector('.tab-icon');
+      const labelEl = todayBtn.querySelector('#tab-today-label');
+      if (isDoneForToday) {
+        if (iconEl)  iconEl.textContent  = '🏆';
+        if (labelEl) labelEl.textContent = 'Done';
+      } else if (isPlanActive) {
+        if (iconEl)  iconEl.textContent  = isMythicPlan ? '🔱' : '⚡';
+        if (labelEl) labelEl.textContent = 'Active';
+      } else {
+        if (iconEl)  iconEl.textContent  = '🎲';
+        if (labelEl) labelEl.textContent = 'Plan';
+      }
+      todayBtn.classList.toggle('mythic-active', isMythicPlan);
+    }
+    bind(screen);
+  }
+
+  function buildHtml(screen) {
+    if (screen === 'loading')   return `<div class="loading">Loading…</div>`;
+    if (screen === 'history')   return htmlHistory();
+    if (screen === 'store')     return htmlStore();
+    if (screen === 'tasks')     return s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
+    if (screen === 'concluded') return htmlConcluded();
+    if (screen === 'reward')    return htmlReward();
+    if (screen === 'bad-luck')  return htmlBadLuck();
+    if (screen === 'pick')      return htmlPick();
+    return htmlActive();
+  }
+
+  /* ── Pick ── */
+  function htmlPick() {
+    if (s.planBuildState === 'generate') {
+      return `
+        <div class="generate-screen">
+          <div class="generate-emoji">🎲</div>
+          <div class="generate-title">Build Your Plan</div>
+          <div class="generate-sub">${fmtDate(s.today)}</div>
+          <button class="btn-primary" id="btn-generate">Generate Tasks →</button>
+        </div>`;
+    }
+
+    ensureOffered();
+    const tasks = s.offered.map(id => getTask(id)).filter(Boolean);
+    const n = s.picked.length;
+    // revealedAt is used to stagger animation on first reveal only
+    const isRevealing = s.planBuildState === 'revealing';
+    return `
+      <div class="section-header">
+        <div class="section-title">Build Your Plan</div>
+        <div class="section-sub">${fmtDate(s.today)}</div>
+      </div>
+      <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
+      ${tasks.map((t, i) => `
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+          <div class="task-card-top">
+            <div class="task-title">${t.title}</div>
+            <span class="task-badge badge-${t.type}">${t.type}</span>
+          </div>
+          <div class="task-desc">${t.description}</div>
+        </div>`).join('')}
+      <div style="height:16px"></div>
+      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Plan →</button>
+      <button class="btn-reroll" id="btn-reroll"${isRevealing||s.wallet.common<1?' disabled':''}>↺ Re-Roll Tasks (${s.wallet.common} common)</button>`;
+  }
+
+  /* ── Active ── */
+  function htmlActive() {
+    const todaySess = activePlan();
+    if (!todaySess) return '';
+    const tasks = (todaySess.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
+    const completedIds = todaySess.completed_ids || [];
+    const isMythic = tasks.length === 5;
+
+    // ── Done-for-today (already submitted) ──
+    if (todaySess.status === 'done') {
+      return `
+        <div class="home-header">
+          <div class="home-emoji">🏆</div>
+          <div class="home-title">Done For Today</div>
+          <div class="home-sub">Come back tomorrow</div>
+        </div>
+        <div class="tasks-label">Today's Tasks</div>
+        ${tasks.map(t => {
+          const done = completedIds.includes(t.id);
+          return `
+          <div class="active-task${done?' completed':' task-incomplete'} type-${t.type}" style="cursor:default">
+            <div class="active-task-row">
+              ${done
+                ? `<div class="active-task-check">✓</div>`
+                : `<div class="active-task-check check-x">✕</div>`}
+              <div class="active-task-info">
+                <div class="active-task-title">${t.title}</div>
+                <div class="active-task-desc">${t.description}</div>
+              </div>
+              <span class="task-badge badge-${t.type}">${t.type}</span>
+            </div>
+          </div>`;
+        }).join('')}
+        <button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>`;
+    }
+
+    // ── Active plan ──
+    const allDone = tasks.length > 0 && tasks.every(t => completedIds.includes(t.id));
+    const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
+    const resetStr = fmtHour(RESET_HOUR);
+    const deadlineDay = new Date().getHours() < RESET_HOUR ? 'today' : 'tomorrow';
+    return `
+      <div class="home-header">
+        <div class="home-emoji">${isMythic ? '🔱' : '⚡'}</div>
+        <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
+        <div class="home-sub">All tasks must be completed by ${resetStr} ${deadlineDay}.</div>
+      </div>
+      <div class="tasks-label">Today's Tasks</div>
+      ${tasks.map(t => {
+        const done = completedIds.includes(t.id);
+        const confirming = s.confirmTask === t.id;
+        const glowClass = t.type === 'legendary' && !done ? ' legendary-glow' : '';
+        const glowIdAttr = t.type === 'legendary' && !done ? ` data-glow-id="${t.id}"` : '';
+        return `
+        <div class="active-task${done?' completed':''} type-${t.type}${glowClass}${confirming?' selected':''}" data-confirm-task="${t.id}"${glowIdAttr}>
+          <div class="active-task-row">
+            ${done
+              ? `<div class="active-task-check">✓</div>`
+              : `<div class="active-task-dot dot-${t.type}"></div>`}
+            <div class="active-task-info">
+              <div class="active-task-title">${t.title}</div>
+              <div class="active-task-desc">${t.description}</div>
+            </div>
+            <span class="task-badge badge-${t.type}">${t.type}</span>
+          </div>
+          ${confirming ? `
+          <div class="task-confirm">
+            <span class="task-confirm-text">Did you complete this?</span>
+            <div style="display:flex;gap:8px">
+              <button class="btn-confirm-no" data-confirm-no="${t.id}">No</button>
+              <button class="btn-confirm-yes" data-confirm-yes="${t.id}">Yes ✓</button>
+            </div>
+          </div>` : ''}
+        </div>`;
+      }).join('')}
+      ${allDone && !s.suppressSubmitCta ? `<div style="height:16px"></div>
+      <button class="btn-primary" id="btn-submit-results" style="animation:fade-in 0.3s ease forwards">Submit Results</button>` : ''}
+      <button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>`;
+  }
+
+  /* ── Grace-period: Concluded screen ── */
+  function htmlConcluded() {
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (!pending) return '';
+    const tasks = (pending.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
+    const completedIds = pending.completed_ids || [];
+    const isMythic = tasks.length === 5;
+    const graceEndHour = RESET_HOUR + GRACE_HOURS;
+    const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
+    const graceEndStr = fmtHour(graceEndHour >= 24 ? graceEndHour - 24 : graceEndHour);
+    const planType = isMythic ? 'mythical' : 'daily';
+    return `
+      <div class="home-header">
+        <div class="home-emoji">${isMythic ? '🔱' : '⚡'}</div>
+        <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Plan Concluded' : 'Daily Plan Concluded'}</div>
+        <div class="home-sub">Please submit your ${planType} plan results. The day resets at ${graceEndStr}.</div>
+      </div>
+      <div class="tasks-label">Yesterday's Tasks</div>
+      ${tasks.map(t => {
+        const done       = completedIds.includes(t.id);
+        const declined   = s.reviewDeclined.includes(t.id);
+        const unanswered = !done && !declined;
+        const confirming = s.graceConfirmTask === t.id;
+        const showPrompt = unanswered || confirming;
+        const glowClass  = t.type === 'legendary' && unanswered && !confirming ? ' legendary-glow' : '';
+        const glowAttr   = t.type === 'legendary' && unanswered && !confirming ? ` data-glow-id="${t.id}"` : '';
+        return `
+        <div class="active-task${done&&!confirming?' completed':declined&&!confirming?' task-declined':''} type-${t.type}${glowClass}${confirming?' selected':''}" data-grace-tap="${t.id}"${glowAttr}>
+          <div class="active-task-row">
+            ${done && !confirming
+              ? `<div class="active-task-check">✓</div>`
+              : declined && !confirming
+                ? `<div class="active-task-check check-x">✕</div>`
+                : `<div class="active-task-dot dot-${t.type}"></div>`}
+            <div class="active-task-info">
+              <div class="active-task-title">${t.title}</div>
+              <div class="active-task-desc">${t.description}</div>
+            </div>
+            <span class="task-badge badge-${t.type}">${t.type}</span>
+          </div>
+          ${showPrompt ? `
+          <div class="task-confirm">
+            <span class="task-confirm-text">Did you complete this?</span>
+            <div style="display:flex;gap:8px">
+              <button class="btn-confirm-no btn-red" data-grace-no="${t.id}">No ✕</button>
+              <button class="btn-confirm-yes" data-grace-yes="${t.id}">Yes ✓</button>
+            </div>
+          </div>` : ''}
+        </div>`;
+      }).join('')}
+      <div style="height:16px"></div>
+      <button class="btn-primary" id="btn-submit-grace"${tasks.every(t => completedIds.includes(t.id) || s.reviewDeclined.includes(t.id)) ? '' : ' disabled'}>Submit Results</button>`;
+  }
+
+  /* ── Reward screen ── */
+  function htmlReward() {
+    const r = s.pendingReward || { common: 0, legendary: 0, mythic: 0 };
+    const sess = s.sessions.find(x => x.status === 'done' && (x.date === s.today || x.date !== s.today));
+    const tasks = sess ? (sess.picked_ids || []).map(id => getTaskForHistory(sess, id)).filter(Boolean) : [];
+    const completedIds = sess?.completed_ids || [];
+    const completedTasks = completedIds.map(id => getTaskForHistory(sess, id)).filter(Boolean);
+    const bgColor = r.mythic > 0 ? 'var(--mythic)' : r.legendary > 0 ? 'var(--legendary)' : 'var(--common)';
+    const parts = [];
+    if (r.mythic)    parts.push(`+${r.mythic} Mythic`);
+    if (r.legendary) parts.push(`+${r.legendary} Legendary`);
+    if (r.common)    parts.push(`+${r.common} Common`);
+    return `
+      <div class="reward-screen" style="background:${bgColor}">
+        <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
+        <div style="position:relative;z-index:1;width:100%;display:flex;flex-direction:column;align-items:stretch">
+          <div class="reward-emoji">🏆</div>
+          <div class="reward-title">All Done!</div>
+          <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
+          <button class="btn-claim" id="btn-claim-rewards">Claim Rewards</button>
+        </div>
+      </div>`;
+  }
+
+  /* ── Better Luck Next Time screen ── */
+  function htmlBadLuck() {
+    return `
+      <div class="reward-screen" style="background:var(--accent)">
+        <div class="reward-emoji">😔</div>
+        <div class="reward-title">Better Luck Next Time</div>
+        <div class="reward-earned">All tasks must be completed in order to earn rewards.</div>
+        <button class="btn-claim" id="btn-acknowledge">Got It</button>
+      </div>`;
+  }
+
+  /* ── Profile ── */
+  function htmlProfile() {
+    const graceEnd = RESET_HOUR + GRACE_HOURS;
+    const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
+    const hours = Array.from({length: 6}, (_, i) => i + 6);
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <div class="section-title">Profile</div>
+      </div>
+      <div class="profile-menu">
+        <button class="profile-menu-item" id="btn-profile-taskpool">
+          <span class="profile-menu-label">Task Pool</span>
+          <span class="profile-menu-arrow">›</span>
+        </button>
+        <button class="profile-menu-item" id="btn-profile-storemanage">
+          <span class="profile-menu-label">Store Items</span>
+          <span class="profile-menu-arrow">›</span>
+        </button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-row">
+          <div class="settings-label">Day Reset Time</div>
+          <select class="settings-select" id="select-reset-hour">
+            ${hours.map(h => `<option value="${h}"${h===RESET_HOUR?' selected':''}>${fmtHour(h)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="settings-sub">Grace period until ${fmtHour(graceEnd >= 24 ? graceEnd - 24 : graceEnd)} to enter previous day's results</div>
+      </div>
+      <div style="height:16px"></div>
+      <button class="profile-menu-item" id="btn-sign-out" style="color:var(--subtext)">
+        <span class="profile-menu-label">Sign Out</span>
+        <span class="profile-menu-arrow">›</span>
+      </button>
+      ${s.showResetConfirm ? `
+      <div class="reset-confirm-box">
+        <div class="reset-confirm-label">Reset Records & Currency</div>
+        <div class="reset-confirm-sub">This will permanently delete all plan history and reset your store currency to 0. Type <strong>reset</strong> to confirm.</div>
+        <input class="form-input" id="reset-confirm-input" placeholder="Type reset to confirm" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn-reset-danger" id="btn-confirm-reset">Reset Everything</button>
+        <button class="btn-reset-cancel" id="btn-cancel-reset">Cancel</button>
+      </div>` : `
+      <div style="height:16px"></div>
+      <button class="profile-menu-item" id="btn-show-reset" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,var(--card));border-color:color-mix(in srgb,var(--danger) 40%,transparent)">
+        <span class="profile-menu-label">Reset Records</span>
+        <span class="profile-menu-arrow" style="color:var(--danger)">›</span>
+      </button>`}`;
+  }
+
+  /* ── Store Management ── */
+  function htmlStoreManage() {
+    const items = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+    const isAdding = s.editingStoreItem && s.editingStoreItem.id === '';
+    const editId = s.editingStoreItem?.id;
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <button class="btn-back" id="btn-back-storemanage">‹ Profile</button>
+        <div class="section-title">Store Items</div>
+      </div>
+      ${!isAdding ? `<button class="btn-add-task" id="btn-add-store-item">+ Add Item</button>` : `
+      <div class="new-task-card">
+        <div class="new-task-label">New Item</div>
+        ${storeItemForm(s.editingStoreItem)}
+      </div>`}
+      ${items.map(item => editId === item.id ? `
+      <div class="new-task-card">
+        ${storeItemForm(s.editingStoreItem)}
+      </div>` : `
+      <div class="store-manage-row">
+        <div class="store-manage-info">
+          <div class="store-manage-name">${item.name}</div>
+          <div class="store-manage-meta">${item.cost} ${item.rarity} · ${item.desc}</div>
+        </div>
+        <div class="store-manage-actions">
+          <button class="btn-icon edit" data-edit-store="${item.id}">✏️</button>
+          <button class="btn-icon delete" data-delete-store="${item.id}">🗑</button>
+        </div>
+      </div>`).join('')}`;
+  }
+
+  function storeItemForm(item) {
+    return `
+      <input class="form-input" id="si-name"  placeholder="Item name"   value="${item.name||''}">
+      <input class="form-input" id="si-desc"  placeholder="Description" value="${item.desc||''}">
+      <div class="form-row">
+        <input class="form-input" id="si-cost" type="number" min="1" placeholder="Cost" value="${item.cost||1}" style="width:80px">
+        <select class="form-input settings-select" id="si-rarity">
+          ${['common','legendary','mythic'].map(r => `<option value="${r}"${r===item.rarity?' selected':''}>${r}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" data-cancel-store-edit>Cancel</button>
+        <button class="btn-save save-${item.rarity||'common'}" data-save-store>Save</button>
+      </div>`
+  }
+
+  /* ── Task Pool tab ── */
+  function htmlTaskPool() {
+    const active    = s.tasks.filter(t => !t.archived);
+    const common    = active.filter(t => t.type === 'common');
+    const legendary = active.filter(t => t.type === 'legendary');
+    const archived  = s.tasks.filter(t => t.archived);
+    const isAdding  = s.editingTask?.id === '';
+    const editing   = s.poolEditMode;
+
+    // Compute per-task stats from session history
+    const stats = {};
+    for (const sess of s.sessions) {
+      if (sess.status === 'draft') continue;
+      for (const id of (sess.picked_ids || [])) {
+        if (!stats[id]) stats[id] = { chosen: 0, completed: 0 };
+        stats[id].chosen++;
+      }
+      for (const id of (sess.completed_ids || [])) {
+        if (!stats[id]) stats[id] = { chosen: 0, completed: 0 };
+        stats[id].completed++;
+      }
+    }
+
+    function taskRow(t) {
+      const isEditing  = s.editingTask?.id === t.id;
+      const isDeleting = s.deletingTask === t.id;
+      const st = stats[t.id] || { chosen: 0, completed: 0 };
+      return `
+        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''}>
+          <div class="pool-task-row">
+            <div class="pool-task-info">
+              <div class="pool-task-title">${t.title}</div>
+              <div class="pool-task-desc">${t.description}</div>
+            </div>
+            ${editing ? `
+            <div class="pool-task-actions">
+              <button class="btn-icon" data-edit-task="${t.id}" title="Edit">✏️</button>
+              <button class="btn-icon" data-archive-task="${t.id}" title="Archive">📦</button>
+              <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
+            </div>` : `
+            <div class="pool-task-stats">
+              <div class="pool-stat">Chosen <span>${st.chosen}</span></div>
+              <div class="pool-stat">Completed <span>${st.completed}</span></div>
+            </div>`}
+          </div>
+          ${isDeleting ? `
+          <div class="delete-confirm">
+            <span class="delete-confirm-text">Delete forever?</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-del-no" data-cancel-delete>Cancel</button>
+              <button class="btn-del-yes" data-confirm-delete="${t.id}">Delete</button>
+            </div>
+          </div>` : ''}
+          ${isEditing ? editForm(s.editingTask) : ''}
+        </div>`;
+    }
+
+    function archivedRow(t) {
+      const isDeleting = s.deletingTask === t.id;
+      return `
+        <div class="pool-task-card card-archived">
+          <div class="pool-task-row">
+            <div class="pool-task-info">
+              <div class="pool-task-title">${t.title}</div>
+              <div class="pool-task-desc">${t.description} · <em>${t.type}</em></div>
+            </div>
+            <div class="pool-task-actions">
+              <button class="btn-icon restore" data-restore-task="${t.id}" title="Restore">↩️</button>
+              <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
+            </div>
+          </div>
+          ${isDeleting ? `
+          <div class="delete-confirm">
+            <span class="delete-confirm-text">Delete forever?</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-del-no" data-cancel-delete>Cancel</button>
+              <button class="btn-del-yes" data-confirm-delete="${t.id}">Delete</button>
+            </div>
+          </div>` : ''}
+        </div>`;
+    }
+
+    function editForm(task) {
+      const saveClass = task.type ? `save-${task.type}` : '';
+      return `
+        <div class="task-edit-form">
+          <input class="form-input" id="edit-title" placeholder="Task name" value="${task.title||''}">
+          <input class="form-input" id="edit-desc"  placeholder="Description" value="${task.description||''}">
+          <div class="form-row">
+            <button class="form-type-btn${task.type==='common'?' active-common':''}" data-set-type="common">Common</button>
+            <button class="form-type-btn${task.type==='legendary'?' active-legendary':''}" data-set-type="legendary">Legendary</button>
+          </div>
+          <div class="form-actions">
+            <button class="btn-cancel" data-cancel-edit>Cancel</button>
+            <button class="btn-save ${saveClass}" data-save-task>Save</button>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <button class="btn-back" id="btn-back-profile">‹ Profile</button>
+        <div class="section-title">Task Pool</div>
+        <div class="section-sub">${active.length} active · ${common.length} common · ${legendary.length} legendary${archived.length ? ` · ${archived.length} archived` : ''}</div>
+      </div>
+      ${editing && isAdding ? `
+        <div class="new-task-card">
+          <div class="new-task-label">New Task</div>
+          ${editForm(s.editingTask)}
+        </div>` : editing ? `<button class="btn-add-task" id="btn-add-task">+ Add Task</button>` : ''}
+      <div class="pool-section-label label-common">Common</div>
+      ${common.map(taskRow).join('')}
+      <div class="pool-section-label label-legendary">Legendary</div>
+      ${legendary.map(taskRow).join('')}
+      ${editing && archived.length ? `
+        <div class="pool-section-label label-archived">Archived</div>
+        ${archived.map(archivedRow).join('')}` : ''}
+      <div style="height:16px"></div>
+      ${!editing
+        ? `<button class="btn-primary" id="btn-edit-pool">Edit Task Pool</button>`
+        : `<button class="btn-primary" id="btn-done-editing">Done</button>`}`;
+  }
+
+  /* ── Store ── */
+  function htmlStore() {
+    const w = s.wallet;
+    const alreadyBoughtToday = s.lastPurchaseDate === s.today;
+
+    // Show purchased screen for the rest of the day (until user taps "Back to Store")
+    if (alreadyBoughtToday && s.lastPurchasedItem && s.showPurchasedScreen) {
+      const p = s.lastPurchasedItem;
+      return `
+        <div class="purchased-screen bg-${p.rarity}">
+          <div class="purchased-item-name">${p.name}</div>
+          <div class="purchased-label">Purchased!</div>
+          <button class="btn-back-store" id="btn-back-store">Back to Store</button>
+        </div>`;
+    }
+
+    // On store list: if already bought today, auto-highlight purchased item
+    const activeItems = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+    const purchasedItemId = alreadyBoughtToday && s.lastPurchasedItem
+      ? activeItems.find(x => x.name === s.lastPurchasedItem.name)?.id
+      : null;
+    const sel = alreadyBoughtToday ? purchasedItemId : s.selectedStoreItem;
+    const selItem = activeItems.find(x => x.id === sel);
+    const canPurchase = selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday;
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <div class="section-title">Store</div>
+        <div class="section-sub">${alreadyBoughtToday ? '1 purchase used today' : '1 purchase available today'}</div>
+      </div>
+      <div class="store-wallet">
+        <div class="store-wallet-chip common">${w.common} <span class="store-wallet-label">Common</span></div>
+        <div class="store-wallet-chip legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
+        <div class="store-wallet-chip mythic">${w.mythic} <span class="store-wallet-label">Mythic</span></div>
+      </div>
+      ${activeItems.map(item => {
+        const isSelected = sel === item.id;
+        const canAfford = (w[item.rarity] || 0) >= item.cost;
+        const selClass = isSelected ? ` selected-${item.rarity}` : '';
+        const affordOpacity = !canAfford && !isSelected ? ' style="opacity:0.5"' : '';
+        return `
+        <div class="store-card${selClass}"${!alreadyBoughtToday ? ` data-store-select="${item.id}"` : ''}${affordOpacity}>
+          <div class="store-card-top">
+            <div>
+              <div class="store-card-name">${item.name}</div>
+              <div class="store-card-desc">${item.desc}</div>
+            </div>
+            <div class="store-cost ${item.rarity}" style="flex-shrink:0">${item.cost} <span class="store-cost-label">${item.rarity}</span></div>
+          </div>
+        </div>`;
+      }).join('')}
+      <div class="store-purchase-cta">
+        <button class="btn-purchase${canPurchase ? ` ready-${selItem.rarity}` : ''}"${canPurchase ? '' : ' disabled'} id="btn-purchase">
+          ${alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select an item'}
+        </button>
+      </div>
+      <button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>`;
+  }
+
+  /* ── History ── */
+  function htmlHistory() {
+    const pts = computePoints();
+    const sorted = s.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
+    return `
+      <div class="section-header" style="padding-bottom:20px; display:flex; align-items:center; justify-content:space-between">
+        <div class="section-title">Record</div>
+        <button class="btn-profile-icon" id="btn-open-profile" title="Profile">👤</button>
+      </div>
+      <div class="points-bar">
+        <div class="points-card">
+          <div class="points-val common">${pts.common}</div>
+          <div class="points-label">Common</div>
+        </div>
+        <div class="points-card legendary-glow" data-glow-id="pts-legendary">
+          <div class="points-val legendary">${pts.legendary}</div>
+          <div class="points-label">Legendary</div>
+        </div>
+        <div class="points-card mythic-glow" data-glow-id="pts-mythic">
+          <div class="points-val mythic">${pts.mythic}</div>
+          <div class="points-label">Mythic</div>
+        </div>
+      </div>
+
+      ${!sorted.length ? `<div class="empty"><div class="empty-emoji">📜</div><div>No history yet.</div></div>` : ''}
+      ${sorted.map(sess => {
+        const tasks = (sess.picked_ids||[]).map(id => getTaskForHistory(sess, id)).filter(Boolean);
+        const isDone = sess.status === 'done';
+        const isWin  = isDone && (sess.completed_ids||[]).length === (sess.picked_ids||[]).length;
+        const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Completed' : 'Failed';
+        const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
+        let cPts = 0, lPts = 0;
+        const isMythic = isDone && (sess.picked_ids||[]).length === 5 && (sess.completed_ids||[]).length === 5;
+        if (isDone) for (const id of (sess.completed_ids||[])) {
+          const t = getTaskForHistory(sess, id);
+          if (t?.type === 'legendary') lPts++; else cPts++;
+        }
+        return `
+          <div class="history-card${isWin?' card-win':isDone&&!isWin?' card-fail':''}">
+            <div class="history-card-top">
+              <div class="history-date">${fmtDate(sess.date)}</div>
+              <span class="history-result ${cls}">${label}</span>
+            </div>
+            <div class="history-tasks">
+              ${tasks.map(t => {
+                const done = (sess.completed_ids||[]).includes(t.id);
+                const over = sess.status === 'done';
+                const icon  = done ? '✓' : over ? '✗' : '○';
+                const color = done ? 'var(--success)' : over ? 'var(--danger)' : 'var(--subtext)';
+                return `<div class="history-task-row${done?' done':''}">
+                  <span style="color:${color}">${icon}</span>
+                  <span style="flex:1">${t.title}</span>
+                  <span class="task-badge badge-${t.type}">${t.type}</span>
+                </div>`;
+              }).join('')}
+            </div>
+            ${isWin ? `<div class="history-pts">
+              ${cPts ? `<span class="pts-earned pts-common">+${cPts} common</span>` : ''}
+              ${lPts ? `<span class="pts-earned pts-legendary">+${lPts} legendary</span>` : ''}
+              ${isMythic ? `<span class="pts-earned pts-mythic">+1 mythic</span>` : ''}
+            </div>` : isDone ? `<div class="history-pts" style="color:var(--danger);border-top-color:color-mix(in srgb,var(--danger) 25%,transparent)">Failed plans don't earn any points or currency</div>` : ''}
+          </div>`;
+      }).join('')}`;
+  }
+
+  /* ── Bind ── */
+  function bind(screen) {
+
+    if (screen === 'store') {
+      document.querySelectorAll('[data-store-select]').forEach(card =>
+        card.addEventListener('click', () => {
+          const id = card.dataset.storeSelect;
+          s.selectedStoreItem = s.selectedStoreItem === id ? null : id;
+          render();
+        }));
+      document.getElementById('btn-purchase')?.addEventListener('click', () => {
+        if (s.selectedStoreItem) purchaseItem(s.selectedStoreItem);
+      });
+      document.getElementById('btn-back-store')?.addEventListener('click', () => {
+        s.showPurchasedScreen = false;
+        render();
+      });
+      document.getElementById('btn-restore-purchase')?.addEventListener('click', async () => {
+        s.lastPurchaseDate = null;
+        s.lastPurchasedItem = null;
+        s.selectedStoreItem = null;
+        s.showPurchasedScreen = false;
+        render();
+        await saveWallet();
+      });
+    }
+
+    if (screen === 'history') {
+      document.getElementById('btn-open-profile')?.addEventListener('click', () => {
+        s.tab = 'tasks';
+        s.profileScreen = 'menu';
+        render();
+      });
+    }
+
+    if (screen === 'concluded') {
+      document.querySelectorAll('[data-grace-tap]').forEach(el =>
+        el.addEventListener('click', () => {
+          const id = el.dataset.graceTap;
+          s.graceConfirmTask = s.graceConfirmTask === id ? null : id;
+          render();
+        }));
+      document.querySelectorAll('[data-grace-yes]').forEach(el =>
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          s.graceConfirmTask = null;
+          graceCompleteTask(el.dataset.graceYes);
+        }));
+      document.querySelectorAll('[data-grace-no]').forEach(el =>
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          s.graceConfirmTask = null;
+          graceDeclineTask(el.dataset.graceNo);
+        }));
+      document.getElementById('btn-submit-grace')?.addEventListener('click', submitGrace);
+    }
+
+    if (screen === 'reward') {
+      document.getElementById('btn-claim-rewards')?.addEventListener('click', claimRewards);
+      const r = s.pendingReward || {};
+      const floatEmojis = r.mythic > 0
+        ? ['🔮','🍇','🪻','🦄','🧞‍♀️','🧬','😈']
+        : r.legendary > 0
+        ? ['🦧','🐦‍🔥','🐅','🔥','🍄‍🟫','🥃','🏈']
+        : ['🏐','🤍','🚰','🏁','🐏','🕊️','🌪️'];
+      startRewardFloaters(floatEmojis);
+    }
+
+    if (screen === 'bad-luck') {
+      document.getElementById('btn-acknowledge')?.addEventListener('click', () => {
+        s.pendingReward = null;
+        s.overlayScreen = null;
+        render();
+      });
+    }
+
+    if (screen === 'pick') {
+      document.getElementById('btn-generate')?.addEventListener('click', async () => {
+        const active = s.tasks.filter(t => !t.archived);
+        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+        s.picked = [];
+        s.planBuildState = 'revealing';
+        render();
+        // After animation completes, switch to normal 'pick' state
+        revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
+        // Persist offered tasks so they survive a refresh
+        await api('POST', '/api/sessions', {
+          type: 'draft', id: `draft-${s.today}`, date: s.today,
+          offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
+        });
+      });
+      document.querySelectorAll('[data-pick]').forEach(el =>
+        el.addEventListener('click', () => {
+          const id = el.dataset.pick;
+          if (s.planBuildState === 'revealing') {
+            clearTimeout(revealTimeoutId);
+            revealTimeoutId = null;
+            s.planBuildState = 'pick';
+          }
+          if (s.picked.includes(id)) s.picked = s.picked.filter(x => x !== id);
+          else if (s.picked.length < 5) s.picked.push(id);
+          render();
+        }));
+      document.getElementById('btn-start')?.addEventListener('click', startDay);
+      document.getElementById('btn-reroll')?.addEventListener('click', async () => {
+        if (s.wallet.common < 1 || s.planBuildState === 'revealing') return;
+        s.wallet.common--;
+        const active = s.tasks.filter(t => !t.archived);
+        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+        s.picked = [];
+        s.planBuildState = 'revealing';
+        render();
+        revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
+        await Promise.all([
+          saveWallet(),
+          api('POST', '/api/sessions', {
+            type: 'draft', id: `draft-${s.today}`, date: s.today,
+            offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
+          }),
+        ]);
+      });
+      document.getElementById('btn-shuffle')?.addEventListener('click', () => {
+        const active = s.tasks.filter(t => !t.archived);
+        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+        s.picked = [];
+        render();
+      });
+    }
+
+    if (screen === 'active') {
+      document.querySelectorAll('[data-confirm-task]').forEach(el =>
+        el.addEventListener('click', () => {
+          const taskId = el.dataset.confirmTask;
+          s.confirmTask = s.confirmTask === taskId ? null : taskId;
+          render();
+        }));
+      document.querySelectorAll('[data-confirm-no]').forEach(btn =>
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          s.confirmTask = null;
+          uncompleteTask(btn.dataset.confirmNo);
+        }));
+      document.querySelectorAll('[data-confirm-yes]').forEach(btn =>
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const taskId      = btn.dataset.confirmYes;
+          const sess        = activePlan();
+          const alreadyDone = (sess?.completed_ids || []).includes(taskId);
+          const task        = getTaskForHistory(sess, taskId);
+          const isCommon    = !alreadyDone && task?.type === 'common';
+          const isLegendary = !alreadyDone && task?.type === 'legendary';
+          if (isCommon || isLegendary) {
+            const EMOJIS  = isCommon
+              ? ['🏐','🤍','🚰','🏁','🐏','🕊️','🌪️']
+              : ['🦧','🐦‍🔥','🐅','🔥','🍄‍🟫','🥃','🏈'];
+            const COUNT   = isCommon ? 14 : 28;
+            const PEAK    = 1.08;
+            const SNAP_CB = isCommon
+              ? 'cubic-bezier(0.34,1.2,0.64,1)'
+              : 'cubic-bezier(0.34,1.5,0.64,1)';
+            // Suppress Submit Results CTA if this completes the last task
+            const willBeAllDone =
+              (sess?.completed_ids || []).length + 1 >= (sess?.picked_ids || []).length;
+            if (willBeAllDone) s.suppressSubmitCta = true;
+            // 1. State update first — card renders in completed state
+            completeTask(taskId);
+            const newCard = document.querySelector(`[data-confirm-task="${taskId}"]`);
+            if (newCard) {
+              newCard.style.zIndex   = '70';
+              newCard.style.overflow = 'hidden';
+              const GROW = 130, SHINE = 550, SNAP = 190;
+              // 2. Card grows
+              newCard.animate(
+                [{ transform:'scale(1)' }, { transform:`scale(${PEAK})` }],
+                { duration:GROW, easing:'ease-out', fill:'forwards' }
+              ).onfinish = () => {
+                // 3. Shine ribbon
+                const ribbon = document.createElement('div');
+                ribbon.style.cssText = 'position:absolute;top:-20%;left:0;width:40%;height:140%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.85),transparent);transform:skewX(-25deg) translateX(-250%);pointer-events:none;';
+                newCard.appendChild(ribbon);
+                ribbon.animate(
+                  [{ transform:'skewX(-25deg) translateX(-250%)' }, { transform:'skewX(-25deg) translateX(420%)' }],
+                  { duration:SHINE, easing:'cubic-bezier(0.25,0.1,0.25,1)', fill:'forwards' }
+                ).onfinish = () => {
+                  ribbon.remove();
+                  // 4. Burst + glow at moment of slam
+                  const burstAt = Date.now();
+                  burstParticles(newCard, EMOJIS, COUNT);
+                  if (isLegendary) legendaryGlowBurst(newCard);
+                  // 5. Snap back; after snap reveal CTA and keep particle z-index correct
+                  newCard.animate(
+                    [{ transform:`scale(${PEAK})` }, { transform:'scale(1)' }],
+                    { duration:SNAP, easing:SNAP_CB, fill:'forwards' }
+                  ).onfinish = () => {
+                    newCard.style.overflow = '';
+                    if (willBeAllDone) {
+                      s.suppressSubmitCta = false;
+                      render();
+                      // Re-elevate the freshly rendered card for remaining particle lifetime
+                      const freshCard = document.querySelector(`[data-confirm-task="${taskId}"]`);
+                      if (freshCard) {
+                        freshCard.style.zIndex = '70';
+                        const remaining = Math.max(0, 1500 - (Date.now() - burstAt));
+                        setTimeout(() => { if (freshCard.isConnected) freshCard.style.zIndex = ''; }, remaining);
+                      }
+                    } else {
+                      setTimeout(() => { if (newCard.isConnected) newCard.style.zIndex = ''; }, 1500 - SNAP);
+                    }
+                  };
+                };
+              };
+            }
+          } else {
+            completeTask(taskId);
+          }
+        }));
+      document.getElementById('btn-submit-results')?.addEventListener('click', submitResults);
+      document.getElementById('btn-restart')?.addEventListener('click', restartDay);
+    }
+
+    if (screen === 'tasks') {
+      // Profile menu navigation
+      document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
+        s.profileScreen = 'taskpool'; s.poolEditMode = false; render();
+      });
+      document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
+        s.profileScreen = 'storemanage'; s.editingStoreItem = null; render();
+      });
+
+      // Back from task pool → Profile menu
+      document.getElementById('btn-back-profile')?.addEventListener('click', () => {
+        s.profileScreen = 'menu'; s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; render();
+      });
+
+      // Enter edit mode
+      document.getElementById('btn-edit-pool')?.addEventListener('click', () => {
+        s.poolEditMode = true; render();
+      });
+      document.getElementById('btn-done-editing')?.addEventListener('click', () => {
+        s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; render();
+      });
+
+      // Back from store manage → Profile menu
+      document.getElementById('btn-back-storemanage')?.addEventListener('click', () => {
+        s.profileScreen = 'menu'; s.editingStoreItem = null; render();
+      });
+
+      document.getElementById('btn-sign-out')?.addEventListener('click', () => clerk.signOut());
+
+      // Reset records flow
+      document.getElementById('btn-show-reset')?.addEventListener('click', () => {
+        s.showResetConfirm = true; render();
+      });
+      document.getElementById('btn-cancel-reset')?.addEventListener('click', () => {
+        s.showResetConfirm = false; render();
+      });
+      document.getElementById('btn-confirm-reset')?.addEventListener('click', async () => {
+        const val = document.getElementById('reset-confirm-input')?.value.trim().toLowerCase();
+        if (val !== 'reset') {
+          const input = document.getElementById('reset-confirm-input');
+          if (input) { input.style.borderColor = 'var(--danger)'; input.focus(); }
+          return;
+        }
+        await resetEverything();
+      });
+
+      // Reset hour select (Profile menu)
+      document.getElementById('select-reset-hour')?.addEventListener('change', async e => {
+        RESET_HOUR = parseInt(e.target.value);
+        s.today = todayStr();
+        render();
+        await saveSettings();
+      });
+
+      // Store item add/edit/delete
+      document.getElementById('btn-add-store-item')?.addEventListener('click', () => {
+        s.editingStoreItem = { id: '', name: '', desc: '', cost: 1, rarity: 'common' }; render();
+      });
+      document.querySelectorAll('[data-edit-store]').forEach(el =>
+        el.addEventListener('click', () => {
+          const items = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+          const item = items.find(x => x.id === el.dataset.editStore);
+          s.editingStoreItem = item ? { ...item } : null; render();
+        }));
+      document.querySelectorAll('[data-delete-store]').forEach(el =>
+        el.addEventListener('click', () => deleteStoreItem(el.dataset.deleteStore)));
+      document.querySelector('[data-cancel-store-edit]')?.addEventListener('click', () => {
+        s.editingStoreItem = null; render();
+      });
+      document.querySelector('[data-save-store]')?.addEventListener('click', () => {
+        const name = document.getElementById('si-name')?.value.trim();
+        const desc = document.getElementById('si-desc')?.value.trim();
+        const cost = parseInt(document.getElementById('si-cost')?.value) || 1;
+        const rarity = document.getElementById('si-rarity')?.value || 'common';
+        if (!name) return;
+        saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity });
+      });
+      document.querySelectorAll('[data-edit-task]').forEach(el =>
+        el.addEventListener('click', () => {
+          const t = getTask(el.dataset.editTask);
+          s.editingTask = t ? { ...t } : null;
+          s.deletingTask = null;
+          render();
+        }));
+      document.querySelectorAll('[data-archive-task]').forEach(el =>
+        el.addEventListener('click', () => archivePoolTask(el.dataset.archiveTask)));
+      document.querySelectorAll('[data-restore-task]').forEach(el =>
+        el.addEventListener('click', () => restorePoolTask(el.dataset.restoreTask)));
+      document.querySelectorAll('[data-delete-task]').forEach(el =>
+        el.addEventListener('click', () => {
+          s.deletingTask = el.dataset.deleteTask;
+          s.editingTask = null;
+          render();
+        }));
+      document.querySelector('[data-cancel-delete]')?.addEventListener('click', () => {
+        s.deletingTask = null; render();
+      });
+      const confirmDelBtn = document.querySelector('[data-confirm-delete]');
+      if (confirmDelBtn) confirmDelBtn.addEventListener('click', () => {
+        deletePoolTask(confirmDelBtn.dataset.confirmDelete);
+      });
+      document.querySelectorAll('[data-set-type]').forEach(el =>
+        el.addEventListener('click', () => {
+          if (s.editingTask) {
+            s.editingTask.title = document.getElementById('edit-title')?.value ?? s.editingTask.title;
+            s.editingTask.description = document.getElementById('edit-desc')?.value ?? s.editingTask.description;
+            s.editingTask.type = el.dataset.setType;
+            render();
+          }
+        }));
+      document.querySelector('[data-cancel-edit]')?.addEventListener('click', () => {
+        s.editingTask = null; render();
+      });
+      document.querySelector('[data-save-task]')?.addEventListener('click', () => {
+        const title = document.getElementById('edit-title')?.value.trim();
+        const description = document.getElementById('edit-desc')?.value.trim();
+        if (!title || !s.editingTask?.type) return;
+        savePoolTask({ ...s.editingTask, title, description });
+      });
+      document.getElementById('btn-add-task')?.addEventListener('click', () => {
+        s.editingTask = { id: '', title: '', description: '', type: '' };
+        render();
+      });
+    }
+  }
+
+  /* ── Today actions ── */
+  async function saveSettings() {
+    await api('PATCH', '/api/settings', { reset_hour: RESET_HOUR });
+  }
+
+  async function saveStoreItem(item) {
+    const isNew = !item.id;
+    if (isNew) item.id = `si-${Date.now()}`;
+    if (isNew) {
+      s.storeItems = [...(s.storeItems.length ? s.storeItems : STORE_ITEMS), item];
+    } else {
+      s.storeItems = (s.storeItems.length ? s.storeItems : STORE_ITEMS).map(x => x.id === item.id ? item : x);
+    }
+    s.editingStoreItem = null;
+    render();
+    await api('POST', '/api/store-items', item);
+  }
+
+  async function deleteStoreItem(itemId) {
+    s.storeItems = (s.storeItems.length ? s.storeItems : STORE_ITEMS).filter(x => x.id !== itemId);
+    s.editingStoreItem = null;
+    render();
+    await api('DELETE', '/api/store-items', { id: itemId });
+  }
+
+  async function startDay() {
+    if (s.picked.length < 3) return;
+    const pickedTasks = s.tasks.filter(t => s.picked.includes(t.id));
+    const session = {
+      id: Date.now().toString(),
+      date: s.today,
+      offered_ids: s.offered,
+      picked_ids: s.picked.slice(),
+      completed_ids: [],
+      status: 'active',
+      task_snapshots: pickedTasks,
+    };
+    s.sessions = s.sessions.filter(x => x.date !== s.today);
+    s.sessions.push(session);
+    s.activePlanId = session.id;
+    s.picked = [];
+    render();
+    await api('POST', '/api/sessions', { type: 'start', ...session });
+  }
+
+  async function completeTask(taskId) {
+    const todaySess = activePlan();
+    if (!todaySess) return;
+    const newCompleted = [...new Set([...(todaySess.completed_ids || []), taskId])];
+    s.sessions = s.sessions.map(x => x.id === todaySess.id
+      ? { ...x, completed_ids: newCompleted } : x);
+    s.confirmTask = null;
+    render();
+    await api('PATCH', '/api/sessions', { id: todaySess.id, completed_ids: newCompleted });
+  }
+
+  async function uncompleteTask(taskId) {
+    const todaySess = activePlan();
+    if (!todaySess) return;
+    const newCompleted = (todaySess.completed_ids || []).filter(id => id !== taskId);
+    s.sessions = s.sessions.map(x => x.id === todaySess.id
+      ? { ...x, completed_ids: newCompleted } : x);
+    s.confirmTask = null;
+    render();
+    await api('PATCH', '/api/sessions', { id: todaySess.id, completed_ids: newCompleted });
+  }
+
+  async function submitResults() {
+    const todaySess = activePlan();
+    if (!todaySess) return;
+    const tasks = (todaySess.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
+    const completedIds = todaySess.completed_ids || [];
+    const allCompleted = completedIds.length === tasks.length && tasks.length > 0;
+    let earnedCommon = 0, earnedLegendary = 0, earnedMythic = 0;
+    if (allCompleted) {
+      if (tasks.length === 5) earnedMythic = 1;
+      for (const id of completedIds) {
+        const t = getTaskForHistory(todaySess, id);
+        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
+      }
+    }
+    s.pendingReward  = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
+    s.overlayScreen  = allCompleted ? 'reward' : 'bad-luck';
+    s.sessions = s.sessions.map(x => x.id === todaySess.id ? { ...x, status: 'done' } : x);
+    render();
+    await api('PATCH', '/api/sessions', { id: todaySess.id, status: 'done' });
+  }
+
+  async function claimRewards() {
+    if (s.pendingReward) {
+      s.wallet.common    += s.pendingReward.common;
+      s.wallet.legendary += s.pendingReward.legendary;
+      s.wallet.mythic    += s.pendingReward.mythic;
+    }
+    s.pendingReward = null;
+    s.overlayScreen = null;
+    render();
+    await saveWallet();
+  }
+
+  function graceCompleteTask(taskId) {
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (!pending) return;
+    const newCompleted = [...new Set([...(pending.completed_ids || []), taskId])];
+    s.sessions = s.sessions.map(x => x.id === pending.id ? { ...x, completed_ids: newCompleted } : x);
+    s.reviewDeclined = s.reviewDeclined.filter(id => id !== taskId);
+    render();
+  }
+
+  function graceDeclineTask(taskId) {
+    if (!s.reviewDeclined.includes(taskId)) s.reviewDeclined.push(taskId);
+    render();
+  }
+
+  async function submitGrace() {
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (!pending) return;
+    const tasks = (pending.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
+    const completedIds = pending.completed_ids || [];
+    const allCompleted = completedIds.length === tasks.length && tasks.length > 0;
+    let earnedCommon = 0, earnedLegendary = 0, earnedMythic = 0;
+    if (allCompleted) {
+      if (tasks.length === 5) earnedMythic = 1;
+      for (const id of completedIds) {
+        const t = getTaskForHistory(pending, id);
+        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
+      }
+    }
+    s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
+    s.overlayScreen = allCompleted ? 'reward' : 'bad-luck';
+    s.reviewDeclined = [];
+    s.graceConfirmTask = null;
+    s.sessions = s.sessions.map(x => x.id === pending.id
+      ? { ...x, completed_ids: completedIds, status: 'done' } : x);
+    render();
+    await api('PATCH', '/api/sessions', { id: pending.id, completed_ids: completedIds, status: 'done' });
+  }
+
+  async function saveWallet() {
+    await api('PATCH', '/api/wallet', {
+      common: s.wallet.common,
+      legendary: s.wallet.legendary,
+      mythic: s.wallet.mythic,
+      last_purchase_date: s.lastPurchaseDate,
+      last_purchase_item_name: s.lastPurchasedItem?.name || null,
+      last_purchase_item_rarity: s.lastPurchasedItem?.rarity || null,
+    });
+  }
+
+  async function purchaseItem(itemId) {
+    const activeItems = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+    const item = activeItems.find(x => x.id === itemId);
+    if (!item) return;
+    if (s.lastPurchaseDate === s.today) return;
+    if ((s.wallet[item.rarity] || 0) < item.cost) return;
+    s.wallet[item.rarity] -= item.cost;
+    s.lastPurchaseDate = s.today;
+    s.lastPurchasedItem = { name: item.name, rarity: item.rarity };
+    s.selectedStoreItem = null;
+    s.showPurchasedScreen = true;
+    render();
+    await saveWallet();
+  }
+
+  async function resetEverything() {
+    s.sessions       = [];
+    s.activePlanId   = null;
+    s.offered        = [];
+    s.picked         = [];
+    s.planBuildState = 'generate';
+    s.wallet         = { common: 0, legendary: 0, mythic: 0 };
+    s.lastPurchaseDate  = null;
+    s.lastPurchasedItem = null;
+    s.showPurchasedScreen = false;
+    s.showResetConfirm = false;
+    s.overlayScreen  = null;
+    s.pendingReward  = null;
+    render();
+    await Promise.all([
+      api('DELETE', '/api/sessions'),
+      api('PATCH', '/api/wallet', { common: 0, legendary: 0, mythic: 0, last_purchase_date: null, last_purchase_item_name: null, last_purchase_item_rarity: null }),
+    ]);
+  }
+
+  async function restartDay() {
+    const plan = activePlan();
+    s.activePlanId = null;
+    s.sessions = s.sessions.filter(x => x.id !== plan?.id);
+    s.offered = [];
+    s.picked = [];
+    s.confirmTask = null;
+    s.planBuildState = 'generate';
+    render();
+    if (plan) await api('DELETE', '/api/sessions', { id: plan.id });
+  }
+
+
+  /* ── Task pool actions ── */
+  async function savePoolTask(task) {
+    const isNew = !task.id;
+    if (isNew) task.id = Date.now().toString();
+    if (isNew) s.tasks.push(task);
+    else s.tasks = s.tasks.map(t => t.id === task.id ? task : t);
+    s.editingTask = null;
+    render();
+    await api('POST', '/api/tasks', task);
+  }
+
+  async function archivePoolTask(id) {
+    s.tasks = s.tasks.map(t => t.id === id ? { ...t, archived: true } : t);
+    render();
+    await api('PATCH', '/api/tasks', { id, archived: true });
+  }
+
+  async function restorePoolTask(id) {
+    s.tasks = s.tasks.map(t => t.id === id ? { ...t, archived: false } : t);
+    render();
+    await api('PATCH', '/api/tasks', { id, archived: false });
+  }
+
+  async function deletePoolTask(id) {
+    s.tasks = s.tasks.filter(t => t.id !== id);
+    s.deletingTask = null;
+    render();
+    await api('DELETE', '/api/tasks', { id });
+  }
+
+  /* ── Load ── */
+  async function load() {
+    try {
+      const data = await api('GET', '/api/init');
+      s.sessions = data.sessions;
+
+      if (data.wallet) {
+        const w = data.wallet;
+        s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic };
+        s.lastPurchaseDate = w.last_purchase_date || null;
+        s.lastPurchasedItem = w.last_purchase_item_name
+          ? { name: w.last_purchase_item_name, rarity: w.last_purchase_item_rarity }
+          : null;
+        s.showPurchasedScreen = w.last_purchase_date === todayStr() && !!w.last_purchase_item_name;
+      } else {
+        await saveWallet(); // seed wallet for new user (99 of each)
+      }
+
+      if (data.settings) {
+        RESET_HOUR = data.settings.reset_hour;
+        s.today = todayStr();
+      }
+
+      if (data.storeItems.length > 0) s.storeItems = data.storeItems;
+
+      s.tasks = data.tasks;
+      s.loading = false;
+
+      // Auto-fail stale active sessions outside grace period
+      if (!isInGracePeriod()) {
+        const stale = s.sessions.filter(x => x.status === 'active' && x.date !== s.today);
+        if (stale.length) {
+          s.sessions = s.sessions.map(x =>
+            stale.find(st => st.id === x.id) ? { ...x, status: 'done', completed_ids: [] } : x);
+          await Promise.all(stale.map(x =>
+            api('PATCH', '/api/sessions', { id: x.id, completed_ids: [], status: 'done' })
+          ));
+        }
+      }
+
+      const activeSess    = s.sessions.find(x => x.status === 'active' && x.date === s.today);
+      const doneTodaySess = s.sessions.find(x => x.status === 'done' && x.date === s.today && (x.picked_ids||[]).length > 0);
+
+      if (activeSess) {
+        s.activePlanId = activeSess.id;
+      } else if (doneTodaySess) {
+        s.activePlanId = doneTodaySess.id;
+      } else {
+        const todaySess = s.sessions.find(x => x.date === s.today);
+        if (todaySess?.offered_ids?.length) {
+          s.offered = todaySess.offered_ids;
+          s.planBuildState = 'pick';
+        }
+      }
+      render();
+    } catch (err) {
+      document.getElementById('app').innerHTML =
+        `<div class="loading" style="color:var(--danger)">Failed to load.<br><small>${err.message}</small></div>`;
+    }
+  }
+
+  // Tab listeners — attached once; tab-bar is inside #app-wrap so always in DOM
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; render(); }));
+
+  // ── Clerk auth flow ──
+  clerk = new window.Clerk(CLERK_PUBLISHABLE_KEY);
+  await clerk.load();
+
+  let appLoaded = false;
+  let authMounted = false;
+
+  function syncAuth() {
+    if (clerk.user) {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app-wrap').style.display = '';
+      if (!appLoaded) {
+        appLoaded = true;
+        render(); // show loading spinner immediately
+        load();
+      }
+    } else {
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app-wrap').style.display = 'none';
+      if (appLoaded) {
+        // User signed out — reset state for next login
+        s = initialState();
+        appLoaded = false;
+      }
+      if (!authMounted) {
+        clerk.mountSignIn(document.getElementById('clerk-auth'), {
+          appearance: {
+            variables: {
+              colorPrimary: '#6a5c51',
+              fontFamily: '"Space Grotesk", sans-serif',
+              borderRadius: '16px',
+            },
+          },
+        });
+        authMounted = true;
+      }
+    }
+  }
+
+  clerk.addListener(syncAuth);
+  syncAuth();
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+</script>
+</body>
+</html>
