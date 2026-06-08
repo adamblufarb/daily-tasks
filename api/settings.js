@@ -4,11 +4,21 @@ const { withAuth } = require('./_auth');
 module.exports = withAuth(async (req, res, userId) => {
   if (req.method !== 'PATCH') return res.status(405).end();
 
-  const { reset_hour } = req.body;
+  const { reset_hour, has_completed_onboarding, onboarding_ritual_count } = req.body;
+
+  // Read current values so we only overwrite what was passed
+  const [current] = await sql`SELECT * FROM settings_v2 WHERE user_id = ${userId}`;
+  const rh  = reset_hour               !== undefined ? reset_hour               : (current?.reset_hour ?? 8);
+  const hco = has_completed_onboarding !== undefined ? has_completed_onboarding : (current?.has_completed_onboarding ?? false);
+  const orc = onboarding_ritual_count  !== undefined ? onboarding_ritual_count  : (current?.onboarding_ritual_count ?? 0);
+
   await sql`
-    INSERT INTO settings_v2 (user_id, reset_hour)
-    VALUES (${userId}, ${reset_hour})
-    ON CONFLICT (user_id) DO UPDATE SET reset_hour = EXCLUDED.reset_hour
+    INSERT INTO settings_v2 (user_id, reset_hour, has_completed_onboarding, onboarding_ritual_count)
+    VALUES (${userId}, ${rh}, ${hco}, ${orc})
+    ON CONFLICT (user_id) DO UPDATE SET
+      reset_hour                 = ${rh},
+      has_completed_onboarding   = ${hco},
+      onboarding_ritual_count    = ${orc}
   `;
 
   res.json({ ok: true });

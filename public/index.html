@@ -386,6 +386,21 @@
     .auth-emoji  { font-size: 3.5rem; line-height: 1; }
     .auth-title  { font-size: 1.8rem; font-weight: 700; color: var(--text); margin-top: 12px; }
     .auth-sub    { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
+
+    /* FTUE — Splash */
+    .ftue-splash { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 0px); padding: 40px 32px; text-align: center; gap: 0; }
+    .ftue-splash-emoji { font-size: 5rem; line-height: 1; margin-bottom: 20px; }
+    .ftue-splash-title { font-size: 3.2rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+    .ftue-splash-tagline { font-size: 1rem; color: var(--subtext); margin-top: 10px; margin-bottom: 48px; }
+
+    /* FTUE — Slides */
+    .ftue-slides { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 0px); padding: 40px 32px; text-align: center; overflow: hidden; position: relative; }
+    .ftue-slide-emoji { font-size: 5rem; line-height: 1; margin-bottom: 24px; }
+    .ftue-slide-text { font-size: 1.25rem; font-weight: 600; color: var(--text); line-height: 1.45; max-width: 300px; margin-bottom: 40px; }
+    .ftue-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 32px; }
+    .ftue-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background 0.2s, transform 0.2s; }
+    .ftue-dot.active { background: var(--accent); transform: scale(1.35); }
+    .ftue-slide-cta { width: 100%; max-width: 360px; }
   </style>
 </head>
 <body>
@@ -404,10 +419,10 @@
 <!-- App — shown when signed in -->
 <div id="app-wrap" style="display:none">
   <div class="content" id="app"></div>
-  <div class="tab-bar">
+  <div class="tab-bar" id="tab-bar">
     <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>Record</span></button>
     <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Ritual</span></button>
-    <button class="tab-btn" data-tab="store"><span class="tab-icon">🛒</span><span>Store</span></button>
+    <button class="tab-btn" data-tab="store"><span class="tab-icon">🕌</span><span>Bazaar</span></button>
   </div>
 </div>
 
@@ -519,6 +534,10 @@
       graceConfirmTask: null,
       overlayScreen: null,
       pendingReward: null,
+      hasCompletedOnboarding: false,
+      onboardingRitualCount: 0,
+      ftueScreen: null,
+      ftueSlide: 0,
     };
   }
   let s = initialState();
@@ -526,6 +545,7 @@
   /* ── Screen logic ── */
   function getScreen() {
     if (s.loading) return 'loading';
+    if (s.ftueScreen) return s.ftueScreen;
     if (s.overlayScreen) return s.overlayScreen;
     if (isInGracePeriod()) {
       const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
@@ -668,9 +688,28 @@
     if (todaySess?.offered_ids?.length) {
       s.offered = todaySess.offered_ids;
     } else if (!s.offered.length) {
-      const active = s.tasks.filter(t => !t.archived);
-      s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+      s.offered = rollOffered();
     }
+  }
+
+  function rollOffered() {
+    const active = s.tasks.filter(t => !t.archived);
+    const isOnboarding = !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
+    if (isOnboarding && s.onboardingRitualCount === 0) {
+      // Ritual 1: 5 random common only
+      const common = active.filter(t => t.type === 'common');
+      return shuffle(common).slice(0, Math.min(5, common.length)).map(t => t.id);
+    } else if (isOnboarding && s.onboardingRitualCount === 1) {
+      // Ritual 2: 4 random common + 1 random legendary
+      const common = active.filter(t => t.type === 'common');
+      const legendary = active.filter(t => t.type === 'legendary');
+      const pool = [
+        ...shuffle(common).slice(0, Math.min(4, common.length)),
+        ...shuffle(legendary).slice(0, Math.min(1, legendary.length)),
+      ];
+      return shuffle(pool).map(t => t.id);
+    }
+    return shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
   }
 
   /* ── Render ── */
@@ -702,6 +741,9 @@
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === s.tab));
+    // Hide tab bar during FTUE
+    const tabBar = document.getElementById('tab-bar');
+    if (tabBar) tabBar.style.display = s.ftueScreen ? 'none' : '';
     // Sync per-task glow phases via CSS custom property (used by ::before)
     document.querySelectorAll('[data-glow-id]').forEach(el => {
       const id = el.dataset.glowId;
@@ -721,8 +763,8 @@
       const iconEl  = todayBtn.querySelector('.tab-icon');
       const labelEl = todayBtn.querySelector('#tab-today-label');
       if (isDoneForToday) {
-        if (iconEl)  iconEl.textContent  = '🏆';
-        if (labelEl) labelEl.textContent = 'Done';
+        if (iconEl)  iconEl.textContent  = '🤝';
+        if (labelEl) labelEl.textContent = 'Honored';
       } else if (isPlanActive) {
         if (iconEl)  iconEl.textContent  = isMythicPlan ? '🔱' : '🧿';
         if (labelEl) labelEl.textContent = 'Active';
@@ -737,6 +779,8 @@
 
   function buildHtml(screen) {
     if (screen === 'loading')   return `<div class="loading">Loading…</div>`;
+    if (screen === 'splash')    return htmlSplash();
+    if (screen === 'slides')    return htmlSlides();
     if (screen === 'history')   return htmlHistory();
     if (screen === 'store')     return htmlStore();
     if (screen === 'tasks')     return s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
@@ -747,31 +791,79 @@
     return htmlActive();
   }
 
+  /* ── FTUE Splash ── */
+  const FTUE_SLIDES = [
+    { emoji: '🧿', text: 'Honor your Ritual by completing all daily acts' },
+    { emoji: '🕌', text: 'Build your record, earn currency and splurge at the Bazaar' },
+    { emoji: '🥀', text: 'One incomplete act breaks the entire Ritual' },
+    { emoji: '🎲', text: "Let's forge your first Ritual", cta: 'Roll Acts →' },
+  ];
+
+  function htmlSplash() {
+    return `
+      <div class="ftue-splash">
+        <div class="ftue-splash-emoji">🧿</div>
+        <div class="ftue-splash-title">Ritual</div>
+        <div class="ftue-splash-tagline">Small acts, Legendary gain</div>
+        <button class="btn-primary ftue-slide-cta" id="btn-ftue-begin">Let's Begin</button>
+      </div>`;
+  }
+
+  function htmlSlides() {
+    const slide = FTUE_SLIDES[s.ftueSlide];
+    const isLast = s.ftueSlide === FTUE_SLIDES.length - 1;
+    return `
+      <div class="ftue-slides">
+        <div class="ftue-slide-emoji">${slide.emoji}</div>
+        <div class="ftue-slide-text">${slide.text}</div>
+        <div class="ftue-dots">
+          ${FTUE_SLIDES.map((_, i) => `<div class="ftue-dot${i === s.ftueSlide ? ' active' : ''}"></div>`).join('')}
+        </div>
+        <div class="ftue-slide-cta">
+          ${isLast
+            ? `<button class="btn-primary" id="btn-ftue-roll">Roll Acts →</button>`
+            : `<button class="btn-primary" id="btn-ftue-next">Next</button>`}
+        </div>
+      </div>`;
+  }
+
   /* ── Pick ── */
   function htmlPick() {
+    const isOnboarding = !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
+    const orc = s.onboardingRitualCount;
+    const maxPicks = isOnboarding ? (orc === 0 ? 1 : 2) : 5;
+    const minPicks = maxPicks; // onboarding: exactly min; normal: min 3 but max 5
+
     if (s.planBuildState === 'generate') {
       return `
         <div class="generate-screen">
           <div class="generate-emoji">🎲</div>
-          <div class="generate-title">Build Your Ritual</div>
+          <div class="generate-title">Craft Your Ritual</div>
           <div class="generate-sub">${fmtDate(s.today)}</div>
-          <button class="btn-primary" id="btn-generate">Generate Acts →</button>
+          <button class="btn-primary" id="btn-generate">Roll Acts →</button>
         </div>`;
     }
 
     ensureOffered();
     const tasks = s.offered.map(id => getTask(id)).filter(Boolean);
     const n = s.picked.length;
-    // revealedAt is used to stagger animation on first reveal only
     const isRevealing = s.planBuildState === 'revealing';
+    const isMythic = !isOnboarding && n === 5;
+    const canStart = isOnboarding ? n === maxPicks : n >= 3;
+    const countLabel = isOnboarding
+      ? `Committed: <strong>${n} / ${maxPicks}</strong>`
+      : `Committed: <strong>${n} / 3</strong>`;
+    const rerollDisabled = isRevealing || (!isOnboarding && s.wallet.common < 1);
+    const rerollLabel = isOnboarding ? '↺ Re-Roll Acts' : `↺ Re-Roll Acts (${s.wallet.common} common)`;
+    const showReroll = !isOnboarding || orc === 1;
     return `
       <div class="section-header">
-        <div class="section-title">Build Your Ritual</div>
+        <div class="section-title">Craft Your Ritual</div>
         <div class="section-sub">${fmtDate(s.today)}</div>
       </div>
-      <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
+      <div class="pick-count${isMythic?' mythic-pick':''}">${countLabel}</div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${s.picked.length>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${n>=maxPicks&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
@@ -779,8 +871,8 @@
           <div class="task-desc">${t.description}</div>
         </div>`).join('')}
       <div style="height:16px"></div>
-      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Ritual →</button>
-      <button class="btn-reroll" id="btn-reroll"${isRevealing||s.wallet.common<1?' disabled':''}>↺ Re-Roll Acts (${s.wallet.common} common)</button>`;
+      <button class="btn-primary" id="btn-start"${canStart?'':' disabled'}>Start Ritual →</button>
+      ${showReroll ? `<button class="btn-reroll" id="btn-reroll"${rerollDisabled?' disabled':''}>${rerollLabel}</button>` : ''}`;
   }
 
   /* ── Active ── */
@@ -795,11 +887,11 @@
     if (todaySess.status === 'done') {
       return `
         <div class="home-header">
-          <div class="home-emoji">🏆</div>
-          <div class="home-title">Done For Today</div>
+          <div class="home-emoji">🤝</div>
+          <div class="home-title">Ritual Honored</div>
           <div class="home-sub">Come back tomorrow</div>
         </div>
-        <div class="tasks-label">Today's Tasks</div>
+        <div class="tasks-label">Committed Acts</div>
         ${tasks.map(t => {
           const done = completedIds.includes(t.id);
           return `
@@ -830,7 +922,7 @@
         <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Ritual' : 'Daily Ritual'}</div>
         <div class="home-sub">All acts must be completed by ${resetStr} ${deadlineDay}.</div>
       </div>
-      <div class="tasks-label">Today's Tasks</div>
+      <div class="tasks-label">Committed Acts</div>
       ${tasks.map(t => {
         const done = completedIds.includes(t.id);
         const confirming = s.confirmTask === t.id;
@@ -880,7 +972,7 @@
         <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Ritual Concluded' : 'Daily Ritual Concluded'}</div>
         <div class="home-sub">Please submit your ${planType} ritual results. The day resets at ${graceEndStr}.</div>
       </div>
-      <div class="tasks-label">Yesterday's Tasks</div>
+      <div class="tasks-label">Yesterday's Acts</div>
       ${tasks.map(t => {
         const done       = completedIds.includes(t.id);
         const declined   = s.reviewDeclined.includes(t.id);
@@ -933,8 +1025,8 @@
       <div class="reward-screen" style="background:${bgColor}">
         <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
         <div style="position:relative;z-index:1;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:stretch">
-          <div class="reward-emoji">🏆</div>
-          <div class="reward-title">Ritual Completed</div>
+          <div class="reward-emoji">🤝</div>
+          <div class="reward-title">Ritual Honored</div>
           <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
           <button class="btn-claim" id="btn-claim-rewards">Claim Rewards</button>
         </div>
@@ -967,7 +1059,7 @@
           <span class="profile-menu-arrow">›</span>
         </button>
         <button class="profile-menu-item" id="btn-profile-storemanage">
-          <span class="profile-menu-label">Store Items</span>
+          <span class="profile-menu-label">Bazaar Items</span>
           <span class="profile-menu-arrow">›</span>
         </button>
       </div>
@@ -987,15 +1079,15 @@
       </button>
       ${s.showResetConfirm ? `
       <div class="reset-confirm-box">
-        <div class="reset-confirm-label">Reset Records & Currency</div>
-        <div class="reset-confirm-sub">This will permanently delete all plan history and reset your store currency to 0. Type <strong>reset</strong> to confirm.</div>
+        <div class="reset-confirm-label">Reset Account</div>
+        <div class="reset-confirm-sub">This will permanently delete all ritual history, currency, and store purchases and restart the onboarding flow. Type <strong>reset</strong> to confirm.</div>
         <input class="form-input" id="reset-confirm-input" placeholder="Type reset to confirm" autocomplete="off" autocorrect="off" spellcheck="false">
-        <button class="btn-reset-danger" id="btn-confirm-reset">Reset Everything</button>
+        <button class="btn-reset-danger" id="btn-confirm-reset">Reset Account</button>
         <button class="btn-reset-cancel" id="btn-cancel-reset">Cancel</button>
       </div>` : `
       <div style="height:16px"></div>
       <button class="profile-menu-item" id="btn-show-reset" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,var(--card));border-color:color-mix(in srgb,var(--danger) 40%,transparent)">
-        <span class="profile-menu-label">Reset Records</span>
+        <span class="profile-menu-label">Reset Account</span>
         <span class="profile-menu-arrow" style="color:var(--danger)">›</span>
       </button>`}`;
   }
@@ -1008,7 +1100,7 @@
     return `
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-storemanage">‹ Profile</button>
-        <div class="section-title">Store Items</div>
+        <div class="section-title">Bazaar Items</div>
       </div>
       ${!isAdding ? `<button class="btn-add-task" id="btn-add-store-item">+ Add Item</button>` : `
       <div class="new-task-card">
@@ -1196,7 +1288,7 @@
     const canPurchase = selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday;
     return `
       <div class="section-header" style="padding-bottom:8px">
-        <div class="section-title">Store</div>
+        <div class="section-title">Bazaar</div>
       </div>
       <div class="tasks-label" style="margin-bottom:8px;text-transform:none;letter-spacing:0">Available currency</div>
       <div class="store-wallet">
@@ -1296,6 +1388,44 @@
   /* ── Bind ── */
   function bind(screen) {
 
+    if (screen === 'splash') {
+      document.getElementById('btn-ftue-begin')?.addEventListener('click', () => {
+        s.ftueScreen = 'slides';
+        s.ftueSlide = 0;
+        render();
+      });
+    }
+
+    if (screen === 'slides') {
+      const el = document.querySelector('.ftue-slides');
+      let touchStartX = 0;
+      el?.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+      el?.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) > 50) {
+          if (dx < 0 && s.ftueSlide < FTUE_SLIDES.length - 1) { s.ftueSlide++; render(); }
+          else if (dx > 0 && s.ftueSlide > 0) { s.ftueSlide--; render(); }
+        }
+      }, { passive: true });
+
+      document.getElementById('btn-ftue-next')?.addEventListener('click', () => {
+        if (s.ftueSlide < FTUE_SLIDES.length - 1) { s.ftueSlide++; render(); }
+      });
+
+      document.getElementById('btn-ftue-roll')?.addEventListener('click', async () => {
+        s.ftueScreen = null;
+        s.offered = rollOffered();
+        s.picked = [];
+        s.planBuildState = 'revealing';
+        render();
+        revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
+        await api('POST', '/api/sessions', {
+          type: 'draft', id: `draft-${s.today}`, date: s.today,
+          offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
+        });
+      });
+    }
+
     if (screen === 'store') {
       document.querySelectorAll('[data-store-select]').forEach(card =>
         card.addEventListener('click', () => {
@@ -1362,23 +1492,21 @@
     }
 
     if (screen === 'bad-luck') {
-      document.getElementById('btn-acknowledge')?.addEventListener('click', () => {
+      document.getElementById('btn-acknowledge')?.addEventListener('click', async () => {
         s.pendingReward = null;
         s.overlayScreen = null;
+        await advanceOnboarding();
         render();
       });
     }
 
     if (screen === 'pick') {
       document.getElementById('btn-generate')?.addEventListener('click', async () => {
-        const active = s.tasks.filter(t => !t.archived);
-        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+        s.offered = rollOffered();
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
-        // After animation completes, switch to normal 'pick' state
         revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
-        // Persist offered tasks so they survive a refresh
         await api('POST', '/api/sessions', {
           type: 'draft', id: `draft-${s.today}`, date: s.today,
           offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
@@ -1392,33 +1520,31 @@
             revealTimeoutId = null;
             s.planBuildState = 'pick';
           }
+          const isOnboarding = !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
+          const maxPicks = isOnboarding ? (s.onboardingRitualCount === 0 ? 1 : 2) : 5;
           if (s.picked.includes(id)) s.picked = s.picked.filter(x => x !== id);
-          else if (s.picked.length < 5) s.picked.push(id);
+          else if (s.picked.length < maxPicks) s.picked.push(id);
           render();
         }));
       document.getElementById('btn-start')?.addEventListener('click', startDay);
       document.getElementById('btn-reroll')?.addEventListener('click', async () => {
-        if (s.wallet.common < 1 || s.planBuildState === 'revealing') return;
-        s.wallet.common--;
-        const active = s.tasks.filter(t => !t.archived);
-        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+        if (s.planBuildState === 'revealing') return;
+        const isOnboarding = !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
+        if (!isOnboarding && s.wallet.common < 1) return;
+        if (!isOnboarding) {
+          s.wallet.common--;
+        }
+        s.offered = rollOffered();
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
         revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
-        await Promise.all([
-          saveWallet(),
-          api('POST', '/api/sessions', {
-            type: 'draft', id: `draft-${s.today}`, date: s.today,
-            offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
-          }),
-        ]);
-      });
-      document.getElementById('btn-shuffle')?.addEventListener('click', () => {
-        const active = s.tasks.filter(t => !t.archived);
-        s.offered = shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
-        s.picked = [];
-        render();
+        const saves = [api('POST', '/api/sessions', {
+          type: 'draft', id: `draft-${s.today}`, date: s.today,
+          offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
+        })];
+        if (!isOnboarding) saves.push(saveWallet());
+        await Promise.all(saves);
       });
     }
 
@@ -1641,7 +1767,11 @@
 
   /* ── Today actions ── */
   async function saveSettings() {
-    await api('PATCH', '/api/settings', { reset_hour: RESET_HOUR });
+    await api('PATCH', '/api/settings', {
+      reset_hour: RESET_HOUR,
+      has_completed_onboarding: s.hasCompletedOnboarding,
+      onboarding_ritual_count: s.onboardingRitualCount,
+    });
   }
 
   async function saveStoreItem(item) {
@@ -1665,7 +1795,9 @@
   }
 
   async function startDay() {
-    if (s.picked.length < 3) return;
+    const isOnboarding = !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
+    const minPicks = isOnboarding ? (s.onboardingRitualCount === 0 ? 1 : 2) : 3;
+    if (s.picked.length < minPicks) return;
     const pickedTasks = s.tasks.filter(t => s.picked.includes(t.id));
     const session = {
       id: Date.now().toString(),
@@ -1735,8 +1867,16 @@
     }
     s.pendingReward = null;
     s.overlayScreen = null;
+    await advanceOnboarding();
     render();
     await saveWallet();
+  }
+
+  async function advanceOnboarding() {
+    if (s.hasCompletedOnboarding) return;
+    s.onboardingRitualCount++;
+    if (s.onboardingRitualCount >= 3) s.hasCompletedOnboarding = true;
+    await saveSettings();
   }
 
   function graceCompleteTask(taskId) {
@@ -1804,23 +1944,16 @@
   }
 
   async function resetEverything() {
-    s.sessions       = [];
-    s.activePlanId   = null;
-    s.offered        = [];
-    s.picked         = [];
-    s.planBuildState = 'generate';
-    s.wallet         = { common: 0, legendary: 0, mythic: 0 };
-    s.lastPurchaseDate  = null;
-    s.lastPurchasedItem = null;
-    s.showPurchasedScreen = false;
-    s.showResetConfirm = false;
-    s.overlayScreen  = null;
-    s.pendingReward  = null;
+    await api('POST', '/api/reset');
+    // Preserve tasks/storeItems — only wipe runtime state
+    const savedTasks = s.tasks.slice();
+    const savedStoreItems = s.storeItems.slice();
+    s = initialState();
+    s.loading = false;
+    s.tasks = savedTasks;
+    s.storeItems = savedStoreItems;
+    s.ftueScreen = 'splash';
     render();
-    await Promise.all([
-      api('DELETE', '/api/sessions'),
-      api('PATCH', '/api/wallet', { common: 0, legendary: 0, mythic: 0, last_purchase_date: null, last_purchase_item_name: null, last_purchase_item_rarity: null }),
-    ]);
   }
 
   async function restartDay() {
@@ -1881,12 +2014,14 @@
           : null;
         s.showPurchasedScreen = w.last_purchase_date === todayStr() && !!w.last_purchase_item_name;
       } else {
-        await saveWallet(); // seed wallet for new user (99 of each)
+        await saveWallet(); // seed wallet row for new user
       }
 
       if (data.settings) {
         RESET_HOUR = data.settings.reset_hour;
         s.today = todayStr();
+        s.hasCompletedOnboarding = data.settings.has_completed_onboarding ?? false;
+        s.onboardingRitualCount  = data.settings.onboarding_ritual_count  ?? 0;
       }
 
       if (data.storeItems.length > 0) s.storeItems = data.storeItems;
@@ -1904,6 +2039,12 @@
             api('PATCH', '/api/sessions', { id: x.id, completed_ids: [], status: 'done' })
           ));
         }
+      }
+
+      // Trigger FTUE splash for brand-new users (no non-draft sessions)
+      if (!s.hasCompletedOnboarding && s.onboardingRitualCount === 0) {
+        const hasRealSessions = s.sessions.some(x => x.status !== 'draft');
+        if (!hasRealSessions) s.ftueScreen = 'splash';
       }
 
       const activeSess    = s.sessions.find(x => x.status === 'active' && x.date === s.today);

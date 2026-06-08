@@ -64,10 +64,14 @@ module.exports = withAuth(async (req, res, userId) => {
   `;
   await sql`
     CREATE TABLE IF NOT EXISTS settings_v2 (
-      user_id    text PRIMARY KEY,
-      reset_hour int NOT NULL DEFAULT 8
+      user_id                    text PRIMARY KEY,
+      reset_hour                 int NOT NULL DEFAULT 8,
+      has_completed_onboarding   boolean NOT NULL DEFAULT false,
+      onboarding_ritual_count    int NOT NULL DEFAULT 0
     )
   `;
+  await sql`ALTER TABLE settings_v2 ADD COLUMN IF NOT EXISTS has_completed_onboarding boolean NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE settings_v2 ADD COLUMN IF NOT EXISTS onboarding_ritual_count int NOT NULL DEFAULT 0`;
   await sql`
     CREATE TABLE IF NOT EXISTS store_items_v2 (
       id          text NOT NULL,
