@@ -506,7 +506,7 @@
       showResetConfirm: false,
       storeItems: [],
       editingStoreItem: null,
-      wallet: { common: 99, legendary: 99, mythic: 99 },
+      wallet: { common: 0, legendary: 0, mythic: 0 },
       lastPurchaseDate: null,
       lastPurchasedItem: null,
       selectedStoreItem: null,
@@ -929,7 +929,7 @@
     return `
       <div class="reward-screen" style="background:${bgColor}">
         <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
-        <div style="position:relative;z-index:1;width:100%;display:flex;flex-direction:column;align-items:stretch">
+        <div style="position:relative;z-index:1;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:stretch">
           <div class="reward-emoji">🏆</div>
           <div class="reward-title">All Done!</div>
           <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
