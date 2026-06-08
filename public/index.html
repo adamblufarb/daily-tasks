@@ -1926,8 +1926,17 @@
     b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; render(); }));
 
   // ── Clerk auth flow ──
-  clerk = new window.Clerk(CLERK_PUBLISHABLE_KEY);
-  await clerk.load();
+  try {
+    clerk = new window.Clerk(CLERK_PUBLISHABLE_KEY);
+    await clerk.load();
+  } catch (err) {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('clerk-auth').innerHTML =
+      `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:12px;padding:16px;font-size:0.9rem;color:#dc2626;font-family:inherit">
+        Auth failed: ${err.message}<br><small>Check Clerk allowed domains and env vars.</small>
+      </div>`;
+    throw err;
+  }
 
   let appLoaded = false;
   let authMounted = false;
