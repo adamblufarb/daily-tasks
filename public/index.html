@@ -408,9 +408,12 @@
   </div>
 </div>
 
-<script src="https://workable-pelican-18.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js" crossorigin="anonymous"></script>
+<script
+  data-clerk-publishable-key="pk_test_d29ya2FibGUtcGVsaWNhbi0xOC5jbGVyay5hY2NvdW50cy5kZXYk"
+  src="https://workable-pelican-18.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+  crossorigin="anonymous"
+></script>
 <script type="module">
-  const CLERK_PUBLISHABLE_KEY = 'pk_test_d29ya2FibGUtcGVsaWNhbi0xOC5jbGVyay5hY2NvdW50cy5kZXYk';
   let clerk;
 
   async function api(method, path, data) {
@@ -1926,8 +1929,9 @@
     b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; render(); }));
 
   // ── Clerk auth flow ──
+  // With data-clerk-publishable-key, window.Clerk is a pre-configured singleton
   try {
-    clerk = new window.Clerk(CLERK_PUBLISHABLE_KEY);
+    clerk = window.Clerk;
     await clerk.load();
   } catch (err) {
     document.getElementById('auth-screen').style.display = 'flex';
