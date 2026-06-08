@@ -1964,6 +1964,8 @@
       }
       if (!authMounted) {
         clerk.mountSignIn(document.getElementById('clerk-auth'), {
+          afterSignInUrl: window.location.origin,
+          afterSignUpUrl: window.location.origin,
           appearance: {
             variables: {
               colorPrimary: '#6a5c51',
