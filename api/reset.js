@@ -7,6 +7,7 @@ module.exports = withAuth(async (req, res, userId) => {
   await Promise.all([
     sql`DELETE FROM daily_sessions_v2 WHERE user_id = ${userId}`,
     sql`DELETE FROM wallet_v2 WHERE user_id = ${userId}`,
+    sql`DELETE FROM tasks_v2 WHERE user_id = ${userId}`,
     sql`
       INSERT INTO settings_v2 (user_id, reset_hour, has_completed_onboarding, onboarding_ritual_count)
       VALUES (${userId}, 8, false, 0)

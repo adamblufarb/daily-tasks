@@ -397,9 +397,9 @@
     /* Slides */
     .ftue-slide-emoji { font-size: 5rem; line-height: 1; margin-bottom: 28px; }
     .ftue-slide-text { font-size: 1.05rem; font-weight: 700; color: var(--text); line-height: 1.5; }
-    .ftue-dots { display: flex; gap: 8px; justify-content: center; }
-    .ftue-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background 0.2s, transform 0.2s; }
-    .ftue-dot.active { background: var(--accent); transform: scale(1.35); }
+    .ftue-dots { display: flex; gap: 6px; justify-content: center; margin-top: 18px; }
+    .ftue-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); transition: background 0.2s, transform 0.2s; }
+    .ftue-dot.active { background: var(--accent); transform: scale(1.4); }
   </style>
 </head>
 <body>
@@ -819,11 +819,11 @@
         <div class="ftue-main">
           <div class="ftue-slide-emoji">${slide.emoji}</div>
           <div class="ftue-slide-text">${slide.text}</div>
-        </div>
-        <div class="ftue-footer">
           <div class="ftue-dots">
             ${FTUE_SLIDES.map((_, i) => `<div class="ftue-dot${i === s.ftueSlide ? ' active' : ''}"></div>`).join('')}
           </div>
+        </div>
+        <div class="ftue-footer">
           ${isLast
             ? `<button class="btn-primary" id="btn-ftue-roll">Roll Acts →</button>`
             : `<button class="btn-primary" id="btn-ftue-next">Next</button>`}
@@ -2003,13 +2003,12 @@
 
   async function resetEverything() {
     await api('POST', '/api/reset');
-    // Preserve tasks/storeItems — only wipe runtime state
-    const savedTasks = s.tasks.slice();
-    const savedStoreItems = s.storeItems.slice();
+    // Tasks were deleted server-side; re-fetch so init re-seeds the correct defaults
+    const data = await api('GET', '/api/init');
     s = initialState();
     s.loading = false;
-    s.tasks = savedTasks;
-    s.storeItems = savedStoreItems;
+    s.tasks = data.tasks;
+    s.storeItems = data.storeItems;
     s.ftueScreen = 'splash';
     render();
   }
