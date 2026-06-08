@@ -367,7 +367,7 @@
     .reward-emoji  { font-size: 5rem; line-height: 1; margin-bottom: 16px; }
     .reward-title  { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
     .reward-earned { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 40px; line-height: 1.5; }
-    .btn-claim     { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+    .btn-claim     { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; touch-action: manipulation; }
 
     /* Concluded-screen: declined task (red) */
     .active-task.task-declined { border-color: var(--danger); background: var(--danger); color: #fff; cursor: pointer; }
@@ -1542,8 +1542,14 @@
       document.getElementById('btn-acknowledge')?.addEventListener('click', async () => {
         s.pendingReward = null;
         s.overlayScreen = null;
-        await advanceOnboarding();
-        render();
+        let advancedOnboarding = false;
+        if (!s.hasCompletedOnboarding) {
+          s.onboardingRitualCount++;
+          if (s.onboardingRitualCount >= 3) s.hasCompletedOnboarding = true;
+          advancedOnboarding = true;
+        }
+        render(); // immediate transition
+        if (advancedOnboarding) await saveSettings();
       });
     }
 
@@ -1925,9 +1931,16 @@
     }
     s.pendingReward = null;
     s.overlayScreen = null;
-    await advanceOnboarding();
-    render();
-    await saveWallet();
+    let advancedOnboarding = false;
+    if (!s.hasCompletedOnboarding) {
+      s.onboardingRitualCount++;
+      if (s.onboardingRitualCount >= 3) s.hasCompletedOnboarding = true;
+      advancedOnboarding = true;
+    }
+    render(); // immediate transition — API saves happen in background
+    const saves = [saveWallet()];
+    if (advancedOnboarding) saves.push(saveSettings());
+    await Promise.all(saves);
   }
 
   async function advanceOnboarding() {
