@@ -387,20 +387,19 @@
     .auth-title  { font-size: 1.8rem; font-weight: 700; color: var(--text); margin-top: 12px; }
     .auth-sub    { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
 
-    /* FTUE — Splash */
-    .ftue-splash { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 0px); padding: 40px 32px; text-align: center; gap: 0; }
-    .ftue-splash-emoji { font-size: 5rem; line-height: 1; margin-bottom: 20px; }
+    /* FTUE — shared layout */
+    .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; padding: 0 20px; }
+    .ftue-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 0 0; }
+    .ftue-footer { padding: 0 0 calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
+    /* Splash */
     .ftue-splash-title { font-size: 3.2rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
-    .ftue-splash-tagline { font-size: 1rem; color: var(--subtext); margin-top: 10px; margin-bottom: 48px; }
-
-    /* FTUE — Slides */
-    .ftue-slides { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 0px); padding: 40px 32px; text-align: center; overflow: hidden; position: relative; }
-    .ftue-slide-emoji { font-size: 5rem; line-height: 1; margin-bottom: 24px; }
-    .ftue-slide-text { font-size: 1.25rem; font-weight: 600; color: var(--text); line-height: 1.45; max-width: 300px; margin-bottom: 40px; }
-    .ftue-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 32px; }
+    .ftue-splash-tagline { font-size: 1rem; color: var(--subtext); margin-top: 10px; margin-bottom: 0; }
+    /* Slides */
+    .ftue-slide-emoji { font-size: 5rem; line-height: 1; margin-bottom: 28px; }
+    .ftue-slide-text { font-size: 1.05rem; font-weight: 700; color: var(--text); line-height: 1.5; }
+    .ftue-dots { display: flex; gap: 8px; justify-content: center; }
     .ftue-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background 0.2s, transform 0.2s; }
     .ftue-dot.active { background: var(--accent); transform: scale(1.35); }
-    .ftue-slide-cta { width: 100%; max-width: 360px; }
   </style>
 </head>
 <body>
@@ -795,17 +794,20 @@
   const FTUE_SLIDES = [
     { emoji: '🧿', text: 'Honor your Ritual by completing all daily acts' },
     { emoji: '🕌', text: 'Build your record, earn currency and splurge at the Bazaar' },
-    { emoji: '🥀', text: 'One incomplete act breaks the entire Ritual' },
-    { emoji: '🎲', text: "Let's forge your first Ritual", cta: 'Roll Acts →' },
+    { emoji: '⚠️', text: 'But beware, one incomplete act breaks the entire Ritual' },
+    { emoji: '🎲', text: "Let's forge your first Ritual!" },
   ];
 
   function htmlSplash() {
     return `
       <div class="ftue-splash">
-        <div class="ftue-splash-emoji">🧿</div>
-        <div class="ftue-splash-title">Ritual</div>
-        <div class="ftue-splash-tagline">Small acts, Legendary gain</div>
-        <button class="btn-primary ftue-slide-cta" id="btn-ftue-begin">Let's Begin</button>
+        <div class="ftue-main">
+          <div class="ftue-splash-title">Ritual</div>
+          <div class="ftue-splash-tagline">Small acts, Legendary gain</div>
+        </div>
+        <div class="ftue-footer">
+          <button class="btn-primary" id="btn-ftue-begin">Let's Begin</button>
+        </div>
       </div>`;
   }
 
@@ -814,12 +816,14 @@
     const isLast = s.ftueSlide === FTUE_SLIDES.length - 1;
     return `
       <div class="ftue-slides">
-        <div class="ftue-slide-emoji">${slide.emoji}</div>
-        <div class="ftue-slide-text">${slide.text}</div>
-        <div class="ftue-dots">
-          ${FTUE_SLIDES.map((_, i) => `<div class="ftue-dot${i === s.ftueSlide ? ' active' : ''}"></div>`).join('')}
+        <div class="ftue-main">
+          <div class="ftue-slide-emoji">${slide.emoji}</div>
+          <div class="ftue-slide-text">${slide.text}</div>
         </div>
-        <div class="ftue-slide-cta">
+        <div class="ftue-footer">
+          <div class="ftue-dots">
+            ${FTUE_SLIDES.map((_, i) => `<div class="ftue-dot${i === s.ftueSlide ? ' active' : ''}"></div>`).join('')}
+          </div>
           ${isLast
             ? `<button class="btn-primary" id="btn-ftue-roll">Roll Acts →</button>`
             : `<button class="btn-primary" id="btn-ftue-next">Next</button>`}
@@ -863,7 +867,7 @@
       </div>
       <div class="pick-count${isMythic?' mythic-pick':''}">${countLabel}</div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${n>=maxPicks&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${!isOnboarding&&n>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             <span class="task-badge badge-${t.type}">${t.type}</span>
@@ -1385,6 +1389,49 @@
       }).join('')}`;
   }
 
+  /* ── FTUE slide transition (dir: +1 forward, -1 backward) ── */
+  function ftueSlideTransition(dir) {
+    const HALF = 350; // ms per half
+    const emoji = document.querySelector('.ftue-slide-emoji');
+    const text  = document.querySelector('.ftue-slide-text');
+
+    // Phase 1 — exit current content
+    if (emoji) {
+      emoji.style.transition = 'opacity 0.35s ease';
+      emoji.style.opacity = '0';
+    }
+    if (text) {
+      text.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+      text.style.transform = `translateX(${dir > 0 ? '-56px' : '56px'})`;
+      text.style.opacity = '0';
+    }
+
+    setTimeout(() => {
+      s.ftueSlide += dir;
+      render();
+
+      // Phase 2 — enter new content
+      const newEmoji = document.querySelector('.ftue-slide-emoji');
+      const newText  = document.querySelector('.ftue-slide-text');
+      if (newEmoji) {
+        newEmoji.style.transition = 'none';
+        newEmoji.style.opacity = '0';
+        newEmoji.getBoundingClientRect(); // force reflow
+        newEmoji.style.transition = 'opacity 0.35s ease';
+        newEmoji.style.opacity = '1';
+      }
+      if (newText) {
+        newText.style.transition = 'none';
+        newText.style.transform = `translateX(${dir > 0 ? '56px' : '-56px'})`;
+        newText.style.opacity = '0';
+        newText.getBoundingClientRect(); // force reflow
+        newText.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+        newText.style.transform = 'translateX(0)';
+        newText.style.opacity = '1';
+      }
+    }, HALF);
+  }
+
   /* ── Bind ── */
   function bind(screen) {
 
@@ -1403,13 +1450,13 @@
       el?.addEventListener('touchend', e => {
         const dx = e.changedTouches[0].clientX - touchStartX;
         if (Math.abs(dx) > 50) {
-          if (dx < 0 && s.ftueSlide < FTUE_SLIDES.length - 1) { s.ftueSlide++; render(); }
-          else if (dx > 0 && s.ftueSlide > 0) { s.ftueSlide--; render(); }
+          if (dx < 0 && s.ftueSlide < FTUE_SLIDES.length - 1) ftueSlideTransition(1);
+          else if (dx > 0 && s.ftueSlide > 0) ftueSlideTransition(-1);
         }
       }, { passive: true });
 
       document.getElementById('btn-ftue-next')?.addEventListener('click', () => {
-        if (s.ftueSlide < FTUE_SLIDES.length - 1) { s.ftueSlide++; render(); }
+        if (s.ftueSlide < FTUE_SLIDES.length - 1) ftueSlideTransition(1);
       });
 
       document.getElementById('btn-ftue-roll')?.addEventListener('click', async () => {
@@ -1521,9 +1568,20 @@
             s.planBuildState = 'pick';
           }
           const isOnboarding = !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
-          const maxPicks = isOnboarding ? (s.onboardingRitualCount === 0 ? 1 : 2) : 5;
-          if (s.picked.includes(id)) s.picked = s.picked.filter(x => x !== id);
-          else if (s.picked.length < maxPicks) s.picked.push(id);
+          if (s.picked.includes(id)) {
+            // Always allow deselect
+            s.picked = s.picked.filter(x => x !== id);
+          } else if (isOnboarding && s.onboardingRitualCount === 0) {
+            // Ritual 1 — radio: replace any existing selection
+            s.picked = [id];
+          } else if (isOnboarding && s.onboardingRitualCount === 1) {
+            // Ritual 2 — FIFO: drop oldest when at max of 2
+            if (s.picked.length < 2) s.picked = [...s.picked, id];
+            else s.picked = [s.picked[1], id];
+          } else {
+            // Normal: add up to 5
+            if (s.picked.length < 5) s.picked.push(id);
+          }
           render();
         }));
       document.getElementById('btn-start')?.addEventListener('click', startDay);
