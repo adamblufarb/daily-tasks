@@ -319,9 +319,9 @@
     .store-wallet { display: flex; gap: 8px; margin-bottom: 20px; }
     .store-wallet-chip { flex: 1; padding: 10px 8px; border-radius: 14px; text-align: center; font-size: 1.3rem; font-weight: 700; line-height: 1; }
     .store-wallet-chip .store-wallet-label { display: block; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; opacity: 0.75; }
-    .store-wallet-chip.common    { background: var(--common-light); color: var(--common-dark); }
-    .store-wallet-chip.legendary { background: var(--legendary-bg); color: var(--legendary-dark); }
-    .store-wallet-chip.mythic    { background: var(--mythic-bg);    color: var(--mythic); }
+    .store-wallet-chip.common    { background: var(--common-dark);    color: var(--common-light); }
+    .store-wallet-chip.legendary { background: var(--legendary-dark); color: var(--legendary-bg); }
+    .store-wallet-chip.mythic    { background: var(--mythic);         color: var(--mythic-bg); }
     .store-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; box-shadow: var(--shadow); }
     .store-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .store-card-name { font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
@@ -403,7 +403,7 @@
   <div class="content" id="app"></div>
   <div class="tab-bar">
     <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>Record</span></button>
-    <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Plan</span></button>
+    <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Ritual</span></button>
     <button class="tab-btn" data-tab="store"><span class="tab-icon">🛒</span><span>Store</span></button>
   </div>
 </div>
@@ -721,11 +721,11 @@
         if (iconEl)  iconEl.textContent  = '🏆';
         if (labelEl) labelEl.textContent = 'Done';
       } else if (isPlanActive) {
-        if (iconEl)  iconEl.textContent  = isMythicPlan ? '🔱' : '⚡';
+        if (iconEl)  iconEl.textContent  = isMythicPlan ? '🔱' : '🧿';
         if (labelEl) labelEl.textContent = 'Active';
       } else {
         if (iconEl)  iconEl.textContent  = '🎲';
-        if (labelEl) labelEl.textContent = 'Plan';
+        if (labelEl) labelEl.textContent = 'Ritual';
       }
       todayBtn.classList.toggle('mythic-active', isMythicPlan);
     }
@@ -750,9 +750,9 @@
       return `
         <div class="generate-screen">
           <div class="generate-emoji">🎲</div>
-          <div class="generate-title">Build Your Plan</div>
+          <div class="generate-title">Build Your Ritual</div>
           <div class="generate-sub">${fmtDate(s.today)}</div>
-          <button class="btn-primary" id="btn-generate">Generate Tasks →</button>
+          <button class="btn-primary" id="btn-generate">Generate Acts →</button>
         </div>`;
     }
 
@@ -763,7 +763,7 @@
     const isRevealing = s.planBuildState === 'revealing';
     return `
       <div class="section-header">
-        <div class="section-title">Build Your Plan</div>
+        <div class="section-title">Build Your Ritual</div>
         <div class="section-sub">${fmtDate(s.today)}</div>
       </div>
       <div class="pick-count${n===5?' mythic-pick':''}">Selected: <strong>${n} / 3</strong></div>
@@ -776,8 +776,8 @@
           <div class="task-desc">${t.description}</div>
         </div>`).join('')}
       <div style="height:16px"></div>
-      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Plan →</button>
-      <button class="btn-reroll" id="btn-reroll"${isRevealing||s.wallet.common<1?' disabled':''}>↺ Re-Roll Tasks (${s.wallet.common} common)</button>`;
+      <button class="btn-primary" id="btn-start"${n<3?' disabled':''}>Start Ritual →</button>
+      <button class="btn-reroll" id="btn-reroll"${isRevealing||s.wallet.common<1?' disabled':''}>↺ Re-Roll Acts (${s.wallet.common} common)</button>`;
   }
 
   /* ── Active ── */
@@ -823,9 +823,9 @@
     const deadlineDay = new Date().getHours() < RESET_HOUR ? 'today' : 'tomorrow';
     return `
       <div class="home-header">
-        <div class="home-emoji">${isMythic ? '🔱' : '⚡'}</div>
-        <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Plan' : 'Daily Plan'}</div>
-        <div class="home-sub">All tasks must be completed by ${resetStr} ${deadlineDay}.</div>
+        <div class="home-emoji">${isMythic ? '🔱' : '🧿'}</div>
+        <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Ritual' : 'Daily Ritual'}</div>
+        <div class="home-sub">All acts must be completed by ${resetStr} ${deadlineDay}.</div>
       </div>
       <div class="tasks-label">Today's Tasks</div>
       ${tasks.map(t => {
@@ -873,9 +873,9 @@
     const planType = isMythic ? 'mythical' : 'daily';
     return `
       <div class="home-header">
-        <div class="home-emoji">${isMythic ? '🔱' : '⚡'}</div>
-        <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Plan Concluded' : 'Daily Plan Concluded'}</div>
-        <div class="home-sub">Please submit your ${planType} plan results. The day resets at ${graceEndStr}.</div>
+        <div class="home-emoji">${isMythic ? '🔱' : '🧿'}</div>
+        <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Ritual Concluded' : 'Daily Ritual Concluded'}</div>
+        <div class="home-sub">Please submit your ${planType} ritual results. The day resets at ${graceEndStr}.</div>
       </div>
       <div class="tasks-label">Yesterday's Tasks</div>
       ${tasks.map(t => {
@@ -931,7 +931,7 @@
         <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
         <div style="position:relative;z-index:1;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:stretch">
           <div class="reward-emoji">🏆</div>
-          <div class="reward-title">All Done!</div>
+          <div class="reward-title">Ritual Completed</div>
           <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
           <button class="btn-claim" id="btn-claim-rewards">Claim Rewards</button>
         </div>
@@ -944,7 +944,7 @@
       <div class="reward-screen" style="background:var(--accent)">
         <div class="reward-emoji">😔</div>
         <div class="reward-title">Better Luck Next Time</div>
-        <div class="reward-earned">All tasks must be completed in order to earn rewards.</div>
+        <div class="reward-earned">All acts must be completed in order to earn rewards.</div>
         <button class="btn-claim" id="btn-acknowledge">Got It</button>
       </div>`;
   }
@@ -960,7 +960,7 @@
       </div>
       <div class="profile-menu">
         <button class="profile-menu-item" id="btn-profile-taskpool">
-          <span class="profile-menu-label">Task Pool</span>
+          <span class="profile-menu-label">Acts Pool</span>
           <span class="profile-menu-arrow">›</span>
         </button>
         <button class="profile-menu-item" id="btn-profile-storemanage">
@@ -1130,7 +1130,7 @@
       const saveClass = task.type ? `save-${task.type}` : '';
       return `
         <div class="task-edit-form">
-          <input class="form-input" id="edit-title" placeholder="Task name" value="${task.title||''}">
+          <input class="form-input" id="edit-title" placeholder="Act name" value="${task.title||''}">
           <input class="form-input" id="edit-desc"  placeholder="Description" value="${task.description||''}">
           <div class="form-row">
             <button class="form-type-btn${task.type==='common'?' active-common':''}" data-set-type="common">Common</button>
@@ -1146,14 +1146,14 @@
     return `
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-profile">‹ Profile</button>
-        <div class="section-title">Task Pool</div>
+        <div class="section-title">Acts Pool</div>
         <div class="section-sub">${active.length} active · ${common.length} common · ${legendary.length} legendary${archived.length ? ` · ${archived.length} archived` : ''}</div>
       </div>
       ${editing && isAdding ? `
         <div class="new-task-card">
-          <div class="new-task-label">New Task</div>
+          <div class="new-task-label">New Act</div>
           ${editForm(s.editingTask)}
-        </div>` : editing ? `<button class="btn-add-task" id="btn-add-task">+ Add Task</button>` : ''}
+        </div>` : editing ? `<button class="btn-add-task" id="btn-add-task">+ Add Act</button>` : ''}
       <div class="pool-section-label label-common">Common</div>
       ${common.map(taskRow).join('')}
       <div class="pool-section-label label-legendary">Legendary</div>
@@ -1163,7 +1163,7 @@
         ${archived.map(archivedRow).join('')}` : ''}
       <div style="height:16px"></div>
       ${!editing
-        ? `<button class="btn-primary" id="btn-edit-pool">Edit Task Pool</button>`
+        ? `<button class="btn-primary" id="btn-edit-pool">Edit Acts Pool</button>`
         : `<button class="btn-primary" id="btn-done-editing">Done</button>`}`;
   }
 
@@ -1194,8 +1194,8 @@
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Store</div>
-        <div class="section-sub">${alreadyBoughtToday ? '1 purchase used today' : '1 purchase available today'}</div>
       </div>
+      <div class="tasks-label" style="margin-bottom:8px">Available currency</div>
       <div class="store-wallet">
         <div class="store-wallet-chip common">${w.common} <span class="store-wallet-label">Common</span></div>
         <div class="store-wallet-chip legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
