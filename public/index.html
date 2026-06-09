@@ -858,7 +858,7 @@
       ? `Committed: <strong>${n} / ${maxPicks}</strong>`
       : `Committed: <strong>${n} / 3</strong>`;
     const rerollDisabled = isRevealing || (!isOnboarding && s.wallet.common < 1);
-    const rerollLabel = isOnboarding ? '↺ Re-Roll Acts' : `↺ Re-Roll Acts (${s.wallet.common} common)`;
+    const rerollLabel = isOnboarding ? '↺ Re-Roll Acts' : `↺ Re-Roll Acts (${s.wallet.common} Common)`;
     const showReroll = !isOnboarding || orc === 1;
     return `
       <div class="section-header">
