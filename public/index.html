@@ -117,6 +117,8 @@
     .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
     .badge-common { background: var(--common-light); color: var(--subtext); }
     .badge-legendary { background: var(--legendary-bg); color: var(--legendary-dark); }
+    .task-card.selected .badge-common { background: var(--subtext); color: var(--common-light); }
+    .task-card.legendary-card.selected .badge-legendary { background: var(--legendary-dark); color: var(--legendary-bg); }
     .task-desc { font-size: 0.84rem; color: var(--subtext); }
 
     /* Active task list */
@@ -859,7 +861,7 @@
       : `Committed: <strong>${n} / 3</strong>`;
     const rerollDisabled = isRevealing || s.wallet.common < 1;
     const rerollLabel = `↺ Re-Roll Acts (${s.wallet.common} Common)`;
-    const showReroll = !isOnboarding || orc === 1;
+    const showReroll = !isOnboarding;
     return `
       <div class="section-header">
         <div class="section-title">Craft Your Ritual</div>
