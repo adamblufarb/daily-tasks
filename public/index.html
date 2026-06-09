@@ -857,8 +857,8 @@
     const countLabel = isOnboarding
       ? `Committed: <strong>${n} / ${maxPicks}</strong>`
       : `Committed: <strong>${n} / 3</strong>`;
-    const rerollDisabled = isRevealing || (!isOnboarding && s.wallet.common < 1);
-    const rerollLabel = isOnboarding ? '↺ Re-Roll Acts' : `↺ Re-Roll Acts (${s.wallet.common} Common)`;
+    const rerollDisabled = isRevealing || s.wallet.common < 1;
+    const rerollLabel = `↺ Re-Roll Acts (${s.wallet.common} Common)`;
     const showReroll = !isOnboarding || orc === 1;
     return `
       <div class="section-header">
@@ -1593,22 +1593,20 @@
       document.getElementById('btn-start')?.addEventListener('click', startDay);
       document.getElementById('btn-reroll')?.addEventListener('click', async () => {
         if (s.planBuildState === 'revealing') return;
-        const isOnboarding = !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
-        if (!isOnboarding && s.wallet.common < 1) return;
-        if (!isOnboarding) {
-          s.wallet.common--;
-        }
+        if (s.wallet.common < 1) return;
+        s.wallet.common--;
         s.offered = rollOffered();
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
         revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
-        const saves = [api('POST', '/api/sessions', {
-          type: 'draft', id: `draft-${s.today}`, date: s.today,
-          offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
-        })];
-        if (!isOnboarding) saves.push(saveWallet());
-        await Promise.all(saves);
+        await Promise.all([
+          api('POST', '/api/sessions', {
+            type: 'draft', id: `draft-${s.today}`, date: s.today,
+            offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
+          }),
+          saveWallet(),
+        ]);
       });
     }
 
