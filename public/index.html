@@ -402,6 +402,13 @@
     .ftue-dots { display: flex; gap: 7px; justify-content: center; margin-top: 28px; }
     .ftue-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0.25; transition: opacity 0.2s, transform 0.2s; }
     .ftue-dot.active { opacity: 1; transform: scale(1.3); }
+
+    /* Tab locking */
+    .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
+
+    /* Tutorial overlay */
+    .tutorial-box { position: fixed; bottom: calc(78px + env(safe-area-inset-bottom)); left: 20px; right: 20px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; box-shadow: 0 8px 40px rgba(0,0,0,0.35); }
+    .tutorial-title { font-size: 1.05rem; font-weight: 600; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
   </style>
 </head>
 <body>
@@ -421,9 +428,9 @@
 <div id="app-wrap" style="display:none">
   <div class="content" id="app"></div>
   <div class="tab-bar" id="tab-bar">
-    <button class="tab-btn" data-tab="history"><span class="tab-icon">📜</span><span>Record</span></button>
+    <button class="tab-btn" id="tab-history" data-tab="history"><span class="tab-icon">📜</span><span>Record</span></button>
     <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Ritual</span></button>
-    <button class="tab-btn" data-tab="store"><span class="tab-icon">🕌</span><span>Bazaar</span></button>
+    <button class="tab-btn" id="tab-store" data-tab="store"><span class="tab-icon">🕌</span><span>Bazaar</span></button>
   </div>
 </div>
 
@@ -539,6 +546,10 @@
       onboardingRitualCount: 0,
       ftueScreen: null,
       ftueSlide: 0,
+      hasShownRecordTutorial: false,
+      hasShownBazaarTutorial: false,
+      tutorialFlow: null,
+      tutorialStep: 0,
     };
   }
   let s = initialState();
@@ -742,6 +753,9 @@
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === s.tab));
+    // Tab locking during onboarding
+    document.getElementById('tab-history')?.classList.toggle('tab-locked', s.onboardingRitualCount < 1);
+    document.getElementById('tab-store')?.classList.toggle('tab-locked', s.onboardingRitualCount < 2);
     // Hide tab bar during FTUE
     const tabBar = document.getElementById('tab-bar');
     if (tabBar) tabBar.style.display = s.ftueScreen ? 'none' : '';
@@ -1055,6 +1069,7 @@
     const graceEnd = RESET_HOUR + GRACE_HOURS;
     const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
     const hours = Array.from({length: 6}, (_, i) => i + 6);
+    const bazaarUnlocked = s.onboardingRitualCount >= 2;
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Profile</div>
@@ -1064,12 +1079,13 @@
           <span class="profile-menu-label">Acts Pool</span>
           <span class="profile-menu-arrow">›</span>
         </button>
+        ${bazaarUnlocked ? `
         <button class="profile-menu-item" id="btn-profile-storemanage">
           <span class="profile-menu-label">Bazaar Items</span>
           <span class="profile-menu-arrow">›</span>
-        </button>
+        </button>` : ''}
       </div>
-      <div class="settings-section">
+      <div class="settings-section" id="tutorial-settings-section">
         <div class="settings-row">
           <div class="settings-label">Day Reset Time</div>
           <select class="settings-select" id="select-reset-hour">
@@ -1095,7 +1111,13 @@
       <button class="profile-menu-item" id="btn-show-reset" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,var(--card));border-color:color-mix(in srgb,var(--danger) 40%,transparent)">
         <span class="profile-menu-label">Reset Account</span>
         <span class="profile-menu-arrow" style="color:var(--danger)">›</span>
-      </button>`}`;
+      </button>`}
+      <div style="height:24px"></div>
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--subtext);margin-bottom:8px">Testing</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" id="btn-test-record" style="flex:1;font-size:0.85rem;padding:13px">Unlock Record</button>
+        <button class="btn-primary" id="btn-test-bazaar" style="flex:1;font-size:0.85rem;padding:13px">Unlock Bazaar</button>
+      </div>`;
   }
 
   /* ── Store Management ── */
@@ -1297,7 +1319,7 @@
         <div class="section-title">Bazaar</div>
       </div>
       <div class="tasks-label" style="margin-bottom:8px;text-transform:none;letter-spacing:0">Available currency</div>
-      <div class="store-wallet">
+      <div class="store-wallet" id="tutorial-store-wallet">
         <div class="store-wallet-chip common">${w.common} <span class="store-wallet-label">Common</span></div>
         <div class="store-wallet-chip legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic">${w.mythic} <span class="store-wallet-label">Mythic</span></div>
@@ -1551,7 +1573,13 @@
           advancedOnboarding = true;
         }
         render(); // immediate transition
-        if (advancedOnboarding) await saveSettings();
+        if (advancedOnboarding) {
+          if (s.onboardingRitualCount === 1 && !s.hasShownRecordTutorial)
+            setTimeout(() => startTutorial('record'), 500);
+          else if (s.onboardingRitualCount === 2 && !s.hasShownBazaarTutorial)
+            setTimeout(() => startTutorial('bazaar'), 500);
+          await saveSettings();
+        }
       });
     }
 
@@ -1826,6 +1854,10 @@
         s.editingTask = { id: '', title: '', description: '', type: '' };
         render();
       });
+
+      // Testing tool
+      document.getElementById('btn-test-record')?.addEventListener('click', () => startTutorial('record'));
+      document.getElementById('btn-test-bazaar')?.addEventListener('click', () => startTutorial('bazaar'));
     }
   }
 
@@ -1835,6 +1867,8 @@
       reset_hour: RESET_HOUR,
       has_completed_onboarding: s.hasCompletedOnboarding,
       onboarding_ritual_count: s.onboardingRitualCount,
+      has_shown_record_tutorial: s.hasShownRecordTutorial,
+      has_shown_bazaar_tutorial: s.hasShownBazaarTutorial,
     });
   }
 
@@ -1938,6 +1972,12 @@
       advancedOnboarding = true;
     }
     render(); // immediate transition — API saves happen in background
+    if (advancedOnboarding) {
+      if (s.onboardingRitualCount === 1 && !s.hasShownRecordTutorial)
+        setTimeout(() => startTutorial('record'), 500);
+      else if (s.onboardingRitualCount === 2 && !s.hasShownBazaarTutorial)
+        setTimeout(() => startTutorial('bazaar'), 500);
+    }
     const saves = [saveWallet()];
     if (advancedOnboarding) saves.push(saveSettings());
     await Promise.all(saves);
@@ -1948,6 +1988,126 @@
     s.onboardingRitualCount++;
     if (s.onboardingRitualCount >= 3) s.hasCompletedOnboarding = true;
     await saveSettings();
+  }
+
+  /* ── Onboarding tutorials ── */
+
+  const RECORD_TUTORIAL = [
+    { type: 'tap-tab', tabId: 'tab-history', label: 'Record' },
+    { type: 'info',    title: 'Record is where your glory is documented for eternity.' },
+    { type: 'tap-el',  elId: 'btn-open-profile', label: 'Profile' },
+    { type: 'info',    title: 'Personalize your Rituals here' },
+    { type: 'highlight', elId: 'tutorial-settings-section', title: "Set the time you want your day to reset. You'll have 3 hours after day reset to enter yesterday's Ritual results." },
+    { type: 'highlight', elId: 'btn-profile-taskpool',      title: 'View and edit your Acts here.', finish: true },
+  ];
+
+  const BAZAAR_TUTORIAL = [
+    { type: 'tap-tab',   tabId: 'tab-store',           label: 'Bazaar' },
+    { type: 'info',      title: 'Bazaar welcomes you to buy gifts.' },
+    { type: 'highlight', elId: 'tutorial-store-wallet', title: 'You earn currency by completing Rituals.' },
+    { type: 'info',      title: 'Earn Mythical currency to indulge in real world gifts.', finish: true },
+  ];
+
+  function startTutorial(flow) {
+    s.tutorialFlow = flow;
+    s.tutorialStep = 0;
+    renderTutorial();
+  }
+
+  function cleanupTutorial() {
+    const tabBar = document.getElementById('tab-bar');
+    if (tabBar) tabBar.style.zIndex = '';
+    document.querySelectorAll('.tab-btn').forEach(b => { b.style.pointerEvents = ''; });
+    ['tutorial-settings-section', 'btn-profile-taskpool', 'tutorial-store-wallet', 'btn-open-profile'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.style.position = ''; el.style.zIndex = ''; el.style.pointerEvents = ''; }
+    });
+  }
+
+  function completeTutorial() {
+    if (s.tutorialFlow === 'record') s.hasShownRecordTutorial = true;
+    if (s.tutorialFlow === 'bazaar') s.hasShownBazaarTutorial = true;
+    s.tutorialFlow = null;
+    s.tutorialStep = 0;
+    document.getElementById('tutorial-overlay')?.remove();
+    cleanupTutorial();
+    saveSettings();
+  }
+
+  function renderTutorial() {
+    document.getElementById('tutorial-overlay')?.remove();
+    cleanupTutorial();
+
+    if (!s.tutorialFlow) return;
+    const steps = s.tutorialFlow === 'record' ? RECORD_TUTORIAL : BAZAAR_TUTORIAL;
+    const step  = steps[s.tutorialStep];
+    if (!step) { completeTutorial(); return; }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'tutorial-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:300;pointer-events:none;';
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.82);pointer-events:all;';
+    overlay.appendChild(backdrop);
+    document.body.appendChild(overlay);
+
+    if (step.type === 'tap-tab') {
+      const tabBar    = document.getElementById('tab-bar');
+      const targetTab = document.getElementById(step.tabId);
+      if (tabBar) tabBar.style.zIndex = '301';
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        if (b.id !== step.tabId) b.style.pointerEvents = 'none';
+      });
+      if (targetTab) {
+        const rect = targetTab.getBoundingClientRect();
+        const hint = document.createElement('div');
+        hint.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;bottom:${Math.round(window.innerHeight - rect.top + 12)}px;transform:translateX(-50%);z-index:302;text-align:center;color:#fff;pointer-events:none;`;
+        hint.innerHTML = `<div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;margin-bottom:8px;">Tap ${step.label}</div><div style="font-size:1.6rem;line-height:1">↓</div>`;
+        overlay.appendChild(hint);
+        targetTab.addEventListener('click', () => {
+          s.tutorialStep++;
+          requestAnimationFrame(() => renderTutorial());
+        }, { once: true });
+      }
+    }
+
+    if (step.type === 'tap-el') {
+      const el = document.getElementById(step.elId);
+      if (el) {
+        el.style.position = 'relative';
+        el.style.zIndex   = '301';
+        const rect = el.getBoundingClientRect();
+        const hint = document.createElement('div');
+        hint.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;top:${Math.round(rect.bottom + 12)}px;transform:translateX(-50%);z-index:302;text-align:center;color:#fff;pointer-events:none;`;
+        hint.innerHTML = `<div style="font-size:1.6rem;line-height:1;margin-bottom:8px;">↑</div><div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;">Tap ${step.label}</div>`;
+        overlay.appendChild(hint);
+        el.addEventListener('click', () => {
+          s.tutorialStep++;
+          requestAnimationFrame(() => renderTutorial());
+        }, { once: true });
+      }
+    }
+
+    if (step.type === 'info' || step.type === 'highlight') {
+      if (step.type === 'highlight') {
+        const el = document.getElementById(step.elId);
+        if (el) {
+          el.style.position      = 'relative';
+          el.style.zIndex        = '301';
+          el.style.pointerEvents = 'none';
+          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+        }
+      }
+      const box = document.createElement('div');
+      box.className = 'tutorial-box';
+      box.innerHTML = `<div class="tutorial-title">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.finish ? 'Finish' : 'Next'}</button>`;
+      overlay.appendChild(box);
+      document.getElementById('btn-tutorial-cta')?.addEventListener('click', () => {
+        if (step.finish) { completeTutorial(); return; }
+        s.tutorialStep++;
+        renderTutorial();
+      });
+    }
   }
 
   function graceCompleteTask(taskId) {
@@ -2090,8 +2250,10 @@
       if (data.settings) {
         RESET_HOUR = data.settings.reset_hour;
         s.today = todayStr();
-        s.hasCompletedOnboarding = data.settings.has_completed_onboarding ?? false;
-        s.onboardingRitualCount  = data.settings.onboarding_ritual_count  ?? 0;
+        s.hasCompletedOnboarding   = data.settings.has_completed_onboarding   ?? false;
+        s.onboardingRitualCount    = data.settings.onboarding_ritual_count    ?? 0;
+        s.hasShownRecordTutorial   = data.settings.has_shown_record_tutorial  ?? false;
+        s.hasShownBazaarTutorial   = data.settings.has_shown_bazaar_tutorial  ?? false;
       }
 
       if (data.storeItems.length > 0) s.storeItems = data.storeItems;
@@ -2132,6 +2294,14 @@
         }
       }
       render();
+
+      // Resume any tutorial that wasn't completed before app closed
+      if (!s.ftueScreen) {
+        if (s.onboardingRitualCount >= 1 && !s.hasShownRecordTutorial)
+          setTimeout(() => startTutorial('record'), 800);
+        else if (s.onboardingRitualCount >= 2 && !s.hasShownBazaarTutorial)
+          setTimeout(() => startTutorial('bazaar'), 800);
+      }
     } catch (err) {
       document.getElementById('app').innerHTML =
         `<div class="loading" style="color:var(--danger)">Failed to load.<br><small>${err.message}</small></div>`;

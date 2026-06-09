@@ -13,7 +13,9 @@ module.exports = withAuth(async (req, res, userId) => {
       VALUES (${userId}, 8, false, 0)
       ON CONFLICT (user_id) DO UPDATE SET
         has_completed_onboarding = false,
-        onboarding_ritual_count = 0
+        onboarding_ritual_count = 0,
+        has_shown_record_tutorial = false,
+        has_shown_bazaar_tutorial = false
     `,
   ]);
 
