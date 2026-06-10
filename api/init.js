@@ -7,22 +7,16 @@ const DEFAULT_STORE_ITEMS = [
 ];
 
 const DEFAULT_TASKS = [
-  { id: 'c1',  type: 'common',    title: 'Long Walk',              description: 'Take a 45 minute walk outside' },
-  { id: 'c2',  type: 'common',    title: 'Hydrate',                description: 'Drink 8 glasses of water' },
-  { id: 'c3',  type: 'common',    title: 'Read',                   description: 'Read for at least 15 minutes' },
-  { id: 'c4',  type: 'common',    title: 'Light Phone Detox',      description: "Don't use your phone after 21:30" },
-  { id: 'c5',  type: 'common',    title: 'Social Media Breather',  description: 'Avoid social media until noon' },
-  { id: 'c6',  type: 'common',    title: 'Exercise',               description: 'Work out for 30 minutes' },
-  { id: 'c7',  type: 'common',    title: 'Connect',                description: 'Reach out to someone you care about' },
-  { id: 'c8',  type: 'common',    title: 'Early Bed',              description: 'Get in bed before 22:30' },
-  { id: 'c9',  type: 'common',    title: 'Little Chef',            description: 'Cook something' },
-  { id: 'c10', type: 'common',    title: 'Stretch',                description: '10 minutes of stretching' },
-  { id: 'c11', type: 'common',    title: 'Cold Shower',            description: 'Take a cold shower today' },
-  { id: 'c12', type: 'common',    title: 'No Sweets',              description: 'Avoid sugar and sweets for the day' },
-  { id: 'l1',  type: 'legendary', title: 'Social Media Ban',       description: 'Avoid social media all day' },
-  { id: 'l2',  type: 'legendary', title: 'Heavy Phone Detox',      description: "Don't use your phone after 18:00" },
-  { id: 'l3',  type: 'legendary', title: 'Schedule Dinner',        description: 'Schedule dinner with friends' },
-  { id: 'l4',  type: 'legendary', title: 'Big Chef',               description: 'Cook something new' },
+  { id: 'c1',  type: 'common',    title: 'Long Walk',   description: 'Take a 45 minute walk outside' },
+  { id: 'c2',  type: 'common',    title: 'Hydrate',     description: 'Drink 8 glasses of water' },
+  { id: 'c3',  type: 'common',    title: 'Read',        description: 'Read for at least 15 minutes' },
+  { id: 'c6',  type: 'common',    title: 'Exercise',    description: 'Work out for 30 minutes' },
+  { id: 'c8',  type: 'common',    title: 'Early Bed',   description: 'Get in bed before 22:30' },
+  { id: 'c9',  type: 'common',    title: 'Little Chef', description: 'Cook something' },
+  { id: 'c10', type: 'common',    title: 'Stretch',     description: '10 minutes of stretching' },
+  { id: 'l1',  type: 'legendary', title: 'Social Media Ban', description: 'Avoid social media all day' },
+  { id: 'l2',  type: 'legendary', title: 'Phone Detox',      description: "Don't use your phone after 18:00" },
+  { id: 'l4',  type: 'legendary', title: 'Big Chef',         description: 'Cook something new' },
 ];
 
 module.exports = withAuth(async (req, res, userId) => {
@@ -89,6 +83,18 @@ module.exports = withAuth(async (req, res, userId) => {
       rarity      text NOT NULL DEFAULT 'common',
       PRIMARY KEY (user_id, id)
     )
+  `;
+
+  // Remove retired acts (idempotent)
+  await sql`
+    DELETE FROM tasks_v2
+    WHERE user_id = ${userId}
+      AND id IN ('c4','c5','c7','c11','c12','l3')
+  `;
+  // Rename Heavy Phone Detox → Phone Detox (idempotent)
+  await sql`
+    UPDATE tasks_v2 SET title = 'Phone Detox'
+    WHERE user_id = ${userId} AND id = 'l2' AND title = 'Heavy Phone Detox'
   `;
 
   // Remove old placeholder offerings (idempotent)
