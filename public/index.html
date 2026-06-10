@@ -370,7 +370,7 @@
     .btn-purchase.ready-legendary,
     .btn-purchase.ready-mythic    { background: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
     .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
-    .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
+    .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
 .btn-craft-action { display: grid; grid-template-columns: 1fr auto; align-items: center; background: #fff; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
     .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: flex-start; color: var(--text); }
@@ -560,6 +560,7 @@
       confirmEditTask: null,
       newTaskType: 'common',
       profileScreen: 'menu',
+      poolEditMode: false,
       showResetConfirm: false,
       storeItems: [],
       editingStoreItem: null,
@@ -907,7 +908,7 @@
       ? `Committed: <strong>${n} / ${maxPicks}</strong>`
       : `Committed: <strong>${n} / 3</strong>`;
     const rerollDisabled = isRevealing || s.wallet.common < 1;
-    const rerollLabel = `↺ Re-Roll Acts (${s.wallet.common} Common)`;
+    const rerollLabel = `↺ Re-Roll Acts &nbsp;x1 ${rarityTag('common')}`;
     const showReroll = !isOnboarding;
     return `
       <div class="section-header">
@@ -1215,6 +1216,7 @@
     const common    = active.filter(t => t.type === 'common');
     const legendary = active.filter(t => t.type === 'legendary');
     const isAdding  = s.editingTask?.id === '';
+    const editing   = s.poolEditMode;
     const canAdd    = s.wallet.legendary >= 1;
 
     // Compute per-task stats from session history
@@ -1244,7 +1246,7 @@
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
             </div>
-            ${!isDefault ? `
+            ${editing && !isDefault ? `
             <div class="pool-task-actions">
               <button class="btn-icon" data-edit-task="${t.id}" title="Edit">✏️</button>
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
@@ -1312,7 +1314,10 @@
       ${common.map(taskRow).join('')}
       <div class="pool-section-label label-legendary">Legendary</div>
       ${legendary.map(taskRow).join('')}
-      <div style="height:16px"></div>`;
+      <div style="height:16px"></div>
+      ${!editing
+        ? `<button class="btn-primary" id="btn-edit-pool">Edit Acts Pool</button>`
+        : `<button class="btn-primary" id="btn-done-editing">Done</button>`}`;
   }
 
   /* ── Store ── */
@@ -1839,7 +1844,7 @@
     if (screen === 'tasks') {
       // Profile menu navigation
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
-        s.profileScreen = 'taskpool'; render();
+        s.profileScreen = 'taskpool'; s.poolEditMode = false; render();
       });
       document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
         s.profileScreen = 'storemanage'; s.editingStoreItem = null; render();
@@ -1847,7 +1852,13 @@
 
       // Back from task pool → Profile menu
       document.getElementById('btn-back-profile')?.addEventListener('click', () => {
-        s.profileScreen = 'menu'; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
+        s.profileScreen = 'menu'; s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
+      });
+      document.getElementById('btn-edit-pool')?.addEventListener('click', () => {
+        s.poolEditMode = true; render();
+      });
+      document.getElementById('btn-done-editing')?.addEventListener('click', () => {
+        s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
       });
 
       // Back from store manage → Profile menu
