@@ -116,10 +116,8 @@
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
     .task-badge { font-size: 0.62rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
-    .badge-common { background: var(--common-light); color: var(--subtext); }
-    .badge-legendary { background: var(--legendary-bg); color: var(--legendary-dark); }
-    .task-card.selected .badge-common { background: var(--subtext); color: var(--common-light); }
-    .task-card.legendary-card.selected .badge-legendary { background: var(--legendary-dark); color: var(--legendary-bg); }
+    .badge-common { background: var(--common-dark); color: var(--common-light); }
+    .badge-legendary { background: var(--legendary-dark); color: var(--legendary-bg); }
     .task-desc { font-size: 0.84rem; color: var(--subtext); }
 
     /* Active task list */
@@ -135,8 +133,8 @@
     .active-task.completed .active-task-desc { color: rgba(255,255,255,0.7); }
     .active-task.completed .task-confirm-text { color: #fff; }
     .active-task.completed .task-confirm { border-top-color: rgba(255,255,255,0.3); }
-    .active-task.completed.type-legendary .task-badge { background: var(--legendary-dark); color: #fff; }
-    .active-task.completed.type-common    .task-badge { background: var(--common-dark); color: #fff; }
+    .active-task.completed.type-legendary .task-badge { background: var(--legendary-dark); color: var(--legendary-bg); }
+    .active-task.completed.type-common    .task-badge { background: var(--common-dark);    color: var(--common-light); }
     .active-task-row { display: flex; align-items: center; gap: 14px; }
     .active-task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dot-common { background: var(--common); }
@@ -367,9 +365,9 @@
     .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
     .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
     .craft-badge { display: inline-block; padding: 2px 6px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; line-height: 1.5; }
-    .craft-badge-common    { background: var(--common-dark);    color: var(--common); }
-    .craft-badge-legendary { background: var(--legendary-dark); color: var(--legendary); }
-    .craft-badge-mythical  { background: var(--mythic-dark);    color: var(--mythic); }
+    .craft-badge-common    { background: var(--common-dark);    color: var(--common-light); }
+    .craft-badge-legendary { background: var(--legendary-dark); color: var(--legendary-bg); }
+    .craft-badge-mythical  { background: var(--mythic);         color: var(--mythic-bg); }
     .btn-craft-action { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
     .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: center; color: #fff; }
     .craft-action-cost { display: flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 0.8rem; font-weight: 400; color: rgba(255,255,255,0.85); white-space: nowrap; }
