@@ -349,6 +349,7 @@
     .store-card-name { font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
     .store-card-desc { font-size: 0.82rem; color: var(--subtext); }
     .store-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .store-card-price { flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; font-weight: 400; color: var(--subtext); }
 .store-card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
     .store-card.selected-common    { border-color: var(--common);    box-shadow: 0 0 0 2px var(--common); }
     .store-card.selected-legendary { border-color: var(--legendary); box-shadow: 0 0 0 2px var(--legendary); }
@@ -356,6 +357,11 @@
     .store-card.selected-common    .store-card-name { color: var(--common-dark); }
     .store-card.selected-legendary .store-card-name { color: var(--legendary-dark); }
     .store-card.selected-mythic    .store-card-name { color: var(--mythic); }
+    .store-card.purchased { background: var(--mythic); border-color: var(--mythic); cursor: default; }
+    .store-card.purchased .store-card-name { color: #fff; }
+    .store-card.purchased .store-card-desc { color: rgba(255,255,255,0.75); }
+    .store-card.purchased .store-card-price { color: rgba(255,255,255,0.85); }
+    .store-card.purchased .rarity-tag-mythical { background: var(--mythic-dark); color: var(--mythic-bg); }
     .store-purchase-cta { position: sticky; bottom: calc(88px + env(safe-area-inset-bottom)); width: 100%; margin-top: 8px; }
     .btn-purchase { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: background 0.15s, transform 0.1s; }
     .btn-purchase:active { transform: scale(0.98); }
@@ -1361,8 +1367,9 @@
       <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:20px;background:linear-gradient(to right,var(--common) 0%,var(--common) 20%,var(--legendary) 40%,var(--legendary) 60%,var(--mythic) 80%,var(--mythic) 100%)">Craft Tokens</button>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
+        const isPurchased = alreadyBoughtToday && isSelected;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
-        const selClass = isSelected ? ` selected-${item.rarity}` : '';
+        const selClass = isPurchased ? ' purchased' : isSelected ? ` selected-${item.rarity}` : '';
         const affordOpacity = !canAfford && !isSelected ? ' style="opacity:0.5"' : '';
         return `
         <div class="store-card${selClass}"${!alreadyBoughtToday ? ` data-store-select="${item.id}"` : ''}${affordOpacity}>
@@ -1371,7 +1378,7 @@
               <div class="store-card-name">${item.name}</div>
               <div class="store-card-desc">${item.desc}</div>
             </div>
-            <div style="flex-shrink:0;display:flex;align-items:center;gap:5px;font-size:0.8rem;font-weight:400;color:var(--subtext)">x${item.cost} ${rarityTag(item.rarity)}</div>
+            <div class="store-card-price">x${item.cost} ${rarityTag(item.rarity)}</div>
           </div>
         </div>`;
       }).join('')}
