@@ -206,6 +206,8 @@
     .pool-task-card.card-common { border-color: color-mix(in srgb, var(--common) 35%, transparent); }
     .pool-task-card.card-legendary { border-color: color-mix(in srgb, var(--legendary) 35%, transparent); }
     .pool-task-card.card-archived { opacity: 0.55; }
+    .pool-task-card.pool-pickable { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+    .pool-task-card.pool-pickable:active { transform: scale(0.98); }
     .pool-task-row { display: flex; align-items: center; gap: 10px; }
     .pool-task-info { flex: 1; min-width: 0; }
     .pool-task-title { font-size: 0.95rem; font-weight: 700; }
@@ -908,7 +910,7 @@
       ? `Committed: <strong>${n} / ${maxPicks}</strong>`
       : `Committed: <strong>${n} / 3</strong>`;
     const rerollDisabled = isRevealing || s.wallet.common < 1;
-    const rerollLabel = `↺ Re-Roll Acts &nbsp;x1 ${rarityTag('common')}`;
+    const rerollLabel = `↺ Re-Roll Acts <span style="font-weight:400;font-size:0.8rem">x1</span>${rarityTag('common')}`;
     const showReroll = !isOnboarding;
     return `
       <div class="section-header">
@@ -1233,22 +1235,24 @@
       }
     }
 
+    const hasPicked = editing && s.editingTask && s.editingTask.id !== '';
+
     function taskRow(t) {
-      const isDefault       = DEFAULT_TASK_IDS.has(t.id);
-      const isEditing       = s.editingTask?.id === t.id;
-      const isDeleting      = s.deletingTask === t.id;
-      const isConfirmEdit   = s.confirmEditTask === t.id;
+      const isDefault  = DEFAULT_TASK_IDS.has(t.id);
+      const isEditing  = s.editingTask?.id === t.id;
+      const isDeleting = s.deletingTask === t.id;
       const st = stats[t.id] || { chosen: 0, completed: 0 };
+      // In pick mode (edit mode, no task picked yet): whole card is tappable
+      const pickable = editing && !hasPicked && !isDeleting;
       return `
-        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''}>
+        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}${pickable?' pool-pickable':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''}${pickable?` data-pick-edit="${t.id}"`:''}">
           <div class="pool-task-row">
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
             </div>
-            ${editing && !isDefault ? `
+            ${editing && !isDefault && !hasPicked ? `
             <div class="pool-task-actions">
-              <button class="btn-icon" data-edit-task="${t.id}" title="Edit">✏️</button>
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
             </div>` : `
             <div class="pool-task-stats">
@@ -1256,14 +1260,6 @@
               <div class="pool-stat">Completed <span>${st.completed}</span></div>
             </div>`}
           </div>
-          ${isConfirmEdit ? `
-          <div class="delete-confirm">
-            <span class="delete-confirm-text">Editing an act will reset its progress.</span>
-            <div style="display:flex;gap:6px">
-              <button class="btn-del-no" data-cancel-confirm-edit>Cancel</button>
-              <button class="btn-del-yes" data-confirm-edit="${t.id}">Edit</button>
-            </div>
-          </div>` : ''}
           ${isDeleting ? `
           <div class="delete-confirm">
             <span class="delete-confirm-text">Deleting an act will not refund its tokens.</span>
@@ -1278,6 +1274,7 @@
 
     function editForm(task) {
       const saveClass = task.type ? `save-${task.type}` : '';
+      const canSave = s.wallet.legendary >= 1;
       return `
         <div class="task-edit-form">
           <input class="form-input" id="edit-title" placeholder="Act name" value="${task.title||''}">
@@ -1288,7 +1285,7 @@
           </div>
           <div class="form-actions">
             <button class="btn-cancel" data-cancel-edit>Cancel</button>
-            <button class="btn-save ${saveClass}" data-save-task>Save</button>
+            <button class="btn-save ${saveClass}" data-save-task${canSave?'':' disabled'} style="display:inline-flex;align-items:center;gap:5px">Save <span style="font-weight:400;font-size:0.8rem">x1</span>${rarityTag('legendary')}</button>
           </div>
         </div>`;
     }
@@ -1915,28 +1912,19 @@
         if (!name) return;
         saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity: 'mythic' });
       });
-      // Edit task → show confirmation first
-      document.querySelectorAll('[data-edit-task]').forEach(el =>
-        el.addEventListener('click', () => {
-          s.confirmEditTask = el.dataset.editTask;
+      // Pick an act to edit (in edit mode)
+      document.querySelectorAll('[data-pick-edit]').forEach(el =>
+        el.addEventListener('click', e => {
+          if (e.target.closest('[data-delete-task]')) return;
+          const t = getTask(el.dataset.pickEdit);
+          s.editingTask = t ? { ...t } : null;
           s.deletingTask = null;
           render();
         }));
-      document.querySelector('[data-cancel-confirm-edit]')?.addEventListener('click', () => {
-        s.confirmEditTask = null; render();
-      });
-      const confirmEditBtn = document.querySelector('[data-confirm-edit]');
-      if (confirmEditBtn) confirmEditBtn.addEventListener('click', () => {
-        const t = getTask(confirmEditBtn.dataset.confirmEdit);
-        s.editingTask = t ? { ...t } : null;
-        s.confirmEditTask = null;
-        render();
-      });
       document.querySelectorAll('[data-delete-task]').forEach(el =>
         el.addEventListener('click', () => {
           s.deletingTask = el.dataset.deleteTask;
           s.editingTask = null;
-          s.confirmEditTask = null;
           render();
         }));
       document.querySelector('[data-cancel-delete]')?.addEventListener('click', () => {
@@ -1956,7 +1944,7 @@
           }
         }));
       document.querySelector('[data-cancel-edit]')?.addEventListener('click', () => {
-        s.editingTask = null; render();
+        s.editingTask = null; s.poolEditMode = false; render();
       });
       document.querySelector('[data-save-task]')?.addEventListener('click', () => {
         const title = document.getElementById('edit-title')?.value.trim();
@@ -2350,18 +2338,14 @@
   async function savePoolTask(task) {
     const isNew = !task.id;
     if (isNew) task.id = Date.now().toString();
-    if (isNew) {
-      s.tasks.push(task);
-      s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
-    } else {
-      s.tasks = s.tasks.map(t => t.id === task.id ? task : t);
-    }
+    if (isNew) s.tasks.push(task);
+    else s.tasks = s.tasks.map(t => t.id === task.id ? task : t);
+    s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
     s.editingTask = null;
     s.confirmEditTask = null;
+    s.poolEditMode = false;
     render();
-    const saves = [api('POST', '/api/tasks', task)];
-    if (isNew) saves.push(saveWallet());
-    await Promise.all(saves);
+    await Promise.all([api('POST', '/api/tasks', task), saveWallet()]);
   }
 
   async function archivePoolTask(id) {
