@@ -566,6 +566,7 @@
       showResetConfirm: false,
       storeItems: [],
       editingStoreItem: null,
+      storeEditMode: false,
       wallet: { common: 0, legendary: 0, mythic: 0 },
       lastPurchaseDate: null,
       lastPurchasedItem: null,
@@ -1172,33 +1173,55 @@
 
   /* ── Store Management ── */
   function htmlStoreManage() {
-    const items = s.storeItems.length ? s.storeItems : STORE_ITEMS;
-    const isAdding = s.editingStoreItem && s.editingStoreItem.id === '';
-    const editId = s.editingStoreItem?.id;
+    const items       = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+    const isAdding    = s.editingStoreItem?.id === '';
+    const storeEditing = s.storeEditMode;
+    const canAdd      = s.wallet.legendary >= 1;
+
+    function storeRow(item) {
+      const isEditing = s.editingStoreItem?.id === item.id;
+      return `
+        <div class="pool-task-card">
+          <div class="pool-task-row">
+            <div class="pool-task-info">
+              <div class="pool-task-title">${item.name}</div>
+              <div class="pool-task-desc">${item.desc} · ${item.cost} Mythical</div>
+            </div>
+            ${storeEditing ? `
+            <div class="pool-task-actions">
+              <button class="btn-icon" data-edit-store="${item.id}">✏️</button>
+            </div>` : ''}
+          </div>
+          ${isEditing ? `<div class="task-edit-form">${storeItemForm(s.editingStoreItem)}</div>` : ''}
+        </div>`;
+    }
+
     return `
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-storemanage">‹ Profile</button>
         <div class="section-title">Bazaar Offerings</div>
       </div>
-      ${!isAdding ? `<button class="btn-add-task" id="btn-add-store-item">+ Add Offering</button>` : `
+      ${isAdding ? `
       <div class="new-task-card">
         <div class="new-task-label">New Offering</div>
         ${storeItemForm(s.editingStoreItem)}
-      </div>`}
-      ${items.map(item => editId === item.id ? `
-      <div class="new-task-card">
-        ${storeItemForm(s.editingStoreItem)}
       </div>` : `
-      <div class="store-manage-row">
-        <div class="store-manage-info">
-          <div class="store-manage-name">${item.name}</div>
-          <div class="store-manage-meta">${item.cost} ${displayRarity(item.rarity).toLowerCase()} · ${item.desc}</div>
+      <div class="store-card" id="btn-add-store-item"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
+        <div class="store-card-top">
+          <div class="store-card-name">Add Offering</div>
+          <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
-        <div class="store-manage-actions">
-          <button class="btn-icon edit" data-edit-store="${item.id}">✏️</button>
-          <button class="btn-icon delete" data-delete-store="${item.id}">🗑</button>
+      </div>
+      ${!storeEditing ? `
+      <div class="store-card" id="btn-enter-store-edit"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
+        <div class="store-card-top">
+          <div class="store-card-name">Edit Offering</div>
+          <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
-      </div>`).join('')}`;
+      </div>` : ''}`}
+      ${items.map(storeRow).join('')}
+      <div style="height:16px"></div>
+      ${storeEditing ? `<button class="btn-primary" id="btn-done-store-editing">Done</button>` : ''}`;
   }
 
   function storeItemForm(item) {
@@ -1834,7 +1857,7 @@
         s.profileScreen = 'taskpool'; s.poolEditMode = false; render();
       });
       document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
-        s.profileScreen = 'storemanage'; s.editingStoreItem = null; render();
+        s.profileScreen = 'storemanage'; s.editingStoreItem = null; s.storeEditMode = false; render();
       });
 
       // Back from task pool → Profile menu
@@ -1847,7 +1870,7 @@
 
       // Back from store manage → Profile menu
       document.getElementById('btn-back-storemanage')?.addEventListener('click', () => {
-        s.profileScreen = 'menu'; s.editingStoreItem = null; render();
+        s.profileScreen = 'menu'; s.editingStoreItem = null; s.storeEditMode = false; render();
       });
 
       document.getElementById('btn-sign-out')?.addEventListener('click', () => clerk.signOut());
@@ -1877,9 +1900,18 @@
         await saveSettings();
       });
 
-      // Store item add/edit/delete
+      // Store: add/edit offerings
       document.getElementById('btn-add-store-item')?.addEventListener('click', () => {
-        s.editingStoreItem = { id: '', name: '', desc: '', cost: 1, rarity: 'common' }; render();
+        s.editingStoreItem = { id: '', name: '', desc: '', cost: 1, rarity: 'mythic' }; render();
+      });
+      document.getElementById('btn-enter-store-edit')?.addEventListener('click', async () => {
+        s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
+        s.storeEditMode = true;
+        render();
+        await saveWallet();
+      });
+      document.getElementById('btn-done-store-editing')?.addEventListener('click', () => {
+        s.storeEditMode = false; s.editingStoreItem = null; render();
       });
       document.querySelectorAll('[data-edit-store]').forEach(el =>
         el.addEventListener('click', () => {
@@ -1887,10 +1919,11 @@
           const item = items.find(x => x.id === el.dataset.editStore);
           s.editingStoreItem = item ? { ...item } : null; render();
         }));
-      document.querySelectorAll('[data-delete-store]').forEach(el =>
-        el.addEventListener('click', () => deleteStoreItem(el.dataset.deleteStore)));
       document.querySelector('[data-cancel-store-edit]')?.addEventListener('click', () => {
-        s.editingStoreItem = null; render();
+        const wasEditing = s.editingStoreItem?.id !== '';
+        s.editingStoreItem = null;
+        if (wasEditing) s.storeEditMode = false;
+        render();
       });
       document.querySelector('[data-save-store]')?.addEventListener('click', () => {
         const name = document.getElementById('si-name')?.value.trim();
@@ -1982,12 +2015,16 @@
     if (isNew) item.id = `si-${Date.now()}`;
     if (isNew) {
       s.storeItems = [...(s.storeItems.length ? s.storeItems : STORE_ITEMS), item];
+      s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
     } else {
       s.storeItems = (s.storeItems.length ? s.storeItems : STORE_ITEMS).map(x => x.id === item.id ? item : x);
     }
     s.editingStoreItem = null;
+    s.storeEditMode = false;
     render();
-    await api('POST', '/api/store-items', item);
+    const saves = [api('POST', '/api/store-items', item)];
+    if (isNew) saves.push(saveWallet());
+    await Promise.all(saves);
   }
 
   async function deleteStoreItem(itemId) {
