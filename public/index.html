@@ -2046,8 +2046,8 @@
     const overlay = document.createElement('div');
     overlay.id = 'tutorial-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:300;pointer-events:none;';
-    // Backdrop only for tap-target steps — info/highlight steps keep the screen fully visible
-    if (step.type === 'tap-tab' || step.type === 'tap-el') {
+    // Backdrop for tap-target and highlight steps; plain info steps keep the screen visible
+    if (step.type === 'tap-tab' || step.type === 'tap-el' || step.type === 'highlight') {
       const backdrop = document.createElement('div');
       backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.82);pointer-events:all;';
       overlay.appendChild(backdrop);
@@ -2081,8 +2081,7 @@
         el.style.zIndex   = '301';
         const rect = el.getBoundingClientRect();
         const hint = document.createElement('div');
-        // Anchor right edge of hint at button centre so text extends leftward without clipping
-        hint.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;top:${Math.round(rect.bottom + 12)}px;transform:translateX(-100%);z-index:302;text-align:right;color:#fff;pointer-events:none;`;
+        hint.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;top:${Math.round(rect.bottom + 12)}px;transform:translateX(-50%);z-index:302;text-align:center;color:#fff;pointer-events:none;`;
         hint.innerHTML = `<div style="font-size:1.6rem;line-height:1;margin-bottom:8px;">↑</div><div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;">Tap ${step.label}</div>`;
         overlay.appendChild(hint);
         el.addEventListener('click', () => {
