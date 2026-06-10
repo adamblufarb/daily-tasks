@@ -237,6 +237,7 @@
     .btn-save { flex: 1; padding: 10px; color: #fff; border: none; border-radius: 12px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; background: var(--border); opacity: 0.5; pointer-events: none; }
     .btn-save.save-common { background: var(--common); opacity: 1; pointer-events: auto; }
     .btn-save.save-legendary { background: var(--legendary); opacity: 1; pointer-events: auto; }
+    .btn-save.save-mythic { background: var(--mythic); opacity: 1; pointer-events: auto; }
     .btn-cancel { padding: 10px 16px; background: none; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; cursor: pointer; color: var(--subtext); }
     .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-bottom: 4px; transition: border-color 0.15s, color 0.15s; }
     .btn-add-task:hover { border-color: var(--common); color: var(--common); }
@@ -475,11 +476,10 @@
     return res.json();
   }
 
-  /* ── Store items ── */
+  /* ── Default offerings (fallback when DB is empty) ── */
   const STORE_ITEMS = [
-    { id: 's1', name: 'Rest Day Pass',    cost: 2, rarity: 'common',    desc: 'Skip a day guilt-free'         },
-    { id: 's2', name: 'Bonus Legendary',  cost: 1, rarity: 'legendary', desc: 'Add a legendary slot for a day' },
-    { id: 's3', name: 'Mythical Boost',   cost: 1, rarity: 'mythic',    desc: 'Double points for your next plan' },
+    { id: 'o1', name: 'Guilt Free Treat', cost: 5,  rarity: 'mythic', desc: 'Indulge with a treat you wouldn\'t normally eat' },
+    { id: 'o2', name: 'Purge',            cost: 15, rarity: 'mythic', desc: 'Have a day for yourself, no consequences'         },
   ];
 
   function displayRarity(r) {
@@ -1106,7 +1106,7 @@
         </button>
         ${bazaarUnlocked ? `
         <button class="profile-menu-item" id="btn-profile-storemanage">
-          <span class="profile-menu-label">Bazaar Items</span>
+          <span class="profile-menu-label">Bazaar Offerings</span>
           <span class="profile-menu-arrow">›</span>
         </button>` : ''}
       </div>
@@ -1170,11 +1170,11 @@
     return `
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-storemanage">‹ Profile</button>
-        <div class="section-title">Bazaar Items</div>
+        <div class="section-title">Bazaar Offerings</div>
       </div>
-      ${!isAdding ? `<button class="btn-add-task" id="btn-add-store-item">+ Add Item</button>` : `
+      ${!isAdding ? `<button class="btn-add-task" id="btn-add-store-item">+ Add Offering</button>` : `
       <div class="new-task-card">
-        <div class="new-task-label">New Item</div>
+        <div class="new-task-label">New Offering</div>
         ${storeItemForm(s.editingStoreItem)}
       </div>`}
       ${items.map(item => editId === item.id ? `
@@ -1195,17 +1195,12 @@
 
   function storeItemForm(item) {
     return `
-      <input class="form-input" id="si-name"  placeholder="Item name"   value="${item.name||''}">
-      <input class="form-input" id="si-desc"  placeholder="Description" value="${item.desc||''}">
-      <div class="form-row">
-        <input class="form-input" id="si-cost" type="number" min="1" placeholder="Cost" value="${item.cost||1}" style="width:80px">
-        <select class="form-input settings-select" id="si-rarity">
-          ${['common','legendary','mythic'].map(r => `<option value="${r}"${r===item.rarity?' selected':''}>${displayRarity(r)}</option>`).join('')}
-        </select>
-      </div>
+      <input class="form-input" id="si-name" placeholder="Offering name" value="${item.name||''}">
+      <input class="form-input" id="si-desc" placeholder="Description"   value="${item.desc||''}">
+      <input class="form-input" id="si-cost" type="number" min="1" placeholder="Mythical cost" value="${item.cost||1}">
       <div class="form-actions">
         <button class="btn-cancel" data-cancel-store-edit>Cancel</button>
-        <button class="btn-save save-${item.rarity||'common'}" data-save-store>Save</button>
+        <button class="btn-save save-mythic" data-save-store>Save</button>
       </div>`
   }
 
@@ -1385,7 +1380,7 @@
       }).join('')}
       <div class="store-purchase-cta">
         <button class="btn-purchase${canPurchase ? ` ready-${selItem.rarity}` : ''}"${canPurchase ? '' : ' disabled'} id="btn-purchase">
-          ${alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select an item'}
+          ${alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select an offering'}
         </button>
       </div>
       ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>` : ''}`;
@@ -1925,9 +1920,8 @@
         const name = document.getElementById('si-name')?.value.trim();
         const desc = document.getElementById('si-desc')?.value.trim();
         const cost = parseInt(document.getElementById('si-cost')?.value) || 1;
-        const rarity = document.getElementById('si-rarity')?.value || 'common';
         if (!name) return;
-        saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity });
+        saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity: 'mythic' });
       });
       document.querySelectorAll('[data-edit-task]').forEach(el =>
         el.addEventListener('click', () => {
