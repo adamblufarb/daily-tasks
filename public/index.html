@@ -354,6 +354,13 @@
     .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
     .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
     .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
+    .btn-craft-nav { width: 100%; padding: 12px; background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1.5px solid color-mix(in srgb, var(--accent) 25%, transparent); border-radius: var(--radius); font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--accent); cursor: pointer; margin-bottom: 12px; }
+    .btn-craft-legendary { width: 100%; padding: 17px; background: var(--legendary); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: transform 0.1s; touch-action: manipulation; }
+    .btn-craft-legendary:active { transform: scale(0.98); }
+    .btn-craft-legendary:disabled { opacity: 0.4; pointer-events: none; }
+    .btn-craft-mythical { width: 100%; padding: 17px; background: var(--mythic); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: transform 0.1s; touch-action: manipulation; }
+    .btn-craft-mythical:active { transform: scale(0.98); }
+    .btn-craft-mythical:disabled { opacity: 0.4; pointer-events: none; }
 
     /* Purchased screen */
     .purchased-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); padding: 40px 24px; text-align: center; }
@@ -543,6 +550,8 @@
       lastPurchasedItem: null,
       selectedStoreItem: null,
       showPurchasedScreen: false,
+      storeScreen: 'store',
+      lastCraftResult: null,
       reviewDeclined: [],
       suppressSubmitCta: false,
       graceConfirmTask: null,
@@ -803,7 +812,7 @@
     if (screen === 'splash')    return htmlSplash();
     if (screen === 'slides')    return htmlSlides();
     if (screen === 'history')   return htmlHistory();
-    if (screen === 'store')     return htmlStore();
+    if (screen === 'store')     return s.storeScreen === 'craft' ? htmlCraft() : htmlStore();
     if (screen === 'tasks')     return s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
     if (screen === 'concluded') return htmlConcluded();
     if (screen === 'reward')    return htmlReward();
@@ -1330,6 +1339,7 @@
         <div class="store-wallet-chip legendary" id="tutorial-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
+      <button class="btn-craft-nav" id="btn-goto-craft">⚗️ Craft Tokens</button>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
@@ -1352,6 +1362,47 @@
         </button>
       </div>
       <button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>`;
+  }
+
+  /* ── Craft ── */
+  function htmlCraft() {
+    const w = s.wallet;
+    const canCraftLegendary = w.common >= 3;
+    const canCraftMythical  = w.legendary >= 3;
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <button class="btn-back" id="btn-back-craft">‹ Bazaar</button>
+        <div class="section-title">Craft</div>
+      </div>
+      <div class="tasks-label" style="margin-bottom:8px">Available Tokens</div>
+      <div class="store-wallet">
+        <div class="store-wallet-chip common" id="craft-wallet-common">${w.common} <span class="store-wallet-label">Common</span></div>
+        <div class="store-wallet-chip legendary" id="craft-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
+        <div class="store-wallet-chip mythic" id="craft-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
+      </div>
+      <div style="height:20px"></div>
+      <button class="btn-craft-legendary" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'}>Craft Legendary (3 Common)</button>
+      <div style="height:10px"></div>
+      <button class="btn-craft-mythical" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'}>Craft Mythical (3 Legendary)</button>`;
+  }
+
+  function animateCraft(result) {
+    const gainedId = result === 'legendary' ? 'craft-wallet-legendary' : 'craft-wallet-mythic';
+    const chip = document.getElementById(gainedId);
+    if (!chip) return;
+    chip.style.position = 'relative';
+    chip.style.overflow = 'hidden';
+    chip.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+      { duration: 320, easing: 'ease-out' }
+    );
+    const ribbon = document.createElement('div');
+    ribbon.style.cssText = 'position:absolute;top:-20%;left:0;width:40%;height:140%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.7),transparent);transform:skewX(-25deg) translateX(-250%);pointer-events:none;';
+    chip.appendChild(ribbon);
+    ribbon.animate(
+      [{ transform: 'skewX(-25deg) translateX(-250%)' }, { transform: 'skewX(-25deg) translateX(420%)' }],
+      { duration: 500, easing: 'cubic-bezier(0.25,0.1,0.25,1)', fill: 'forwards' }
+    ).onfinish = () => { ribbon.remove(); chip.style.overflow = ''; };
   }
 
   /* ── History ── */
@@ -1504,27 +1555,58 @@
     }
 
     if (screen === 'store') {
-      document.querySelectorAll('[data-store-select]').forEach(card =>
-        card.addEventListener('click', () => {
-          const id = card.dataset.storeSelect;
-          s.selectedStoreItem = s.selectedStoreItem === id ? null : id;
+      if (s.storeScreen === 'store') {
+        document.getElementById('btn-goto-craft')?.addEventListener('click', () => {
+          s.storeScreen = 'craft'; render();
+        });
+        document.querySelectorAll('[data-store-select]').forEach(card =>
+          card.addEventListener('click', () => {
+            const id = card.dataset.storeSelect;
+            s.selectedStoreItem = s.selectedStoreItem === id ? null : id;
+            render();
+          }));
+        document.getElementById('btn-purchase')?.addEventListener('click', () => {
+          if (s.selectedStoreItem) purchaseItem(s.selectedStoreItem);
+        });
+        document.getElementById('btn-back-store')?.addEventListener('click', () => {
+          s.showPurchasedScreen = false;
           render();
-        }));
-      document.getElementById('btn-purchase')?.addEventListener('click', () => {
-        if (s.selectedStoreItem) purchaseItem(s.selectedStoreItem);
-      });
-      document.getElementById('btn-back-store')?.addEventListener('click', () => {
-        s.showPurchasedScreen = false;
-        render();
-      });
-      document.getElementById('btn-restore-purchase')?.addEventListener('click', async () => {
-        s.lastPurchaseDate = null;
-        s.lastPurchasedItem = null;
-        s.selectedStoreItem = null;
-        s.showPurchasedScreen = false;
-        render();
-        await saveWallet();
-      });
+        });
+        document.getElementById('btn-restore-purchase')?.addEventListener('click', async () => {
+          s.lastPurchaseDate = null;
+          s.lastPurchasedItem = null;
+          s.selectedStoreItem = null;
+          s.showPurchasedScreen = false;
+          render();
+          await saveWallet();
+        });
+      }
+      if (s.storeScreen === 'craft') {
+        document.getElementById('btn-back-craft')?.addEventListener('click', () => {
+          s.storeScreen = 'store'; render();
+        });
+        document.getElementById('btn-craft-legendary')?.addEventListener('click', () => {
+          if (s.wallet.common < 3) return;
+          s.wallet.common -= 3;
+          s.wallet.legendary += 1;
+          s.lastCraftResult = 'legendary';
+          render();
+          saveWallet();
+        });
+        document.getElementById('btn-craft-mythical')?.addEventListener('click', () => {
+          if (s.wallet.legendary < 3) return;
+          s.wallet.legendary -= 3;
+          s.wallet.mythic += 1;
+          s.lastCraftResult = 'mythical';
+          render();
+          saveWallet();
+        });
+        if (s.lastCraftResult) {
+          const result = s.lastCraftResult;
+          s.lastCraftResult = null;
+          requestAnimationFrame(() => animateCraft(result));
+        }
+      }
     }
 
     if (screen === 'history') {
@@ -2333,7 +2415,7 @@
 
   // Tab listeners — attached once; tab-bar is inside #app-wrap so always in DOM
   document.querySelectorAll('.tab-btn').forEach(b =>
-    b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; render(); }));
+    b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; s.storeScreen = 'store'; render(); }));
 
   // ── Clerk auth flow ──
   // With data-clerk-publishable-key, window.Clerk is a pre-configured singleton
