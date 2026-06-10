@@ -268,6 +268,7 @@
     .profile-menu { display: flex; flex-direction: column; gap: 2px; }
     .profile-menu-item { width: 100%; padding: 16px 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); transition: background 0.12s; }
     .profile-menu-item:active { background: var(--border); }
+    .profile-menu-item:disabled { opacity: 0.4; pointer-events: none; }
     .profile-menu-arrow { font-size: 1.2rem; color: var(--subtext); }
 
     /* New task card at top */
@@ -1367,7 +1368,7 @@
         <div class="store-wallet-chip legendary" id="tutorial-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
-      <button class="btn-craft-nav" id="btn-goto-craft">⚗️ Craft Tokens</button>
+      <button class="profile-menu-item" id="btn-goto-craft" style="margin-bottom:12px"><span class="profile-menu-label">⚗️ Craft Tokens</span><span class="profile-menu-arrow">›</span></button>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
@@ -1409,9 +1410,15 @@
         <div class="store-wallet-chip mythic" id="craft-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       <div style="height:20px"></div>
-      <button class="btn-craft-legendary" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'}>Craft Legendary (3 Common)</button>
-      <div style="height:10px"></div>
-      <button class="btn-craft-mythical" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'}>Craft Mythical (3 Legendary)</button>`;
+      <button class="profile-menu-item" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'}>
+        <span>Craft Legendary (3 <strong style="color:var(--common)">Common</strong>)</span>
+        <span class="profile-menu-arrow">›</span>
+      </button>
+      <div style="height:8px"></div>
+      <button class="profile-menu-item" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'}>
+        <span>Craft Mythical (3 <strong style="color:var(--legendary)">Legendary</strong>)</span>
+        <span class="profile-menu-arrow">›</span>
+      </button>`;
   }
 
   function animateCraft(result) {
