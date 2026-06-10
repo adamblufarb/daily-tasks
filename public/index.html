@@ -202,6 +202,7 @@
     .pool-section-label.label-common { color: var(--subtext); }
     .pool-section-label.label-legendary { color: var(--legendary); }
     .pool-section-label.label-archived { color: var(--subtext); }
+    .pool-section-label.label-mythic   { color: var(--mythic); }
     .pool-task-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); position: relative; }
     .pool-task-card.card-common { border-color: color-mix(in srgb, var(--common) 35%, transparent); }
     .pool-task-card.card-legendary { border-color: color-mix(in srgb, var(--legendary) 35%, transparent); }
@@ -1365,6 +1366,7 @@
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:20px;background:linear-gradient(to right,var(--common) 0%,var(--common) 20%,var(--legendary) 40%,var(--legendary) 60%,var(--mythic) 80%,var(--mythic) 100%)">Craft Tokens</button>
+      <div class="pool-section-label label-mythic" style="margin-top:0">Bazaar Offerings</div>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const isPurchased = alreadyBoughtToday && isSelected;
