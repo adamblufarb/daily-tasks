@@ -407,8 +407,13 @@
     .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
 
     /* Tutorial overlay */
-    .tutorial-box { position: fixed; bottom: calc(78px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; box-shadow: 0 8px 40px rgba(0,0,0,0.35); }
-    .tutorial-title { font-size: 1.05rem; font-weight: 600; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
+    @keyframes tutorial-box-glow {
+      0%, 100% { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--accent) 40%, transparent); }
+      50%       { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--accent) 80%, transparent); }
+    }
+    .tutorial-box { position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: var(--accent); border-radius: var(--radius); padding: 24px; pointer-events: all; animation: tutorial-box-glow 2400ms ease-in-out infinite; }
+    .tutorial-title { font-size: 1.05rem; font-weight: 600; color: #fff; line-height: 1.5; margin-bottom: 20px; }
+    #btn-tutorial-cta { background: #fff; color: var(--accent); box-shadow: none; }
   </style>
 </head>
 <body>
@@ -2045,7 +2050,7 @@
 
     const overlay = document.createElement('div');
     overlay.id = 'tutorial-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:300;pointer-events:none;';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:300;pointer-events:all;';
     // Backdrop for tap-target and highlight steps; plain info steps keep the screen visible
     if (step.type === 'tap-tab' || step.type === 'tap-el' || step.type === 'highlight') {
       const backdrop = document.createElement('div');
@@ -2080,10 +2085,18 @@
         el.style.position = 'relative';
         el.style.zIndex   = '301';
         const rect = el.getBoundingClientRect();
-        const hint = document.createElement('div');
-        hint.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;top:${Math.round(rect.bottom + 12)}px;transform:translateX(-50%);z-index:302;text-align:center;color:#fff;pointer-events:none;`;
-        hint.innerHTML = `<div style="font-size:1.6rem;line-height:1;margin-bottom:8px;">↑</div><div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;">Tap ${step.label}</div>`;
-        overlay.appendChild(hint);
+        const cx   = Math.round(rect.left + rect.width / 2);
+        const topY = Math.round(rect.bottom + 12);
+        // Arrow: centered directly under the element, position unchanged
+        const arrow = document.createElement('div');
+        arrow.style.cssText = `position:fixed;left:${cx}px;top:${topY}px;transform:translateX(-50%);z-index:302;color:#fff;pointer-events:none;font-size:1.6rem;line-height:1;`;
+        arrow.textContent = '↑';
+        overlay.appendChild(arrow);
+        // Label: right edge flush with arrow centre (extends leftward, never clips right)
+        const lbl = document.createElement('div');
+        lbl.style.cssText = `position:fixed;left:${cx}px;top:${topY + 34}px;transform:translateX(-100%);z-index:302;color:#fff;pointer-events:none;font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;`;
+        lbl.textContent = `Tap ${step.label}`;
+        overlay.appendChild(lbl);
         el.addEventListener('click', () => {
           s.tutorialStep++;
           requestAnimationFrame(() => renderTutorial());
