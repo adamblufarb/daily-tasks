@@ -411,9 +411,9 @@
       0%, 100% { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--accent) 40%, transparent); }
       50%       { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--accent) 80%, transparent); }
     }
-    .tutorial-box { position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: var(--accent); border-radius: var(--radius); padding: 24px; pointer-events: all; animation: tutorial-box-glow 2400ms ease-in-out infinite; }
-    .tutorial-title { font-size: 1.05rem; font-weight: 600; color: #fff; line-height: 1.5; margin-bottom: 20px; }
-    #btn-tutorial-cta { background: #fff; color: var(--accent); box-shadow: none; }
+    .tutorial-gradient { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 66.67vh; pointer-events: none; background: linear-gradient(to top, color-mix(in srgb, var(--accent) 25%, transparent) 0%, color-mix(in srgb, var(--accent) 25%, transparent) 50%, transparent 100%); }
+    .tutorial-box { position: fixed; bottom: calc(120px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; animation: tutorial-box-glow 2400ms ease-in-out infinite; }
+    .tutorial-title { font-size: 1.15rem; font-weight: 600; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
   </style>
 </head>
 <body>
@@ -2057,6 +2057,10 @@
       backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.82);pointer-events:all;';
       overlay.appendChild(backdrop);
     }
+    // Gradient behind the tutorial box on all steps
+    const grad = document.createElement('div');
+    grad.className = 'tutorial-gradient';
+    overlay.appendChild(grad);
     document.body.appendChild(overlay);
 
     if (step.type === 'tap-tab') {
