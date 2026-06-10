@@ -1220,6 +1220,7 @@
           <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
       </div>` : ''}`}
+      <div class="pool-section-label label-mythic">Bazaar Offerings</div>
       ${items.map(storeRow).join('')}
       <div style="height:16px"></div>
       ${storeEditing ? `<button class="btn-primary" id="btn-done-store-editing">Done</button>` : ''}`;
@@ -1366,7 +1367,6 @@
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:20px;background:linear-gradient(to right,var(--common) 0%,var(--common) 20%,var(--legendary) 40%,var(--legendary) 60%,var(--mythic) 80%,var(--mythic) 100%)">Craft Tokens</button>
-      <div class="pool-section-label label-mythic" style="margin-top:0">Bazaar Offerings</div>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const isPurchased = alreadyBoughtToday && isSelected;
