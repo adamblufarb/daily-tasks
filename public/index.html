@@ -479,6 +479,8 @@
     return res.json();
   }
 
+  const DEFAULT_TASK_IDS = new Set(['c1','c2','c3','c6','c8','c9','c10','l1','l2','l4']);
+
   /* ── Default offerings (fallback when DB is empty) ── */
   const STORE_ITEMS = [
     { id: 'o1', name: 'Guilt Free Treat', cost: 5,  rarity: 'mythic', desc: 'Indulge with a treat you wouldn\'t normally eat' },
@@ -555,9 +557,9 @@
       confirmTask: null,
       editingTask: null,
       deletingTask: null,
+      confirmEditTask: null,
       newTaskType: 'common',
       profileScreen: 'menu',
-      poolEditMode: false,
       showResetConfirm: false,
       storeItems: [],
       editingStoreItem: null,
@@ -1212,9 +1214,8 @@
     const active    = s.tasks.filter(t => !t.archived);
     const common    = active.filter(t => t.type === 'common');
     const legendary = active.filter(t => t.type === 'legendary');
-    const archived  = s.tasks.filter(t => t.archived);
     const isAdding  = s.editingTask?.id === '';
-    const editing   = s.poolEditMode;
+    const canAdd    = s.wallet.legendary >= 1;
 
     // Compute per-task stats from session history
     const stats = {};
@@ -1231,8 +1232,10 @@
     }
 
     function taskRow(t) {
-      const isEditing  = s.editingTask?.id === t.id;
-      const isDeleting = s.deletingTask === t.id;
+      const isDefault       = DEFAULT_TASK_IDS.has(t.id);
+      const isEditing       = s.editingTask?.id === t.id;
+      const isDeleting      = s.deletingTask === t.id;
+      const isConfirmEdit   = s.confirmEditTask === t.id;
       const st = stats[t.id] || { chosen: 0, completed: 0 };
       return `
         <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''}>
@@ -1241,10 +1244,9 @@
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
             </div>
-            ${editing ? `
+            ${!isDefault ? `
             <div class="pool-task-actions">
               <button class="btn-icon" data-edit-task="${t.id}" title="Edit">✏️</button>
-              <button class="btn-icon" data-archive-task="${t.id}" title="Archive">📦</button>
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
             </div>` : `
             <div class="pool-task-stats">
@@ -1252,40 +1254,23 @@
               <div class="pool-stat">Completed <span>${st.completed}</span></div>
             </div>`}
           </div>
+          ${isConfirmEdit ? `
+          <div class="delete-confirm">
+            <span class="delete-confirm-text">Editing an act will reset its progress.</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-del-no" data-cancel-confirm-edit>Cancel</button>
+              <button class="btn-del-yes" data-confirm-edit="${t.id}">Edit</button>
+            </div>
+          </div>` : ''}
           ${isDeleting ? `
           <div class="delete-confirm">
-            <span class="delete-confirm-text">Delete forever?</span>
+            <span class="delete-confirm-text">Deleting an act will not refund its tokens.</span>
             <div style="display:flex;gap:6px">
               <button class="btn-del-no" data-cancel-delete>Cancel</button>
               <button class="btn-del-yes" data-confirm-delete="${t.id}">Delete</button>
             </div>
           </div>` : ''}
           ${isEditing ? editForm(s.editingTask) : ''}
-        </div>`;
-    }
-
-    function archivedRow(t) {
-      const isDeleting = s.deletingTask === t.id;
-      return `
-        <div class="pool-task-card card-archived">
-          <div class="pool-task-row">
-            <div class="pool-task-info">
-              <div class="pool-task-title">${t.title}</div>
-              <div class="pool-task-desc">${t.description} · <em>${t.type}</em></div>
-            </div>
-            <div class="pool-task-actions">
-              <button class="btn-icon restore" data-restore-task="${t.id}" title="Restore">↩️</button>
-              <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑</button>
-            </div>
-          </div>
-          ${isDeleting ? `
-          <div class="delete-confirm">
-            <span class="delete-confirm-text">Delete forever?</span>
-            <div style="display:flex;gap:6px">
-              <button class="btn-del-no" data-cancel-delete>Cancel</button>
-              <button class="btn-del-yes" data-confirm-delete="${t.id}">Delete</button>
-            </div>
-          </div>` : ''}
         </div>`;
     }
 
@@ -1310,24 +1295,24 @@
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-profile">‹ Profile</button>
         <div class="section-title">Acts Pool</div>
-        <div class="section-sub">${active.length} active · ${common.length} common · ${legendary.length} legendary${archived.length ? ` · ${archived.length} archived` : ''}</div>
+        <div class="section-sub">${active.length} acts · ${common.length} common · ${legendary.length} legendary</div>
       </div>
-      ${editing && isAdding ? `
+      ${isAdding ? `
         <div class="new-task-card">
           <div class="new-task-label">New Act</div>
           ${editForm(s.editingTask)}
-        </div>` : editing ? `<button class="btn-add-task" id="btn-add-task">+ Add Act</button>` : ''}
+        </div>` : `
+        <div class="store-card${!canAdd ? ' add-act-disabled' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
+          <div class="store-card-top">
+            <div class="store-card-name">Add Act</div>
+            <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
+          </div>
+        </div>`}
       <div class="pool-section-label label-common">Common</div>
       ${common.map(taskRow).join('')}
       <div class="pool-section-label label-legendary">Legendary</div>
       ${legendary.map(taskRow).join('')}
-      ${editing && archived.length ? `
-        <div class="pool-section-label label-archived">Archived</div>
-        ${archived.map(archivedRow).join('')}` : ''}
-      <div style="height:16px"></div>
-      ${!editing
-        ? `<button class="btn-primary" id="btn-edit-pool">Edit Acts Pool</button>`
-        : `<button class="btn-primary" id="btn-done-editing">Done</button>`}`;
+      <div style="height:16px"></div>`;
   }
 
   /* ── Store ── */
@@ -1854,7 +1839,7 @@
     if (screen === 'tasks') {
       // Profile menu navigation
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
-        s.profileScreen = 'taskpool'; s.poolEditMode = false; render();
+        s.profileScreen = 'taskpool'; render();
       });
       document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
         s.profileScreen = 'storemanage'; s.editingStoreItem = null; render();
@@ -1862,15 +1847,7 @@
 
       // Back from task pool → Profile menu
       document.getElementById('btn-back-profile')?.addEventListener('click', () => {
-        s.profileScreen = 'menu'; s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; render();
-      });
-
-      // Enter edit mode
-      document.getElementById('btn-edit-pool')?.addEventListener('click', () => {
-        s.poolEditMode = true; render();
-      });
-      document.getElementById('btn-done-editing')?.addEventListener('click', () => {
-        s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; render();
+        s.profileScreen = 'menu'; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
       });
 
       // Back from store manage → Profile menu
@@ -1927,21 +1904,28 @@
         if (!name) return;
         saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity: 'mythic' });
       });
+      // Edit task → show confirmation first
       document.querySelectorAll('[data-edit-task]').forEach(el =>
         el.addEventListener('click', () => {
-          const t = getTask(el.dataset.editTask);
-          s.editingTask = t ? { ...t } : null;
+          s.confirmEditTask = el.dataset.editTask;
           s.deletingTask = null;
           render();
         }));
-      document.querySelectorAll('[data-archive-task]').forEach(el =>
-        el.addEventListener('click', () => archivePoolTask(el.dataset.archiveTask)));
-      document.querySelectorAll('[data-restore-task]').forEach(el =>
-        el.addEventListener('click', () => restorePoolTask(el.dataset.restoreTask)));
+      document.querySelector('[data-cancel-confirm-edit]')?.addEventListener('click', () => {
+        s.confirmEditTask = null; render();
+      });
+      const confirmEditBtn = document.querySelector('[data-confirm-edit]');
+      if (confirmEditBtn) confirmEditBtn.addEventListener('click', () => {
+        const t = getTask(confirmEditBtn.dataset.confirmEdit);
+        s.editingTask = t ? { ...t } : null;
+        s.confirmEditTask = null;
+        render();
+      });
       document.querySelectorAll('[data-delete-task]').forEach(el =>
         el.addEventListener('click', () => {
           s.deletingTask = el.dataset.deleteTask;
           s.editingTask = null;
+          s.confirmEditTask = null;
           render();
         }));
       document.querySelector('[data-cancel-delete]')?.addEventListener('click', () => {
@@ -2355,11 +2339,18 @@
   async function savePoolTask(task) {
     const isNew = !task.id;
     if (isNew) task.id = Date.now().toString();
-    if (isNew) s.tasks.push(task);
-    else s.tasks = s.tasks.map(t => t.id === task.id ? task : t);
+    if (isNew) {
+      s.tasks.push(task);
+      s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
+    } else {
+      s.tasks = s.tasks.map(t => t.id === task.id ? task : t);
+    }
     s.editingTask = null;
+    s.confirmEditTask = null;
     render();
-    await api('POST', '/api/tasks', task);
+    const saves = [api('POST', '/api/tasks', task)];
+    if (isNew) saves.push(saveWallet());
+    await Promise.all(saves);
   }
 
   async function archivePoolTask(id) {
