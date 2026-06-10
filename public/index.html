@@ -246,6 +246,16 @@
     .settings-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
     .settings-select { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; font-family: inherit; font-size: 0.88rem; font-weight: 600; color: var(--text); cursor: pointer; }
     .settings-sub { font-size: 0.78rem; color: var(--subtext); margin-top: 6px; }
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 24px; transition: background 0.2s; cursor: pointer; }
+    .toggle-slider::before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+    .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .testing-tools { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); margin-top: 8px; }
+    .testing-group-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--subtext); margin-bottom: 8px; margin-top: 16px; }
+    .testing-group-label:first-child { margin-top: 0; }
+    .testing-group-label.danger { color: var(--danger); }
 
     /* Store manage */
     .store-manage-row { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: var(--shadow); }
@@ -1085,6 +1095,7 @@
     const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
     const hours = Array.from({length: 6}, (_, i) => i + 6);
     const bazaarUnlocked = s.onboardingRitualCount >= 2;
+    const showTesting = localStorage.getItem('showTestingTools') === 'true';
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Profile</div>
@@ -1114,25 +1125,42 @@
         <span class="profile-menu-label">Sign Out</span>
         <span class="profile-menu-arrow">›</span>
       </button>
-      ${s.showResetConfirm ? `
-      <div class="reset-confirm-box">
-        <div class="reset-confirm-label">Reset Account</div>
-        <div class="reset-confirm-sub">This will permanently delete all ritual history, tokens, and store purchases and restart the onboarding flow. Type <strong>reset</strong> to confirm.</div>
-        <input class="form-input" id="reset-confirm-input" placeholder="Type reset to confirm" autocomplete="off" autocorrect="off" spellcheck="false">
-        <button class="btn-reset-danger" id="btn-confirm-reset">Reset Account</button>
-        <button class="btn-reset-cancel" id="btn-cancel-reset">Cancel</button>
-      </div>` : `
-      <div style="height:16px"></div>
-      <button class="profile-menu-item" id="btn-show-reset" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,var(--card));border-color:color-mix(in srgb,var(--danger) 40%,transparent)">
-        <span class="profile-menu-label">Reset Account</span>
-        <span class="profile-menu-arrow" style="color:var(--danger)">›</span>
-      </button>`}
-      <div style="height:24px"></div>
-      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--subtext);margin-bottom:8px">Testing</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-primary" id="btn-test-record" style="flex:1;font-size:0.85rem;padding:13px">Unlock Record</button>
-        <button class="btn-primary" id="btn-test-bazaar" style="flex:1;font-size:0.85rem;padding:13px">Unlock Bazaar</button>
-      </div>`;
+      <div class="settings-section" style="margin-top:20px">
+        <div class="settings-row">
+          <div class="settings-label">Testing Tools</div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-testing"${showTesting ? ' checked' : ''}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      ${showTesting ? `
+      <div class="testing-tools">
+        <div class="testing-group-label">Token Manipulation</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" id="btn-add-common" style="flex:1;font-size:0.78rem;padding:11px">+1 Common</button>
+          <button class="btn-primary" id="btn-add-legendary" style="flex:1;font-size:0.78rem;padding:11px">+1 Legendary</button>
+          <button class="btn-primary" id="btn-add-mythical" style="flex:1;font-size:0.78rem;padding:11px">+1 Mythical</button>
+        </div>
+        <div class="testing-group-label">Tutorials</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" id="btn-test-record" style="flex:1;font-size:0.85rem;padding:13px">Unlock Record</button>
+          <button class="btn-primary" id="btn-test-bazaar" style="flex:1;font-size:0.85rem;padding:13px">Unlock Bazaar</button>
+        </div>
+        <div class="testing-group-label danger">Danger Zone</div>
+        ${s.showResetConfirm ? `
+        <div class="reset-confirm-box" style="margin-top:0">
+          <div class="reset-confirm-label">Reset Account</div>
+          <div class="reset-confirm-sub">This will permanently delete all ritual history, tokens, and store purchases and restart the onboarding flow. Type <strong>reset</strong> to confirm.</div>
+          <input class="form-input" id="reset-confirm-input" placeholder="Type reset to confirm" autocomplete="off" autocorrect="off" spellcheck="false">
+          <button class="btn-reset-danger" id="btn-confirm-reset">Reset Account</button>
+          <button class="btn-reset-cancel" id="btn-cancel-reset">Cancel</button>
+        </div>` : `
+        <button class="profile-menu-item" id="btn-show-reset" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,var(--card));border-color:color-mix(in srgb,var(--danger) 40%,transparent)">
+          <span class="profile-menu-label">Reset Account</span>
+          <span class="profile-menu-arrow" style="color:var(--danger)">›</span>
+        </button>`}
+      </div>` : ''}`;
   }
 
   /* ── Store Management ── */
@@ -1943,7 +1971,23 @@
         render();
       });
 
-      // Testing tool
+      // Testing Tools toggle
+      document.getElementById('toggle-testing')?.addEventListener('change', e => {
+        localStorage.setItem('showTestingTools', e.target.checked);
+        if (!e.target.checked) s.showResetConfirm = false;
+        render();
+      });
+      // Token manipulation
+      document.getElementById('btn-add-common')?.addEventListener('click', async () => {
+        s.wallet.common++; render(); await saveWallet();
+      });
+      document.getElementById('btn-add-legendary')?.addEventListener('click', async () => {
+        s.wallet.legendary++; render(); await saveWallet();
+      });
+      document.getElementById('btn-add-mythical')?.addEventListener('click', async () => {
+        s.wallet.mythic++; render(); await saveWallet();
+      });
+      // Tutorial replay
       document.getElementById('btn-test-record')?.addEventListener('click', () => startTutorial('record'));
       document.getElementById('btn-test-bazaar')?.addEventListener('click', () => startTutorial('bazaar'));
     }
