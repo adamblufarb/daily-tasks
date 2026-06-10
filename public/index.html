@@ -954,7 +954,7 @@
             </div>
           </div>`;
         }).join('')}
-        <button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>`;
+        ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>` : ''}`;
     }
 
     // ── Active plan ──
@@ -998,7 +998,7 @@
       }).join('')}
       ${allDone && !s.suppressSubmitCta ? `<div style="height:16px"></div>
       <button class="btn-primary" id="btn-submit-results" style="animation:fade-in 0.3s ease forwards">Submit Results</button>` : ''}
-      <button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>`;
+      ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>` : ''}`;
   }
 
   /* ── Grace-period: Concluded screen ── */
@@ -1390,7 +1390,7 @@
           ${alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select an item'}
         </button>
       </div>
-      <button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>`;
+      ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>` : ''}`;
   }
 
   /* ── Craft ── */
