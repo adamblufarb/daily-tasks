@@ -374,8 +374,7 @@
     .purchased-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); padding: 40px 24px; text-align: center; background: var(--mythic); }
     .purchased-item-name { font-size: 1.9rem; font-weight: 700; color: #fff; margin-bottom: 12px; }
     .purchased-label { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.75); margin-bottom: 40px; }
-    .purchased-screen .rarity-tag-mythical { background: var(--mythic-dark); color: var(--mythic-bg); margin-bottom: 16px; }
-    .btn-back-store { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; touch-action: manipulation; }
+.btn-back-store { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; touch-action: manipulation; }
 
     /* Claim Tokens / bad-luck screens */
     .reward-screen { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
@@ -1336,7 +1335,6 @@
       return `
         <div class="purchased-screen">
           <div class="purchased-item-name">${p.name}</div>
-          ${rarityTag(p.rarity || 'mythic')}
           <div class="purchased-label">Purchased!</div>
           <button class="btn-back-store" id="btn-back-store">Back to Bazaar</button>
         </div>`;
