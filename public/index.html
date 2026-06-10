@@ -29,6 +29,9 @@
       --common: #999da6;
       --common-dark: #6d727f;
       --common-light: #f3f4f6;
+      --common-completed: var(--common);
+      --legendary-completed: var(--legendary);
+      --mythic-completed: var(--mythic);
       --text: #1e1b4b;
       --subtext: #6b7280;
       --border: #e0e7ff;
@@ -115,7 +118,7 @@
     .task-card.legendary-card.selected::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
-    .rarity-tag { display: inline-flex; align-items: center; padding: 4px 6px 3px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; line-height: 1; text-transform: uppercase; flex-shrink: 0; }
+    .rarity-tag { display: inline-flex; align-items: center; padding: 4px 6px 4px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; line-height: 1; text-transform: uppercase; flex-shrink: 0; }
     .rarity-tag-common    { background: var(--common);    color: var(--common-light); }
     .rarity-tag-legendary { background: var(--legendary); color: var(--legendary-bg); }
     .rarity-tag-mythical  { background: var(--mythic);    color: var(--mythic-bg); }
@@ -129,8 +132,9 @@
     .active-task.selected.type-legendary { border: 2px solid color-mix(in srgb, var(--legendary) 80%, transparent); box-shadow: var(--shadow); }
     .active-task.selected.type-legendary::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
     .active-task.completed { cursor: pointer; transition: none; z-index: 60; }
-    .active-task.completed.type-common    { background: var(--common);    border-color: var(--common);    color: #fff; }
-    .active-task.completed.type-legendary { background: var(--legendary); border-color: var(--legendary); color: #fff; }
+    .active-task.completed.type-common    { background: var(--common-completed);    border-color: var(--common-completed);    color: #fff; }
+    .active-task.completed.type-legendary { background: var(--legendary-completed); border-color: var(--legendary-completed); color: #fff; }
+    .active-task.completed.type-mythic    { background: var(--mythic-completed);    border-color: var(--mythic-completed);    color: #fff; }
     .active-task.completed .active-task-desc { color: rgba(255,255,255,0.7); }
     .active-task.completed .task-confirm-text { color: #fff; }
     .active-task.completed .task-confirm { border-top-color: rgba(255,255,255,0.3); }
