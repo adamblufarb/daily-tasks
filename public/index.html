@@ -115,9 +115,10 @@
     .task-card.legendary-card.selected::before { animation: none; box-shadow: 0 0 14px 3px color-mix(in srgb, var(--legendary) 80%, transparent); }
     .task-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
     .task-title { font-size: 1.05rem; font-weight: 700; }
-    .task-badge { font-size: 0.62rem; font-weight: 700; padding: 5px 9px 4px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; display: inline-flex; align-items: center; line-height: 1; }
-    .badge-common { background: var(--common); color: var(--legendary-bg); }
-    .badge-legendary { background: var(--legendary); color: var(--legendary-bg); }
+    .rarity-tag { display: inline-flex; align-items: center; padding: 4px 6px 3px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; line-height: 1; text-transform: uppercase; flex-shrink: 0; }
+    .rarity-tag-common    { background: var(--common);    color: var(--common-light); }
+    .rarity-tag-legendary { background: var(--legendary); color: var(--legendary-bg); }
+    .rarity-tag-mythical  { background: var(--mythic);    color: var(--mythic-bg); }
     .task-desc { font-size: 0.84rem; color: var(--subtext); }
 
     /* Active task list */
@@ -133,9 +134,7 @@
     .active-task.completed .active-task-desc { color: rgba(255,255,255,0.7); }
     .active-task.completed .task-confirm-text { color: #fff; }
     .active-task.completed .task-confirm { border-top-color: rgba(255,255,255,0.3); }
-    .active-task.completed.type-legendary .task-badge { background: var(--legendary); color: var(--legendary-bg); }
-    .active-task.completed.type-common    .task-badge { background: var(--common);   color: var(--legendary-bg); }
-    .active-task-row { display: flex; align-items: center; gap: 14px; }
+.active-task-row { display: flex; align-items: center; gap: 14px; }
     .active-task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dot-common { background: var(--common); }
     .dot-legendary { background: var(--legendary); }
@@ -342,12 +341,7 @@
     .store-card-name { font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
     .store-card-desc { font-size: 0.82rem; color: var(--subtext); }
     .store-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
-    .store-cost { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
-    .store-cost-label { text-transform: uppercase; letter-spacing: 0.05em; }
-    .store-cost.common    { color: var(--common-dark); }
-    .store-cost.legendary { color: var(--legendary); }
-    .store-cost.mythic    { color: var(--mythic); }
-    .store-card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+.store-card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
     .store-card.selected-common    { border-color: var(--common);    box-shadow: 0 0 0 2px var(--common); }
     .store-card.selected-legendary { border-color: var(--legendary); box-shadow: 0 0 0 2px var(--legendary); }
     .store-card.selected-mythic    { border-color: var(--mythic);    box-shadow: 0 0 0 2px var(--mythic); }
@@ -364,11 +358,7 @@
     .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
     .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
     .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
-    .craft-badge { display: inline-flex; align-items: center; padding: 4px 6px 3px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; line-height: 1; }
-    .craft-badge-common    { background: var(--common);    color: var(--common-light); }
-    .craft-badge-legendary { background: var(--legendary); color: var(--legendary-bg); }
-    .craft-badge-mythical  { background: var(--mythic);         color: var(--mythic-bg); }
-    .btn-craft-action { display: grid; grid-template-columns: 1fr auto; align-items: center; background: #fff; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.btn-craft-action { display: grid; grid-template-columns: 1fr auto; align-items: center; background: #fff; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
     .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: flex-start; color: var(--text); }
     .craft-action-cost { display: flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 0.8rem; font-weight: 400; color: var(--subtext); white-space: nowrap; }
 
@@ -391,7 +381,7 @@
     /* Concluded-screen: declined task (red) */
     .active-task.task-declined { border-color: var(--danger); background: var(--danger); color: #fff; cursor: pointer; }
     .active-task.task-declined .active-task-desc { color: rgba(255,255,255,0.75); }
-    .active-task.task-declined .task-badge { background: rgba(0,0,0,0.2); color: #fff; }
+    .active-task.task-declined .rarity-tag { background: rgba(0,0,0,0.2); color: #fff; }
     .active-task-check.check-x { background: var(--danger); }
 
     /* Done-for-today: incomplete task indicator */
@@ -486,6 +476,10 @@
   function displayRarity(r) {
     if (r === 'mythic') return 'Mythical';
     return r.charAt(0).toUpperCase() + r.slice(1);
+  }
+  function rarityTag(rarity) {
+    const cls = rarity === 'mythic' ? 'mythical' : rarity;
+    return `<span class="rarity-tag rarity-tag-${cls}">${displayRarity(rarity).toUpperCase()}</span>`;
   }
 
   /* ── Default task pool (seed data) ── */
@@ -911,7 +905,7 @@
         <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${!isOnboarding&&n>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
-            <span class="task-badge badge-${t.type}">${t.type}</span>
+            ${rarityTag(t.type)}
           </div>
           <div class="task-desc">${t.description}</div>
         </div>`).join('')}
@@ -949,7 +943,7 @@
                 <div class="active-task-title">${t.title}</div>
                 <div class="active-task-desc">${t.description}</div>
               </div>
-              <span class="task-badge badge-${t.type}">${t.type}</span>
+              ${rarityTag(t.type)}
             </div>
           </div>`;
         }).join('')}
@@ -983,7 +977,7 @@
               <div class="active-task-title">${t.title}</div>
               <div class="active-task-desc">${t.description}</div>
             </div>
-            <span class="task-badge badge-${t.type}">${t.type}</span>
+            ${rarityTag(t.type)}
           </div>
           ${confirming ? `
           <div class="task-confirm">
@@ -1038,7 +1032,7 @@
               <div class="active-task-title">${t.title}</div>
               <div class="active-task-desc">${t.description}</div>
             </div>
-            <span class="task-badge badge-${t.type}">${t.type}</span>
+            ${rarityTag(t.type)}
           </div>
           ${showPrompt ? `
           <div class="task-confirm">
@@ -1380,7 +1374,7 @@
               <div class="store-card-name">${item.name}</div>
               <div class="store-card-desc">${item.desc}</div>
             </div>
-            <div style="flex-shrink:0;display:flex;align-items:center;gap:5px;font-size:0.8rem;font-weight:400;color:var(--subtext)">x${item.cost} <span class="craft-badge craft-badge-${item.rarity === 'mythic' ? 'mythical' : item.rarity}">${displayRarity(item.rarity).toUpperCase()}</span></div>
+            <div style="flex-shrink:0;display:flex;align-items:center;gap:5px;font-size:0.8rem;font-weight:400;color:var(--subtext)">x${item.cost} ${rarityTag(item.rarity)}</div>
           </div>
         </div>`;
       }).join('')}
@@ -1409,13 +1403,13 @@
         <div class="store-wallet-chip mythic" id="craft-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       <button class="btn-primary btn-craft-action" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'}>
-        <span class="craft-action-label">Craft <span class="craft-badge craft-badge-legendary">LEGENDARY</span></span>
-        <span class="craft-action-cost">x3 <span class="craft-badge craft-badge-common">COMMON</span></span>
+        <span class="craft-action-label">Craft ${rarityTag('legendary')}</span>
+        <span class="craft-action-cost">x3 ${rarityTag('common')}</span>
       </button>
       <div style="height:10px"></div>
       <button class="btn-primary btn-craft-action" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'}>
-        <span class="craft-action-label">Craft <span class="craft-badge craft-badge-mythical">MYTHICAL</span></span>
-        <span class="craft-action-cost">x3 <span class="craft-badge craft-badge-legendary">LEGENDARY</span></span>
+        <span class="craft-action-label">Craft ${rarityTag('mythic')}</span>
+        <span class="craft-action-cost">x3 ${rarityTag('legendary')}</span>
       </button>
       <div style="height:20px"></div>`;
   }
@@ -1491,7 +1485,7 @@
                 return `<div class="history-task-row${done?' done':''}">
                   <span style="color:${color}">${icon}</span>
                   <span style="flex:1">${t.title}</span>
-                  <span class="task-badge badge-${t.type}">${t.type}</span>
+                  ${rarityTag(t.type)}
                 </div>`;
               }).join('')}
             </div>
