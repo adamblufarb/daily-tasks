@@ -378,11 +378,16 @@
     .purchased-label { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.75); margin-bottom: 40px; }
     .btn-back-store { padding: 14px 32px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.4); border-radius: var(--radius); font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
 
-    /* Reward / bad-luck screens */
+    /* Claim Tokens / bad-luck screens */
     .reward-screen { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
     .reward-emoji  { font-size: 5rem; line-height: 1; margin-bottom: 16px; }
     .reward-title  { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
     .reward-earned { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 40px; line-height: 1.5; }
+    .reward-tokens { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-bottom: 40px; }
+    .reward-token-row { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 700; color: rgba(255,255,255,0.9); }
+    .reward-tokens .rarity-tag-common    { background: var(--common-dark);    color: var(--common-light); }
+    .reward-tokens .rarity-tag-legendary { background: var(--legendary-dark); color: var(--legendary-bg); }
+    .reward-tokens .rarity-tag-mythical  { background: var(--mythic-dark);    color: var(--mythic-bg); }
     .btn-claim     { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; touch-action: manipulation; }
 
     /* Concluded-screen: declined task (red) */
@@ -1055,26 +1060,23 @@
       <button class="btn-primary" id="btn-submit-grace"${tasks.every(t => completedIds.includes(t.id) || s.reviewDeclined.includes(t.id)) ? '' : ' disabled'}>Submit Results</button>`;
   }
 
-  /* ── Reward screen ── */
+  /* ── Claim Tokens screen ── */
   function htmlReward() {
     const r = s.pendingReward || { common: 0, legendary: 0, mythic: 0 };
-    const sess = s.sessions.find(x => x.status === 'done' && (x.date === s.today || x.date !== s.today));
-    const tasks = sess ? (sess.picked_ids || []).map(id => getTaskForHistory(sess, id)).filter(Boolean) : [];
-    const completedIds = sess?.completed_ids || [];
-    const completedTasks = completedIds.map(id => getTaskForHistory(sess, id)).filter(Boolean);
     const bgColor = r.mythic > 0 ? 'var(--mythic)' : r.legendary > 0 ? 'var(--legendary)' : 'var(--common)';
-    const parts = [];
-    if (r.mythic)    parts.push(`+${r.mythic} Mythical`);
-    if (r.legendary) parts.push(`+${r.legendary} Legendary`);
-    if (r.common)    parts.push(`+${r.common} Common`);
+    const tokenRows = [
+      r.mythic    ? `<div class="reward-token-row">+${r.mythic} ${rarityTag('mythic')}</div>`    : '',
+      r.legendary ? `<div class="reward-token-row">+${r.legendary} ${rarityTag('legendary')}</div>` : '',
+      r.common    ? `<div class="reward-token-row">+${r.common} ${rarityTag('common')}</div>`    : '',
+    ].filter(Boolean).join('');
     return `
       <div class="reward-screen" style="background:${bgColor}">
         <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
         <div style="position:relative;z-index:1;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:stretch">
           <div class="reward-emoji">🤝</div>
           <div class="reward-title">Ritual Honored</div>
-          <div class="reward-earned">${parts.length ? parts.join(' · ') : 'No rewards'}</div>
-          <button class="btn-claim" id="btn-claim-rewards">Claim Rewards</button>
+          <div class="reward-tokens">${tokenRows || '<div class="reward-token-row" style="color:rgba(255,255,255,0.6)">No tokens earned</div>'}</div>
+          <button class="btn-claim" id="btn-claim-tokens">Claim Tokens</button>
         </div>
       </div>`;
   }
@@ -1085,7 +1087,7 @@
       <div class="reward-screen" style="background:var(--accent)">
         <div class="reward-emoji">😔</div>
         <div class="reward-title">Better Luck Next Time</div>
-        <div class="reward-earned">All acts must be completed in order to earn rewards.</div>
+        <div class="reward-earned">All acts must be completed in order to earn tokens.</div>
         <button class="btn-claim" id="btn-acknowledge">Got It</button>
       </div>`;
   }
@@ -1675,7 +1677,7 @@
     }
 
     if (screen === 'reward') {
-      document.getElementById('btn-claim-rewards')?.addEventListener('click', claimRewards);
+      document.getElementById('btn-claim-tokens')?.addEventListener('click', claimTokens);
       const r = s.pendingReward || {};
       const floatEmojis = r.mythic > 0
         ? ['🔮','🍇','🪻','🦄','🧞‍♀️','🧬','😈']
@@ -2096,7 +2098,7 @@
     await api('PATCH', '/api/sessions', { id: todaySess.id, status: 'done' });
   }
 
-  async function claimRewards() {
+  async function claimTokens() {
     if (s.pendingReward) {
       s.wallet.common    += s.pendingReward.common;
       s.wallet.legendary += s.pendingReward.legendary;
