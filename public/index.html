@@ -24,6 +24,7 @@
       --legendary-bg: #fce8d4;
       --legendary-dark: #6d3a11;
       --mythic: #b87ad7;
+      --mythic-dark: #5c2e7a;
       --mythic-bg: #f3e8fb;
       --common: #999da6;
       --common-dark: #6d727f;
@@ -365,13 +366,10 @@
     .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
     .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
     .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
-    .btn-craft-nav { width: 100%; padding: 12px; background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1.5px solid color-mix(in srgb, var(--accent) 25%, transparent); border-radius: var(--radius); font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--accent); cursor: pointer; margin-bottom: 12px; }
-    .btn-craft-legendary { width: 100%; padding: 17px; background: var(--legendary); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: transform 0.1s; touch-action: manipulation; }
-    .btn-craft-legendary:active { transform: scale(0.98); }
-    .btn-craft-legendary:disabled { opacity: 0.4; pointer-events: none; }
-    .btn-craft-mythical { width: 100%; padding: 17px; background: var(--mythic); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: transform 0.1s; touch-action: manipulation; }
-    .btn-craft-mythical:active { transform: scale(0.98); }
-    .btn-craft-mythical:disabled { opacity: 0.4; pointer-events: none; }
+    .craft-badge { display: inline-block; padding: 2px 6px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; vertical-align: middle; line-height: 1.5; }
+    .craft-badge-common    { background: var(--common-dark);    color: var(--common-light); }
+    .craft-badge-legendary { background: var(--legendary-dark); color: var(--legendary); }
+    .craft-badge-mythical  { background: var(--mythic-dark);    color: var(--mythic); }
 
     /* Purchased screen */
     .purchased-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); padding: 40px 24px; text-align: center; }
@@ -1368,7 +1366,7 @@
         <div class="store-wallet-chip legendary" id="tutorial-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
-      <button class="profile-menu-item" id="btn-goto-craft" style="margin-bottom:12px"><span class="profile-menu-label">⚗️ Craft Tokens</span><span class="profile-menu-arrow">›</span></button>
+      <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:12px">⚗️ Craft Tokens</button>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
@@ -1410,15 +1408,9 @@
         <div class="store-wallet-chip mythic" id="craft-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       <div style="height:20px"></div>
-      <button class="profile-menu-item" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'}>
-        <span>Craft Legendary (3 <strong style="color:var(--common)">Common</strong>)</span>
-        <span class="profile-menu-arrow">›</span>
-      </button>
-      <div style="height:8px"></div>
-      <button class="profile-menu-item" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'}>
-        <span>Craft Mythical (3 <strong style="color:var(--legendary)">Legendary</strong>)</span>
-        <span class="profile-menu-arrow">›</span>
-      </button>`;
+      <button class="btn-primary" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'} style="background:var(--legendary)">Craft <span class="craft-badge craft-badge-legendary">LEGENDARY</span> &nbsp;(3 <span class="craft-badge craft-badge-common">COMMON</span>)</button>
+      <div style="height:10px"></div>
+      <button class="btn-primary" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'} style="background:var(--mythic)">Craft <span class="craft-badge craft-badge-mythical">MYTHICAL</span> &nbsp;(3 <span class="craft-badge craft-badge-legendary">LEGENDARY</span>)</button>`;
   }
 
   function animateCraft(result) {
