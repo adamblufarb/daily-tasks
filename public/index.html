@@ -370,8 +370,8 @@
     .craft-badge-common    { background: var(--common-dark);    color: var(--common); }
     .craft-badge-legendary { background: var(--legendary-dark); color: var(--legendary); }
     .craft-badge-mythical  { background: var(--mythic-dark);    color: var(--mythic); }
-    .btn-craft-action { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
-    .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: center; color: #fff; }
+    .btn-craft-action { display: flex; align-items: center; justify-content: space-between; }
+    .craft-action-label { display: flex; align-items: center; gap: 7px; color: #fff; }
     .craft-action-cost { display: flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 0.8rem; font-weight: 400; color: rgba(255,255,255,0.85); white-space: nowrap; }
 
     /* Purchased screen */
@@ -1369,7 +1369,7 @@
         <div class="store-wallet-chip legendary" id="tutorial-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
-      <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:12px;background:linear-gradient(to right,var(--common) 0%,var(--common) 20%,var(--legendary) 40%,var(--legendary) 60%,var(--mythic) 80%,var(--mythic) 100%)">Craft Tokens</button>
+      <button class="btn-primary" id="btn-goto-craft" style="margin:12px 0;background:linear-gradient(to right,var(--common) 0%,var(--common) 20%,var(--legendary) 40%,var(--legendary) 60%,var(--mythic) 80%,var(--mythic) 100%)">Craft Tokens</button>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
@@ -1382,7 +1382,7 @@
               <div class="store-card-name">${item.name}</div>
               <div class="store-card-desc">${item.desc}</div>
             </div>
-            <div class="store-cost ${item.rarity}" style="flex-shrink:0">${item.cost} <span class="store-cost-label">${displayRarity(item.rarity)}</span></div>
+            <div class="store-cost ${item.rarity}" style="flex-shrink:0;display:flex;align-items:center;gap:5px">x${item.cost} <span class="craft-badge craft-badge-${item.rarity}">${displayRarity(item.rarity).toUpperCase()}</span></div>
           </div>
         </div>`;
       }).join('')}
@@ -1410,15 +1410,13 @@
         <div class="store-wallet-chip legendary" id="craft-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic" id="craft-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
-      <div style="height:20px"></div>
-      <button class="btn-primary btn-craft-action" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'} style="background:var(--legendary)">
-        <span></span>
+      <div style="height:12px"></div>
+      <button class="btn-primary btn-craft-action" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'} style="background:var(--legendary-dark);color:#fff">
         <span class="craft-action-label">Craft <span class="craft-badge craft-badge-legendary">LEGENDARY</span></span>
         <span class="craft-action-cost">x3 <span class="craft-badge craft-badge-common">COMMON</span></span>
       </button>
       <div style="height:10px"></div>
-      <button class="btn-primary btn-craft-action" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'} style="background:var(--mythic)">
-        <span></span>
+      <button class="btn-primary btn-craft-action" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'} style="background:var(--mythic);color:#fff">
         <span class="craft-action-label">Craft <span class="craft-badge craft-badge-mythical">MYTHICAL</span></span>
         <span class="craft-action-cost">x3 <span class="craft-badge craft-badge-legendary">LEGENDARY</span></span>
       </button>
