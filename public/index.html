@@ -964,7 +964,7 @@
       <div class="home-header">
         <div class="home-emoji">${isMythic ? '🔱' : '🧿'}</div>
         <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Ritual' : 'Daily Ritual'}</div>
-        <div class="home-sub">All acts must be completed by ${resetStr} ${deadlineDay}.</div>
+        <div class="home-sub">All acts must be completed by ${resetStr} ${deadlineDay}</div>
       </div>
       <div class="tasks-label">Committed Acts</div>
       ${tasks.map(t => {
@@ -1366,7 +1366,7 @@
         <div class="store-wallet-chip legendary" id="tutorial-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
-      <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:12px">⚗️ Craft Tokens</button>
+      <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:12px;background:linear-gradient(to right,var(--common),var(--legendary),var(--mythic))">Craft Tokens</button>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
