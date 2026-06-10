@@ -407,8 +407,9 @@
     .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
 
     /* Tutorial overlay */
-    .tutorial-box { position: fixed; bottom: calc(78px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; box-shadow: 0 8px 40px rgba(0,0,0,0.35); }
-    .tutorial-title { font-size: 1.05rem; font-weight: 600; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
+    .tutorial-panel { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; padding: 100px 20px calc(44px + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, transparent, var(--accent) 45%); z-index: 302; pointer-events: none; }
+    .tutorial-panel-text { font-size: 1.6rem; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 24px; }
+    .tutorial-panel-cta { width: 100%; padding: 17px; background: rgba(255,255,255,0.15); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.4); border-radius: var(--radius); cursor: pointer; font-family: inherit; touch-action: manipulation; pointer-events: all; }
   </style>
 </head>
 <body>
@@ -2046,13 +2047,40 @@
     const overlay = document.createElement('div');
     overlay.id = 'tutorial-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:300;pointer-events:none;';
-    // Backdrop only for tap-target steps — info/highlight steps keep the screen fully visible
+
+    // Backdrop only for tap-target steps
     if (step.type === 'tap-tab' || step.type === 'tap-el') {
       const backdrop = document.createElement('div');
       backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.82);pointer-events:all;';
       overlay.appendChild(backdrop);
     }
+
+    // Gradient panel — present on every step
+    const panel = document.createElement('div');
+    panel.className = 'tutorial-panel';
+    const textEl = document.createElement('div');
+    textEl.className = 'tutorial-panel-text';
+    textEl.textContent = (step.type === 'tap-tab' || step.type === 'tap-el')
+      ? `Tap ${step.label}`
+      : step.title;
+    panel.appendChild(textEl);
+    let ctaEl = null;
+    if (step.type === 'info' || step.type === 'highlight') {
+      ctaEl = document.createElement('button');
+      ctaEl.className = 'tutorial-panel-cta';
+      ctaEl.textContent = step.finish ? 'Finish' : 'Next';
+      panel.appendChild(ctaEl);
+    }
+    overlay.appendChild(panel);
     document.body.appendChild(overlay);
+
+    if (ctaEl) {
+      ctaEl.addEventListener('click', () => {
+        if (step.finish) { completeTutorial(); return; }
+        s.tutorialStep++;
+        renderTutorial();
+      });
+    }
 
     if (step.type === 'tap-tab') {
       const tabBar    = document.getElementById('tab-bar');
@@ -2063,10 +2091,10 @@
       });
       if (targetTab) {
         const rect = targetTab.getBoundingClientRect();
-        const hint = document.createElement('div');
-        hint.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;bottom:${Math.round(window.innerHeight - rect.top + 12)}px;transform:translateX(-50%);z-index:302;text-align:center;color:#fff;pointer-events:none;`;
-        hint.innerHTML = `<div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;margin-bottom:8px;">Tap ${step.label}</div><div style="font-size:1.6rem;line-height:1">↓</div>`;
-        overlay.appendChild(hint);
+        const arrow = document.createElement('div');
+        arrow.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;bottom:${Math.round(window.innerHeight - rect.top + 10)}px;transform:translateX(-50%);z-index:303;color:#fff;pointer-events:none;font-size:1.6rem;line-height:1;`;
+        arrow.textContent = '↓';
+        overlay.appendChild(arrow);
         targetTab.addEventListener('click', () => {
           s.tutorialStep++;
           requestAnimationFrame(() => renderTutorial());
@@ -2080,11 +2108,11 @@
         el.style.position = 'relative';
         el.style.zIndex   = '301';
         const rect = el.getBoundingClientRect();
-        const hint = document.createElement('div');
-        // Anchor right edge of hint at button centre so text extends leftward without clipping
-        hint.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;top:${Math.round(rect.bottom + 12)}px;transform:translateX(-100%);z-index:302;text-align:right;color:#fff;pointer-events:none;`;
-        hint.innerHTML = `<div style="font-size:1.6rem;line-height:1;margin-bottom:8px;">↑</div><div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;">Tap ${step.label}</div>`;
-        overlay.appendChild(hint);
+        const arrow = document.createElement('div');
+        // Right-anchored at button centre so arrow stays above the icon without clipping
+        arrow.style.cssText = `position:fixed;left:${Math.round(rect.left + rect.width / 2)}px;top:${Math.round(rect.bottom + 8)}px;transform:translateX(-50%);z-index:303;color:#fff;pointer-events:none;font-size:1.6rem;line-height:1;`;
+        arrow.textContent = '↑';
+        overlay.appendChild(arrow);
         el.addEventListener('click', () => {
           s.tutorialStep++;
           requestAnimationFrame(() => renderTutorial());
@@ -2092,25 +2120,14 @@
       }
     }
 
-    if (step.type === 'info' || step.type === 'highlight') {
-      if (step.type === 'highlight') {
-        const el = document.getElementById(step.elId);
-        if (el) {
-          el.style.position      = 'relative';
-          el.style.zIndex        = '301';
-          el.style.pointerEvents = 'none';
-          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
-        }
+    if (step.type === 'highlight') {
+      const el = document.getElementById(step.elId);
+      if (el) {
+        el.style.position      = 'relative';
+        el.style.zIndex        = '301';
+        el.style.pointerEvents = 'none';
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
       }
-      const box = document.createElement('div');
-      box.className = 'tutorial-box';
-      box.innerHTML = `<div class="tutorial-title">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.finish ? 'Finish' : 'Next'}</button>`;
-      overlay.appendChild(box);
-      document.getElementById('btn-tutorial-cta')?.addEventListener('click', () => {
-        if (step.finish) { completeTutorial(); return; }
-        s.tutorialStep++;
-        renderTutorial();
-      });
     }
   }
 
