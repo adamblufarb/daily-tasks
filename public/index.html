@@ -407,9 +407,9 @@
     .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
 
     /* Tutorial overlay */
-    .tutorial-gradient { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 66.67vh; pointer-events: none; background: linear-gradient(to top, color-mix(in srgb, var(--accent) 25%, transparent) 0%, color-mix(in srgb, var(--accent) 25%, transparent) 50%, transparent 100%); }
+    .tutorial-gradient { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 66.67vh; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.30) 50%, transparent 100%); }
     .tutorial-box { position: fixed; bottom: calc(120px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; }
-    .tutorial-title { font-size: 1.25rem; font-weight: 500; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
+    .tutorial-title { font-size: 1.1rem; font-weight: 400; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
   </style>
 </head>
 <body>
@@ -461,10 +461,15 @@
 
   /* ── Store items ── */
   const STORE_ITEMS = [
-    { id: 's1', name: 'Rest Day Pass',   cost: 2, rarity: 'common',    desc: 'Skip a day guilt-free'         },
-    { id: 's2', name: 'Bonus Legendary', cost: 1, rarity: 'legendary', desc: 'Add a legendary slot for a day' },
-    { id: 's3', name: 'Mythic Boost',    cost: 1, rarity: 'mythic',    desc: 'Double points for your next plan' },
+    { id: 's1', name: 'Rest Day Pass',    cost: 2, rarity: 'common',    desc: 'Skip a day guilt-free'         },
+    { id: 's2', name: 'Bonus Legendary',  cost: 1, rarity: 'legendary', desc: 'Add a legendary slot for a day' },
+    { id: 's3', name: 'Mythical Boost',   cost: 1, rarity: 'mythic',    desc: 'Double points for your next plan' },
   ];
+
+  function displayRarity(r) {
+    if (r === 'mythic') return 'Mythical';
+    return r.charAt(0).toUpperCase() + r.slice(1);
+  }
 
   /* ── Default task pool (seed data) ── */
   const DEFAULT_TASKS = [
@@ -810,7 +815,7 @@
   /* ── FTUE Splash ── */
   const FTUE_SLIDES = [
     { emoji: '🧿', text: 'Honor your Ritual by completing all daily acts' },
-    { emoji: '🕌', text: 'Build your record, earn currency and splurge at the Bazaar' },
+    { emoji: '🕌', text: 'Build your record, earn tokens and splurge at the Bazaar' },
     { emoji: '☠️', text: 'But beware, one incomplete act breaks the entire Ritual' },
     { emoji: '🎲', text: "Let's forge your first Ritual!" },
   ];
@@ -1039,7 +1044,7 @@
     const completedTasks = completedIds.map(id => getTaskForHistory(sess, id)).filter(Boolean);
     const bgColor = r.mythic > 0 ? 'var(--mythic)' : r.legendary > 0 ? 'var(--legendary)' : 'var(--common)';
     const parts = [];
-    if (r.mythic)    parts.push(`+${r.mythic} Mythic`);
+    if (r.mythic)    parts.push(`+${r.mythic} Mythical`);
     if (r.legendary) parts.push(`+${r.legendary} Legendary`);
     if (r.common)    parts.push(`+${r.common} Common`);
     return `
@@ -1103,7 +1108,7 @@
       ${s.showResetConfirm ? `
       <div class="reset-confirm-box">
         <div class="reset-confirm-label">Reset Account</div>
-        <div class="reset-confirm-sub">This will permanently delete all ritual history, currency, and store purchases and restart the onboarding flow. Type <strong>reset</strong> to confirm.</div>
+        <div class="reset-confirm-sub">This will permanently delete all ritual history, tokens, and store purchases and restart the onboarding flow. Type <strong>reset</strong> to confirm.</div>
         <input class="form-input" id="reset-confirm-input" placeholder="Type reset to confirm" autocomplete="off" autocorrect="off" spellcheck="false">
         <button class="btn-reset-danger" id="btn-confirm-reset">Reset Account</button>
         <button class="btn-reset-cancel" id="btn-cancel-reset">Cancel</button>
@@ -1143,7 +1148,7 @@
       <div class="store-manage-row">
         <div class="store-manage-info">
           <div class="store-manage-name">${item.name}</div>
-          <div class="store-manage-meta">${item.cost} ${item.rarity} · ${item.desc}</div>
+          <div class="store-manage-meta">${item.cost} ${displayRarity(item.rarity).toLowerCase()} · ${item.desc}</div>
         </div>
         <div class="store-manage-actions">
           <button class="btn-icon edit" data-edit-store="${item.id}">✏️</button>
@@ -1159,7 +1164,7 @@
       <div class="form-row">
         <input class="form-input" id="si-cost" type="number" min="1" placeholder="Cost" value="${item.cost||1}" style="width:80px">
         <select class="form-input settings-select" id="si-rarity">
-          ${['common','legendary','mythic'].map(r => `<option value="${r}"${r===item.rarity?' selected':''}>${r}</option>`).join('')}
+          ${['common','legendary','mythic'].map(r => `<option value="${r}"${r===item.rarity?' selected':''}>${displayRarity(r)}</option>`).join('')}
         </select>
       </div>
       <div class="form-actions">
@@ -1319,11 +1324,11 @@
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Bazaar</div>
       </div>
-      <div class="tasks-label" style="margin-bottom:8px;text-transform:none;letter-spacing:0">Available currency</div>
+      <div class="tasks-label" style="margin-bottom:8px;text-transform:none;letter-spacing:0">Available tokens</div>
       <div class="store-wallet" id="tutorial-store-wallet">
-        <div class="store-wallet-chip common">${w.common} <span class="store-wallet-label">Common</span></div>
-        <div class="store-wallet-chip legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
-        <div class="store-wallet-chip mythic">${w.mythic} <span class="store-wallet-label">Mythic</span></div>
+        <div class="store-wallet-chip common" id="tutorial-wallet-common">${w.common} <span class="store-wallet-label">Common</span></div>
+        <div class="store-wallet-chip legendary" id="tutorial-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
+        <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
@@ -1337,7 +1342,7 @@
               <div class="store-card-name">${item.name}</div>
               <div class="store-card-desc">${item.desc}</div>
             </div>
-            <div class="store-cost ${item.rarity}" style="flex-shrink:0">${item.cost} <span class="store-cost-label">${item.rarity}</span></div>
+            <div class="store-cost ${item.rarity}" style="flex-shrink:0">${item.cost} <span class="store-cost-label">${displayRarity(item.rarity)}</span></div>
           </div>
         </div>`;
       }).join('')}
@@ -1408,8 +1413,8 @@
             ${isWin ? `<div class="history-pts">
               ${cPts ? `<span class="pts-earned pts-common">+${cPts} common</span>` : ''}
               ${lPts ? `<span class="pts-earned pts-legendary">+${lPts} legendary</span>` : ''}
-              ${isMythic ? `<span class="pts-earned pts-mythic">+1 mythic</span>` : ''}
-            </div>` : isDone ? `<div class="history-pts" style="color:var(--danger);border-top-color:color-mix(in srgb,var(--danger) 25%,transparent)">Failed plans don't earn any points or currency</div>` : ''}
+              ${isMythic ? `<span class="pts-earned pts-mythic">+1 mythical</span>` : ''}
+            </div>` : isDone ? `<div class="history-pts" style="color:var(--danger);border-top-color:color-mix(in srgb,var(--danger) 25%,transparent)">Failed plans don't earn any points or tokens</div>` : ''}
           </div>`;
       }).join('')}`;
   }
@@ -2002,10 +2007,11 @@
   ];
 
   const BAZAAR_TUTORIAL = [
-    { type: 'tap-tab',   tabId: 'tab-store',           label: 'Bazaar' },
+    { type: 'tap-tab',   tabId: 'tab-store',                label: 'Bazaar' },
     { type: 'info',      title: 'Bazaar welcomes you to buy gifts' },
-    { type: 'highlight', elId: 'tutorial-store-wallet', title: 'You earn currency by completing Rituals' },
-    { type: 'info',      title: 'Earn Mythical currency to indulge in real world gifts', finish: true },
+    { type: 'highlight', elId: 'tutorial-wallet-common',    title: 'Common tokens are earned by completing any act in your Ritual' },
+    { type: 'highlight', elId: 'tutorial-wallet-legendary', title: 'Legendary tokens are earned by completing Legendary acts' },
+    { type: 'highlight', elId: 'tutorial-wallet-mythic',    title: 'Mythical tokens are earned by completing a full 5-act Ritual', finish: true },
   ];
 
   function startTutorial(flow) {
@@ -2018,7 +2024,7 @@
     const tabBar = document.getElementById('tab-bar');
     if (tabBar) tabBar.style.zIndex = '';
     document.querySelectorAll('.tab-btn').forEach(b => { b.style.pointerEvents = ''; });
-    ['tutorial-settings-section', 'btn-profile-taskpool', 'tutorial-store-wallet', 'btn-open-profile'].forEach(id => {
+    ['tutorial-settings-section', 'btn-profile-taskpool', 'tutorial-store-wallet', 'tutorial-wallet-common', 'tutorial-wallet-legendary', 'tutorial-wallet-mythic', 'btn-open-profile'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.style.position = ''; el.style.zIndex = ''; el.style.pointerEvents = ''; }
     });
@@ -2052,8 +2058,8 @@
       backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.82);pointer-events:all;';
       overlay.appendChild(backdrop);
     }
-    // Gradient only when a text box is visible
-    if (step.type === 'info' || step.type === 'highlight') {
+    // Gradient only on info steps — highlight steps already have a black overlay
+    if (step.type === 'info') {
       const grad = document.createElement('div');
       grad.className = 'tutorial-gradient';
       overlay.appendChild(grad);
@@ -2095,7 +2101,7 @@
         overlay.appendChild(arrow);
         // Label: right edge flush with arrow centre (extends leftward, never clips right)
         const lbl = document.createElement('div');
-        lbl.style.cssText = `position:fixed;left:${cx}px;top:${topY + 34}px;transform:translateX(-100%);z-index:302;color:#fff;pointer-events:none;font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;`;
+        lbl.style.cssText = `position:fixed;left:${cx}px;top:${topY + 34}px;transform:translateX(calc(-100% + 12px));z-index:302;color:#fff;pointer-events:none;font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;`;
         lbl.textContent = `Tap ${step.label}`;
         overlay.appendChild(lbl);
         el.addEventListener('click', () => {
