@@ -1390,7 +1390,7 @@
       }).join('')}
       <div class="store-purchase-cta">
         <button class="btn-purchase${canPurchase ? ` ready-${selItem.rarity}` : ''}"${canPurchase ? '' : ' disabled'} id="btn-purchase">
-          ${alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select an offering'}
+          ${alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select An Offering'}
         </button>
       </div>
       ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>` : ''}`;
@@ -2141,10 +2141,10 @@
 
   const BAZAAR_TUTORIAL = [
     { type: 'tap-tab',   tabId: 'tab-store',                label: 'Bazaar' },
-    { type: 'info',      title: 'Bazaar welcomes you to buy gifts' },
-    { type: 'highlight', elId: 'tutorial-wallet-common',    title: 'Common tokens are earned by completing any act in your Ritual' },
-    { type: 'highlight', elId: 'tutorial-wallet-legendary', title: 'Legendary tokens are earned by completing Legendary acts' },
-    { type: 'highlight', elId: 'tutorial-wallet-mythic',    title: 'Mythical tokens are earned by completing a full 5-act Ritual', finish: true },
+    { type: 'info',      title: 'Browse and spend your earned Tokens' },
+    { type: 'highlight', elId: 'tutorial-wallet-common',    title: `Spend ${rarityTag('common')} Tokens to re-roll Acts when forging your Ritual` },
+    { type: 'highlight', elId: 'tutorial-wallet-legendary', title: `Spend ${rarityTag('legendary')} Tokens to expand your Act Pool` },
+    { type: 'highlight', elId: 'tutorial-wallet-mythic',    title: `Spend ${rarityTag('mythic')} Tokens on exclusive Offerings`, finish: true },
   ];
 
   function startTutorial(flow) {
