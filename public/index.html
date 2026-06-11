@@ -414,8 +414,8 @@
     .auth-sub    { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
 
     /* FTUE — shared layout */
-    body.no-scroll { position: fixed; width: 100%; }
-    .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; }
+    body.no-scroll { position: fixed; width: 100%; left: 50%; transform: translateX(-50%); }
+    .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; }
     .ftue-splash { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); }
     .ftue-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 20px 0; }
     /* Splash animated gradient blobs */
@@ -427,7 +427,7 @@
     @keyframes splash-drift-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(25vw,20vh) scale(1.1); } }
     @keyframes splash-drift-2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-20vw,-18vh) scale(0.9); } }
     @keyframes splash-drift-3 { 0%,100% { transform: translate(0,0) scale(1.05); } 33% { transform: translate(-18vw,12vh) scale(0.95); } 66% { transform: translate(12vw,-15vh) scale(1.1); } }
-    .ftue-footer { padding: 0 0 calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
+    .ftue-footer { padding: 0 20px calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
     /* Splash */
     .ftue-splash-title { font-size: 3.2rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
     /* Slides */
