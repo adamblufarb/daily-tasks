@@ -1127,7 +1127,8 @@
     const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
     const hours = Array.from({length: 6}, (_, i) => i + 6);
     const bazaarUnlocked = s.onboardingRitualCount >= 2;
-    const showTesting = localStorage.getItem('showTestingTools') === 'true';
+    const isAdmin = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
+    const showTesting = isAdmin && localStorage.getItem('showTestingTools') === 'true';
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Profile</div>
@@ -1156,6 +1157,7 @@
         <span class="profile-menu-label">Sign Out</span>
         <span class="profile-menu-arrow">›</span>
       </button>
+      ${isAdmin ? `
       <div class="settings-section" style="margin-top:20px">
         <div class="settings-row">
           <div class="settings-label">Testing Tools</div>
@@ -1164,7 +1166,7 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-      </div>
+      </div>` : ''}
       ${showTesting ? `
       <div class="testing-tools">
         <div class="testing-group-label">Token Manipulation</div>
