@@ -43,7 +43,6 @@
     }
     body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; transition: background 0.45s ease; }
     body.mythic-bg { background: var(--mythic); }
-    body.splash-active { background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); }
     body.mythic-bg .tab-bar { background: var(--mythic); border-top-color: rgba(255,255,255,0.2); transition: background 0.45s ease; }
     body.mythic-bg .tab-btn { color: rgba(255,255,255,0.6); }
     body.mythic-bg .tab-btn.active { color: #fff; }
@@ -414,9 +413,8 @@
     .auth-sub    { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
 
     /* FTUE — shared layout */
-    body.no-scroll { position: fixed; width: 100%; left: 50%; transform: translateX(-50%); }
-    .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; margin-top: calc(-1 * env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
-    .ftue-splash { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); }
+    .ftue-splash { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); padding-top: env(safe-area-inset-top); }
+    .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; }
     .ftue-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 20px 0; }
     /* Splash animated gradient blobs */
     .splash-bg { position: absolute; inset: 0; z-index: 0; }
@@ -801,8 +799,6 @@
                  : s.tab === 'store'   ? 'store'
                  : getScreen();
     document.body.classList.toggle('mythic-bg', screen === 'pick' && s.picked.length === 5);
-    document.body.classList.toggle('no-scroll', !!s.ftueScreen);
-    document.body.classList.toggle('splash-active', s.ftueScreen === 'splash');
     document.querySelector('meta[name="theme-color"]').content = s.ftueScreen === 'splash' ? '#7c8494' : '#f0f4ff';
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
