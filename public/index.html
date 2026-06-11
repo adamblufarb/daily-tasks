@@ -765,6 +765,7 @@
   /* ── Render ── */
   const GLOW_START = Date.now();
   let revealTimeoutId = null;
+  let ftueTransitionDir = 0; // non-zero during slide transition so htmlSlides() can pre-hide incoming content
   // Per-task duration: 2.0s – 3.2s, derived from ID
   function glowDuration(id) {
     let h = 0;
@@ -868,11 +869,14 @@
   function htmlSlides() {
     const slide = FTUE_SLIDES[s.ftueSlide];
     const isLast = s.ftueSlide === FTUE_SLIDES.length - 1;
+    const enterX = ftueTransitionDir > 0 ? '56px' : '-56px';
+    const emojiStyle = ftueTransitionDir !== 0 ? ' style="opacity:0"' : '';
+    const textStyle  = ftueTransitionDir !== 0 ? ` style="opacity:0;transform:translateX(${enterX})"` : '';
     return `
       <div class="ftue-slides">
         <div class="ftue-main">
-          <div class="ftue-slide-emoji">${slide.emoji}</div>
-          <div class="ftue-slide-text">${slide.text}</div>
+          <div class="ftue-slide-emoji"${emojiStyle}>${slide.emoji}</div>
+          <div class="ftue-slide-text"${textStyle}>${slide.text}</div>
           <div class="ftue-dots">
             ${FTUE_SLIDES.map((_, i) => `<div class="ftue-dot${i === s.ftueSlide ? ' active' : ''}"></div>`).join('')}
           </div>
@@ -896,7 +900,7 @@
       return `
         <div class="generate-screen">
           <div class="generate-emoji">🎲</div>
-          <div class="generate-title">Build Your Ritual</div>
+          <div class="generate-title">Forge Ritual</div>
           <div class="generate-sub">${fmtDate(s.today)}</div>
           <button class="btn-primary" id="btn-generate">Roll Acts →</button>
         </div>`;
@@ -916,12 +920,12 @@
     const showReroll = !isOnboarding;
     return `
       <div class="section-header">
-        <div class="section-title">Build Your Ritual</div>
+        <div class="section-title">Forge Ritual</div>
         <div class="section-sub">${fmtDate(s.today)}</div>
       </div>
       <div class="pick-count${isMythic?' mythic-pick':''}">${countLabel}</div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${!isOnboarding&&n>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${((!isOnboarding&&n>=5)||(isOnboarding&&n>=maxPicks))&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             ${rarityTag(t.type)}
@@ -929,7 +933,7 @@
           <div class="task-desc">${t.description}</div>
         </div>`).join('')}
       <div style="height:16px"></div>
-      <button class="btn-primary" id="btn-start"${canStart?'':' disabled'}>Start Ritual →</button>
+      <button class="btn-primary" id="btn-start"${canStart?'':' disabled'}>Begin Ritual →</button>
       ${showReroll ? `<button class="btn-reroll" id="btn-reroll"${rerollDisabled?' disabled':''}>${rerollLabel}</button>` : ''}`;
   }
 
@@ -1506,7 +1510,7 @@
 
   /* ── FTUE slide transition (dir: +1 forward, -1 backward) ── */
   function ftueSlideTransition(dir) {
-    const HALF = 350; // ms per half
+    const HALF = 350;
     const emoji = document.querySelector('.ftue-slide-emoji');
     const text  = document.querySelector('.ftue-slide-text');
 
@@ -1523,27 +1527,27 @@
 
     setTimeout(() => {
       s.ftueSlide += dir;
+      // ftueTransitionDir tells htmlSlides() to pre-render new elements hidden/offset
+      ftueTransitionDir = dir;
       render();
+      ftueTransitionDir = 0;
 
-      // Phase 2 — enter new content
-      const newEmoji = document.querySelector('.ftue-slide-emoji');
-      const newText  = document.querySelector('.ftue-slide-text');
-      if (newEmoji) {
-        newEmoji.style.transition = 'none';
-        newEmoji.style.opacity = '0';
-        newEmoji.getBoundingClientRect(); // force reflow
-        newEmoji.style.transition = 'opacity 0.35s ease';
-        newEmoji.style.opacity = '1';
-      }
-      if (newText) {
-        newText.style.transition = 'none';
-        newText.style.transform = `translateX(${dir > 0 ? '56px' : '-56px'})`;
-        newText.style.opacity = '0';
-        newText.getBoundingClientRect(); // force reflow
-        newText.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
-        newText.style.transform = 'translateX(0)';
-        newText.style.opacity = '1';
-      }
+      // Phase 2 — animate in after two rAF cycles (guarantees the pre-hidden elements have painted)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const newEmoji = document.querySelector('.ftue-slide-emoji');
+          const newText  = document.querySelector('.ftue-slide-text');
+          if (newEmoji) {
+            newEmoji.style.transition = 'opacity 0.35s ease';
+            newEmoji.style.opacity = '1';
+          }
+          if (newText) {
+            newText.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+            newText.style.transform = 'translateX(0)';
+            newText.style.opacity = '1';
+          }
+        });
+      });
     }, HALF);
   }
 
