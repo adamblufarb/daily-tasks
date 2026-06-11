@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f0f4ff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -76,7 +76,7 @@
       animation: tab-mythic-breathe 3s ease-in-out infinite;
     }
 
-    .content { padding: 0 20px calc(120px + env(safe-area-inset-bottom)) 20px; }
+    .content { padding: env(safe-area-inset-top) 20px calc(120px + env(safe-area-inset-bottom)) 20px; }
 
     /* Buttons */
     .btn-primary { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; line-height: 1; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: transform 0.1s; touch-action: manipulation; }
@@ -415,7 +415,7 @@
 
     /* FTUE — shared layout */
     body.no-scroll { position: fixed; width: 100%; left: 50%; transform: translateX(-50%); }
-    .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; }
+    .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; margin-top: calc(-1 * env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
     .ftue-splash { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); }
     .ftue-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 20px 0; }
     /* Splash animated gradient blobs */
