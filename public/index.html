@@ -1116,7 +1116,7 @@
       </div>
       <div class="profile-menu">
         <button class="profile-menu-item" id="btn-profile-taskpool">
-          <span class="profile-menu-label">Acts Pool</span>
+          <span class="profile-menu-label">Act Pool</span>
           <span class="profile-menu-arrow">›</span>
         </button>
         <button class="profile-menu-item" id="btn-profile-storemanage"${bazaarUnlocked ? '' : ' disabled'}>
@@ -1307,7 +1307,7 @@
     return `
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-profile">‹ Profile</button>
-        <div class="section-title">Acts Pool</div>
+        <div class="section-title">Act Pool</div>
         <div class="section-sub">${active.length} acts · ${common.length} common · ${legendary.length} legendary</div>
       </div>
       ${isAdding ? `
@@ -2133,10 +2133,10 @@
 
   const RECORD_TUTORIAL = [
     { type: 'tap-tab', tabId: 'tab-history', label: 'Record' },
-    { type: 'info',    title: 'Record is where your glory is documented for eternity' },
+    { type: 'info',    title: 'Your Ritual glory, documented for eternity' },
     { type: 'tap-el',  elId: 'btn-open-profile', label: 'Profile' },
-    { type: 'highlight', elId: 'tutorial-settings-section', title: "Set the time you want your day to reset. You'll have 3 hours after day reset to enter yesterday's Ritual results" },
-    { type: 'highlight', elId: 'btn-profile-taskpool',      title: 'View and edit your Acts here', finish: true },
+    { type: 'highlight', elId: 'tutorial-settings-section', title: "Your Ritual ends at this time. You'll have 3 hours after to submit your results" },
+    { type: 'highlight', elId: 'btn-profile-taskpool',      title: 'Your Act pool lives here, grow it as you level up', finish: true },
   ];
 
   const BAZAAR_TUTORIAL = [
