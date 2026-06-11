@@ -803,6 +803,7 @@
     document.body.classList.toggle('mythic-bg', screen === 'pick' && s.picked.length === 5);
     document.body.classList.toggle('no-scroll', !!s.ftueScreen);
     document.body.classList.toggle('splash-active', s.ftueScreen === 'splash');
+    document.querySelector('meta[name="theme-color"]').content = s.ftueScreen === 'splash' ? '#7c8494' : '#f0f4ff';
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === s.tab));
