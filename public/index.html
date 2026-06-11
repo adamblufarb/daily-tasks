@@ -925,7 +925,7 @@
       </div>
       <div class="pick-count${isMythic?' mythic-pick':''}">${countLabel}</div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${((!isOnboarding&&n>=5)||(isOnboarding&&n>=maxPicks))&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${!isOnboarding&&n>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             ${rarityTag(t.type)}
