@@ -1119,11 +1119,10 @@
           <span class="profile-menu-label">Acts Pool</span>
           <span class="profile-menu-arrow">›</span>
         </button>
-        ${bazaarUnlocked ? `
-        <button class="profile-menu-item" id="btn-profile-storemanage">
+        <button class="profile-menu-item" id="btn-profile-storemanage"${bazaarUnlocked ? '' : ' disabled'}>
           <span class="profile-menu-label">Bazaar Offerings</span>
           <span class="profile-menu-arrow">›</span>
-        </button>` : ''}
+        </button>
       </div>
       <div class="settings-section" id="tutorial-settings-section">
         <div class="settings-row">
