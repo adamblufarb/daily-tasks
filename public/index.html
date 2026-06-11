@@ -43,6 +43,7 @@
     }
     body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; transition: background 0.45s ease; }
     body.mythic-bg { background: var(--mythic); }
+    body.splash-active { background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); }
     body.mythic-bg .tab-bar { background: var(--mythic); border-top-color: rgba(255,255,255,0.2); transition: background 0.45s ease; }
     body.mythic-bg .tab-btn { color: rgba(255,255,255,0.6); }
     body.mythic-bg .tab-btn.active { color: #fff; }
@@ -801,6 +802,7 @@
                  : getScreen();
     document.body.classList.toggle('mythic-bg', screen === 'pick' && s.picked.length === 5);
     document.body.classList.toggle('no-scroll', !!s.ftueScreen);
+    document.body.classList.toggle('splash-active', s.ftueScreen === 'splash');
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === s.tab));
