@@ -415,21 +415,20 @@
     /* FTUE — shared layout */
     body.no-scroll { position: fixed; width: 100%; }
     .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; }
-    .ftue-splash { position: relative; overflow: hidden; }
+    .ftue-splash { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); }
     .ftue-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 20px 0; }
     /* Splash animated gradient blobs */
     .splash-bg { position: absolute; inset: 0; z-index: 0; }
-    .splash-blob { position: absolute; border-radius: 50%; filter: blur(72px); opacity: 0.55; will-change: transform; }
-    .splash-blob-1 { width: 70vw; height: 70vw; background: var(--common);    top: -10%; left: -15%; animation: splash-drift-1 13s ease-in-out infinite; }
-    .splash-blob-2 { width: 62vw; height: 62vw; background: var(--legendary); bottom: 8%;  right: -15%; animation: splash-drift-2 16s ease-in-out infinite; }
-    .splash-blob-3 { width: 56vw; height: 56vw; background: var(--mythic);    top: 35%; left: 25%; animation: splash-drift-3 11s ease-in-out infinite; }
+    .splash-blob { position: absolute; border-radius: 50%; filter: blur(64px); opacity: 0.8; will-change: transform; }
+    .splash-blob-1 { width: 110vw; height: 110vw; background: var(--common);    top: -20%; left: -25%; animation: splash-drift-1 13s ease-in-out infinite; }
+    .splash-blob-2 { width: 100vw; height: 100vw; background: var(--legendary); bottom: -10%; right: -25%; animation: splash-drift-2 16s ease-in-out infinite; }
+    .splash-blob-3 { width: 90vw;  height: 90vw;  background: var(--mythic);    top: 25%; left: 15%; animation: splash-drift-3 11s ease-in-out infinite; }
     @keyframes splash-drift-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(25vw,20vh) scale(1.1); } }
     @keyframes splash-drift-2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-20vw,-18vh) scale(0.9); } }
     @keyframes splash-drift-3 { 0%,100% { transform: translate(0,0) scale(1.05); } 33% { transform: translate(-18vw,12vh) scale(0.95); } 66% { transform: translate(12vw,-15vh) scale(1.1); } }
     .ftue-footer { padding: 0 0 calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
     /* Splash */
-    .ftue-splash-title { font-size: 3.2rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
-    .ftue-splash-tagline { font-size: 1rem; color: var(--subtext); margin-top: 10px; margin-bottom: 0; }
+    .ftue-splash-title { font-size: 3.2rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
     /* Slides */
     .ftue-slide-emoji { font-size: 5rem; line-height: 1.3; margin-bottom: 28px; }
     .ftue-slide-text { font-size: 1.25rem; font-weight: 500; color: var(--text); line-height: 1.5; min-height: 5.625rem; display: flex; align-items: center; justify-content: center; }
@@ -877,7 +876,6 @@
         <div class="ftue-main" style="position:relative;z-index:1">
           <div style="transform:translateY(-30px)">
             <div class="ftue-splash-title">Ritual</div>
-            <div class="ftue-splash-tagline">Small acts, Legendary gain</div>
           </div>
         </div>
         <div class="ftue-footer" style="position:relative;z-index:1">
@@ -2181,6 +2179,7 @@
       const el = document.getElementById(id);
       if (el) { el.style.position = ''; el.style.zIndex = ''; el.style.pointerEvents = ''; }
     });
+    document.querySelector('meta[name="theme-color"]').content = '#f0f4ff';
   }
 
   function completeTutorial() {
@@ -2210,6 +2209,8 @@
       const backdrop = document.createElement('div');
       backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.82);pointer-events:all;';
       overlay.appendChild(backdrop);
+      // Match status bar to dark overlay so it doesn't show as a black bar
+      document.querySelector('meta[name="theme-color"]').content = '#151515';
     }
     // Gradient only on info steps — highlight steps already have a black overlay
     if (step.type === 'info') {
