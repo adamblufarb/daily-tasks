@@ -78,7 +78,7 @@
     .content { padding: 0 20px calc(120px + env(safe-area-inset-bottom)) 20px; }
 
     /* Buttons */
-    .btn-primary { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: transform 0.1s; touch-action: manipulation; }
+    .btn-primary { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; line-height: 1; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: transform 0.1s; touch-action: manipulation; }
     .btn-primary:active { transform: scale(0.98); }
     .btn-primary:disabled { opacity: 0.4; pointer-events: none; }
     .btn-ghost { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.9rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; }
@@ -415,7 +415,17 @@
     /* FTUE — shared layout */
     body.no-scroll { position: fixed; width: 100%; }
     .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; }
+    .ftue-splash { position: relative; overflow: hidden; }
     .ftue-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 20px 0; }
+    /* Splash animated gradient blobs */
+    .splash-bg { position: absolute; inset: 0; z-index: 0; }
+    .splash-blob { position: absolute; border-radius: 50%; filter: blur(72px); opacity: 0.55; will-change: transform; }
+    .splash-blob-1 { width: 70vw; height: 70vw; background: var(--common);    top: -10%; left: -15%; animation: splash-drift-1 13s ease-in-out infinite; }
+    .splash-blob-2 { width: 62vw; height: 62vw; background: var(--legendary); bottom: 8%;  right: -15%; animation: splash-drift-2 16s ease-in-out infinite; }
+    .splash-blob-3 { width: 56vw; height: 56vw; background: var(--mythic);    top: 35%; left: 25%; animation: splash-drift-3 11s ease-in-out infinite; }
+    @keyframes splash-drift-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(25vw,20vh) scale(1.1); } }
+    @keyframes splash-drift-2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-20vw,-18vh) scale(0.9); } }
+    @keyframes splash-drift-3 { 0%,100% { transform: translate(0,0) scale(1.05); } 33% { transform: translate(-18vw,12vh) scale(0.95); } 66% { transform: translate(12vw,-15vh) scale(1.1); } }
     .ftue-footer { padding: 0 0 calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
     /* Splash */
     .ftue-splash-title { font-size: 3.2rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
@@ -434,6 +444,7 @@
     .tutorial-gradient { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 66.67vh; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.40) 50%, transparent 100%); }
     .tutorial-box { position: fixed; bottom: calc(120px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; }
     .tutorial-title { font-size: 1.1rem; font-weight: 500; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
+    .tutorial-title .rarity-tag { vertical-align: middle; position: relative; top: -2px; }
   </style>
 </head>
 <body>
@@ -858,11 +869,18 @@
   function htmlSplash() {
     return `
       <div class="ftue-splash">
-        <div class="ftue-main">
-          <div class="ftue-splash-title">Ritual</div>
-          <div class="ftue-splash-tagline">Small acts, Legendary gain</div>
+        <div class="splash-bg">
+          <div class="splash-blob splash-blob-1"></div>
+          <div class="splash-blob splash-blob-2"></div>
+          <div class="splash-blob splash-blob-3"></div>
         </div>
-        <div class="ftue-footer">
+        <div class="ftue-main" style="position:relative;z-index:1">
+          <div style="transform:translateY(-30px)">
+            <div class="ftue-splash-title">Ritual</div>
+            <div class="ftue-splash-tagline">Small acts, Legendary gain</div>
+          </div>
+        </div>
+        <div class="ftue-footer" style="position:relative;z-index:1">
           <button class="btn-primary" id="btn-ftue-begin">Let's Begin</button>
         </div>
       </div>`;
