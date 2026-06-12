@@ -412,11 +412,11 @@
     .auth-title  { font-size: 1.8rem; font-weight: 700; color: var(--text); margin-top: 12px; }
     .auth-sub    { font-size: 0.9rem; color: var(--subtext); margin-top: 6px; }
 
-    /* FTUE — shared layout */
-    body.no-scroll { position: fixed; width: 100%; }
-    .ftue-splash, .ftue-slides { min-height: 100vh; display: flex; flex-direction: column; }
-    .ftue-splash { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); }
-    .ftue-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 20px 0; }
+    /* ── FTUE ── */
+    /* Splash: position:fixed covers full screen including iOS safe area */
+    .ftue-splash { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(135deg, var(--common) 0%, var(--legendary) 50%, var(--mythic) 100%); }
+    .ftue-splash-body { flex: 1; display: flex; align-items: center; justify-content: center; padding-top: env(safe-area-inset-top); position: relative; z-index: 1; }
+    .ftue-splash-title { font-size: 3.2rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
     /* Splash animated gradient blobs */
     .splash-bg { position: absolute; inset: 0; z-index: 0; }
     .splash-blob { position: absolute; border-radius: 50%; filter: blur(64px); opacity: 0.8; will-change: transform; }
@@ -426,15 +426,18 @@
     @keyframes splash-drift-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(25vw,20vh) scale(1.1); } }
     @keyframes splash-drift-2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-20vw,-18vh) scale(0.9); } }
     @keyframes splash-drift-3 { 0%,100% { transform: translate(0,0) scale(1.05); } 33% { transform: translate(-18vw,12vh) scale(0.95); } 66% { transform: translate(12vw,-15vh) scale(1.1); } }
-    .ftue-footer { padding: 0 0 calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
-    /* Splash */
-    .ftue-splash-title { font-size: 3.2rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
-    /* Slides */
-    .ftue-slide-emoji { font-size: 5rem; line-height: 1.3; margin-bottom: 28px; }
-    .ftue-slide-text { font-size: 1.25rem; font-weight: 500; color: var(--text); line-height: 1.5; min-height: 5.625rem; display: flex; align-items: center; justify-content: center; }
-    .ftue-dots { display: flex; gap: 7px; justify-content: center; margin-top: 28px; }
-    .ftue-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0.25; transition: opacity 0.2s, transform 0.2s; }
+    /* Slides: normal flow, break out of content side padding */
+    .ftue-slides { min-height: 100dvh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; }
+    .ftue-slides-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px 28px 0; }
+    /* Fixed-height containers so emoji/dots never shift between slides */
+    .ftue-emoji { font-size: 5rem; line-height: 1.3; height: 88px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+    .ftue-text-area { width: 100%; min-height: 108px; display: flex; align-items: center; justify-content: center; }
+    .ftue-text { font-size: 1.1rem; font-weight: 500; color: var(--text); line-height: 1.5; }
+    .ftue-dots { display: flex; gap: 7px; justify-content: center; margin-top: 24px; height: 20px; align-items: center; }
+    .ftue-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0.25; transition: opacity 0.2s, transform 0.2s; flex-shrink: 0; }
     .ftue-dot.active { opacity: 1; transform: scale(1.3); }
+    /* Shared footer — same for splash and slides */
+    .ftue-footer { padding: 0 20px calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; position: relative; z-index: 1; }
 
     /* Tab locking */
     .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
@@ -776,7 +779,6 @@
   /* ── Render ── */
   const GLOW_START = Date.now();
   let revealTimeoutId = null;
-  let ftueTransitionDir = 0; // non-zero during slide transition so htmlSlides() can pre-hide incoming content
   // Per-task duration: 2.0s – 3.2s, derived from ID
   function glowDuration(id) {
     let h = 0;
@@ -800,7 +802,7 @@
                  : s.tab === 'store'   ? 'store'
                  : getScreen();
     document.body.classList.toggle('mythic-bg', screen === 'pick' && s.picked.length === 5);
-    document.body.classList.toggle('no-scroll', !!s.ftueScreen);
+    document.querySelector('meta[name="theme-color"]').content = s.ftueScreen === 'splash' ? '#7c8494' : '#f0f4ff';
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === s.tab));
@@ -860,8 +862,8 @@
   /* ── FTUE Splash ── */
   const FTUE_SLIDES = [
     { emoji: '🧿', text: 'Honor your Ritual by completing all daily acts' },
-    { emoji: '🕌', text: 'Build your record, earn tokens and splurge at the Bazaar' },
-    { emoji: '☠️', text: 'But beware, one incomplete act breaks the entire Ritual' },
+    { emoji: '🕌', text: 'Build your record, earn currency and splurge at the Bazaar' },
+    { emoji: '⚠️', text: 'But beware, one incomplete act breaks the entire Ritual' },
     { emoji: '🎲', text: "Let's forge your first Ritual!" },
   ];
 
@@ -873,35 +875,31 @@
           <div class="splash-blob splash-blob-2"></div>
           <div class="splash-blob splash-blob-3"></div>
         </div>
-        <div class="ftue-main" style="position:relative;z-index:1">
-          <div style="transform:translateY(-30px)">
-            <div class="ftue-splash-title">Ritual</div>
-          </div>
+        <div class="ftue-splash-body">
+          <div class="ftue-splash-title">Ritual</div>
         </div>
-        <div class="ftue-footer" style="position:relative;z-index:1">
+        <div class="ftue-footer">
           <button class="btn-primary" id="btn-ftue-begin">Let's Begin</button>
         </div>
       </div>`;
   }
 
   function htmlSlides() {
-    const slide = FTUE_SLIDES[s.ftueSlide];
+    const slide  = FTUE_SLIDES[s.ftueSlide];
     const isLast = s.ftueSlide === FTUE_SLIDES.length - 1;
-    const enterX = ftueTransitionDir > 0 ? '56px' : '-56px';
-    const textStyle = ftueTransitionDir !== 0 ? ` style="opacity:0;transform:translateX(${enterX})"` : '';
     return `
       <div class="ftue-slides">
-        <div class="ftue-main">
-          <div class="ftue-slide-emoji">${slide.emoji}</div>
-          <div class="ftue-slide-text"${textStyle}>${slide.text}</div>
-          <div class="ftue-dots">
+        <div class="ftue-slides-body">
+          <div class="ftue-emoji" id="ftue-emoji">${slide.emoji}</div>
+          <div class="ftue-text-area" id="ftue-text-area">
+            <div class="ftue-text">${slide.text}</div>
+          </div>
+          <div class="ftue-dots" id="ftue-dots">
             ${FTUE_SLIDES.map((_, i) => `<div class="ftue-dot${i === s.ftueSlide ? ' active' : ''}"></div>`).join('')}
           </div>
         </div>
         <div class="ftue-footer">
-          ${isLast
-            ? `<button class="btn-primary" id="btn-ftue-roll">Roll Acts →</button>`
-            : `<button class="btn-primary" id="btn-ftue-next">Next</button>`}
+          <button class="btn-primary" id="ftue-cta">${isLast ? 'Roll Acts →' : 'Next'}</button>
         </div>
       </div>`;
   }
@@ -1526,38 +1524,51 @@
       }).join('')}`;
   }
 
-  /* ── FTUE slide transition (dir: +1 forward, -1 backward) ── */
+  /* ── FTUE slide transition — manipulates DOM in place, no render() call ── */
   function ftueSlideTransition(dir) {
-    const HALF = 350;
-    const text = document.querySelector('.ftue-slide-text');
+    const newIndex = s.ftueSlide + dir;
+    if (newIndex < 0 || newIndex >= FTUE_SLIDES.length) return;
 
-    // Phase 1 — exit text only (emoji cuts instantly)
-    if (text) {
-      text.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
-      text.style.transform = `translateX(${dir > 0 ? '-56px' : '56px'})`;
-      text.style.opacity = '0';
-    }
+    const textArea = document.getElementById('ftue-text-area');
+    const emojiEl  = document.getElementById('ftue-emoji');
+    const dotsEl   = document.getElementById('ftue-dots');
+    const ctaBtn   = document.getElementById('ftue-cta');
+    if (!textArea) return;
+
+    // Phase 1: slide text out (350ms)
+    textArea.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+    textArea.style.transform  = `translateX(${dir > 0 ? '-60px' : '60px'})`;
+    textArea.style.opacity    = '0';
 
     setTimeout(() => {
-      s.ftueSlide += dir;
-      // ftueTransitionDir tells htmlSlides() to pre-render new elements hidden/offset
-      ftueTransitionDir = dir;
-      render();
-      ftueTransitionDir = 0;
+      s.ftueSlide = newIndex;
+      const slide  = FTUE_SLIDES[newIndex];
+      const isLast = newIndex === FTUE_SLIDES.length - 1;
 
-      // Phase 2 — animate in after two rAF cycles (guarantees the pre-hidden elements have painted)
-      // Phase 2 — animate text in after two rAF cycles
+      // Emoji: instant swap (no animation)
+      if (emojiEl) emojiEl.textContent = slide.emoji;
+
+      // Text: reset position off-screen, swap content
+      textArea.style.transition = 'none';
+      textArea.style.transform  = `translateX(${dir > 0 ? '60px' : '-60px'})`;
+      textArea.style.opacity    = '0';
+      textArea.innerHTML        = `<div class="ftue-text">${slide.text}</div>`;
+
+      // Dots: update active state instantly
+      if (dotsEl) dotsEl.querySelectorAll('.ftue-dot').forEach((d, i) => d.classList.toggle('active', i === newIndex));
+
+      // CTA: update label (handler reads s.ftueSlide so no re-bind needed)
+      if (ctaBtn) ctaBtn.textContent = isLast ? 'Roll Acts →' : 'Next';
+
+      // Phase 2: animate text in (double rAF ensures browser has painted new position)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          const newText = document.querySelector('.ftue-slide-text');
-          if (newText) {
-            newText.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
-            newText.style.transform = 'translateX(0)';
-            newText.style.opacity = '1';
-          }
+          textArea.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+          textArea.style.transform  = 'translateX(0)';
+          textArea.style.opacity    = '1';
         });
       });
-    }, HALF);
+    }, 350);
   }
 
   /* ── Bind ── */
@@ -1572,6 +1583,7 @@
     }
 
     if (screen === 'slides') {
+      // Swipe support
       const el = document.querySelector('.ftue-slides');
       let touchStartX = 0;
       el?.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
@@ -1583,21 +1595,22 @@
         }
       }, { passive: true });
 
-      document.getElementById('btn-ftue-next')?.addEventListener('click', () => {
-        if (s.ftueSlide < FTUE_SLIDES.length - 1) ftueSlideTransition(1);
-      });
-
-      document.getElementById('btn-ftue-roll')?.addEventListener('click', async () => {
-        s.ftueScreen = null;
-        s.offered = rollOffered();
-        s.picked = [];
-        s.planBuildState = 'revealing';
-        render();
-        revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
-        await api('POST', '/api/sessions', {
-          type: 'draft', id: `draft-${s.today}`, date: s.today,
-          offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
-        });
+      // Single CTA button handles both Next and Roll Acts
+      document.getElementById('ftue-cta')?.addEventListener('click', async () => {
+        if (s.ftueSlide < FTUE_SLIDES.length - 1) {
+          ftueSlideTransition(1);
+        } else {
+          s.ftueScreen = null;
+          s.offered = rollOffered();
+          s.picked = [];
+          s.planBuildState = 'revealing';
+          render();
+          revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
+          await api('POST', '/api/sessions', {
+            type: 'draft', id: `draft-${s.today}`, date: s.today,
+            offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
+          });
+        }
       });
     }
 
