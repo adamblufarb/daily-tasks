@@ -244,6 +244,24 @@
     .btn-cancel { padding: 10px 16px; background: none; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; cursor: pointer; color: var(--subtext); }
     .btn-add-task { width: 100%; padding: 14px; border: 2px dashed var(--border); border-radius: var(--radius); background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--subtext); cursor: pointer; margin-bottom: 4px; transition: border-color 0.15s, color 0.15s; }
     .btn-add-task:hover { border-color: var(--common); color: var(--common); }
+    .add-act-choice { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .add-act-choice-card { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; cursor: pointer; box-shadow: var(--shadow); transition: border-color 0.15s; }
+    .add-act-choice-card:hover { border-color: var(--accent); }
+    .add-act-choice-label { font-size: 0.95rem; font-weight: 700; color: var(--text); }
+    .add-act-choice-sub { font-size: 0.78rem; color: var(--subtext); margin-top: 2px; }
+    .add-act-choice-cancel { text-align: center; margin-top: 6px; padding: 8px; background: none; border: none; font-family: inherit; font-size: 0.82rem; color: var(--subtext); cursor: pointer; }
+    .pick-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .pick-list-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .pick-list-back { background: none; border: none; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); cursor: pointer; padding: 0; }
+    .pick-list-title { font-size: 0.88rem; font-weight: 700; color: var(--subtext); }
+    .pick-default-card { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 16px; cursor: pointer; box-shadow: var(--shadow); transition: border-color 0.15s; gap: 10px; }
+    .pick-default-card:hover { border-color: var(--accent); }
+    .pick-default-card.card-legendary { border-color: rgba(234,179,8,0.25); }
+    .pick-default-card.card-legendary:hover { border-color: var(--legendary); }
+    .pick-default-info { flex: 1; min-width: 0; }
+    .pick-default-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+    .pick-default-desc { font-size: 0.78rem; color: var(--subtext); margin-top: 2px; }
+    .pick-empty { text-align: center; color: var(--subtext); font-size: 0.85rem; padding: 20px 0; }
 
     /* Back button */
     .btn-back { background: none; border: none; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); cursor: pointer; padding: 0 0 6px 0; display: block; }
@@ -538,6 +556,28 @@
     { id: 'o2', name: 'Purge',            cost: 15, rarity: 'mythic', desc: 'Have a day for yourself, no consequences'         },
   ];
 
+  const POOL_DEFAULTS = [
+    { type: 'common',    title: 'Cold Plunge',        description: 'Ice bath or cold shower for 2 minutes' },
+    { type: 'common',    title: 'Brain Dump',          description: 'Write everything on your mind and clear your head' },
+    { type: 'common',    title: 'Family First',        description: 'Spend quality time with a family member' },
+    { type: 'common',    title: 'Draw Something',      description: 'Spend 15 minutes drawing anything' },
+    { type: 'common',    title: 'Dance',               description: 'Dance for at least 10 minutes, alone or not' },
+    { type: 'common',    title: 'Compliment Someone',  description: 'Say something genuinely nice to a real person' },
+    { type: 'common',    title: 'The Quiet Hour',      description: 'One hour of silence. No music, no podcasts, nothing' },
+    { type: 'common',    title: 'Sunset',              description: 'Watch the sun set today' },
+    { type: 'common',    title: 'Journal',             description: 'Write something private just for yourself' },
+    { type: 'common',    title: 'Meditate',            description: '15 minutes of intentional breathing' },
+    { type: 'common',    title: 'No Alcohol',          description: 'Stay alcohol-free today' },
+    { type: 'common',    title: 'No Weed',             description: 'No cannabis today' },
+    { type: 'common',    title: 'No Caffeine',         description: 'No coffee, no energy drinks today' },
+    { type: 'common',    title: 'Sugar Free',          description: 'No added sugar today' },
+    { type: 'legendary', title: 'No Cigarettes',       description: 'Go the full day without smoking' },
+    { type: 'legendary', title: 'Sunrise',             description: 'Watch the sun rise today' },
+    { type: 'legendary', title: 'Full Album',          description: 'Listen to one album without doing anything else' },
+    { type: 'legendary', title: 'No Gaming',           description: 'Go full day without any form of video games' },
+    { type: 'legendary', title: 'Go Offline',          description: 'No internet until noon' },
+  ];
+
   function displayRarity(r) {
     if (r === 'mythic') return 'Mythical';
     return r.charAt(0).toUpperCase() + r.slice(1);
@@ -612,6 +652,7 @@
       newTaskType: 'common',
       profileScreen: 'menu',
       poolEditMode: false,
+      poolAddMode: null,
       showResetConfirm: false,
       storeItems: [],
       editingStoreItem: null,
@@ -1339,6 +1380,11 @@
     const isAdding  = s.editingTask?.id === '';
     const editing   = s.poolEditMode;
     const canAdd    = s.wallet.legendary >= 1;
+    const showChoice   = s.poolAddMode === 'choice';
+    const showPickList = s.poolAddMode === 'pick-list';
+
+    const activeTitles = new Set(active.map(t => t.title.toLowerCase()));
+    const availableDefaults = POOL_DEFAULTS.filter(d => !activeTitles.has(d.title.toLowerCase()));
 
     // Compute per-task stats from session history
     const stats = {};
@@ -1404,7 +1450,47 @@
         <div class="new-task-card">
           <div class="new-task-label">New Act</div>
           ${editForm(s.editingTask)}
-        </div>` : `
+        </div>
+      ` : showChoice ? `
+        <div class="add-act-choice">
+          <div class="pick-list-header" style="margin-bottom:4px">
+            <div class="section-sub" style="margin:0">How would you like to add an act?</div>
+          </div>
+          <div class="add-act-choice-card" id="btn-pick-from-list">
+            <div>
+              <div class="add-act-choice-label">Pick from a list</div>
+              <div class="add-act-choice-sub">Browse curated acts and customize before adding</div>
+            </div>
+            <span style="color:var(--subtext);font-size:1.1rem">›</span>
+          </div>
+          <div class="add-act-choice-card" id="btn-add-your-own">
+            <div>
+              <div class="add-act-choice-label">Add your own</div>
+              <div class="add-act-choice-sub">Write a completely custom act</div>
+            </div>
+            <span style="color:var(--subtext);font-size:1.1rem">›</span>
+          </div>
+          <button class="add-act-choice-cancel" id="btn-cancel-add-choice">Cancel</button>
+        </div>
+      ` : showPickList ? `
+        <div>
+          <div class="pick-list-header">
+            <button class="pick-list-back" id="btn-back-to-choice">‹ Back</button>
+            <div class="pick-list-title">${availableDefaults.length} act${availableDefaults.length !== 1 ? 's' : ''} available</div>
+          </div>
+          <div class="pick-list">
+            ${availableDefaults.length === 0 ? `<div class="pick-empty">You already have all available acts in your pool.</div>` :
+              availableDefaults.map((d, i) => `
+                <div class="pick-default-card card-${d.type}" data-pick-default="${i}">
+                  <div class="pick-default-info">
+                    <div class="pick-default-title">${d.title}</div>
+                    <div class="pick-default-desc">${d.description}</div>
+                  </div>
+                  <div style="flex-shrink:0">${rarityTag(d.type)}</div>
+                </div>`).join('')}
+          </div>
+        </div>
+      ` : `
         <div class="store-card${!canAdd ? '' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
           <div class="store-card-top">
             <div class="store-card-name">Add New Act</div>
@@ -2036,7 +2122,7 @@
 
       // Profile menu navigation
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
-        s.profileScreen = 'taskpool'; s.poolEditMode = false; render();
+        s.profileScreen = 'taskpool'; s.poolEditMode = false; s.poolAddMode = null; render();
         if (!s.hasShownActPoolTutorial) setTimeout(() => startTutorial('actpool'), 150);
       });
       document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
@@ -2045,10 +2131,10 @@
 
       // Back from task pool → Profile menu
       document.getElementById('btn-back-profile')?.addEventListener('click', () => {
-        s.profileScreen = 'menu'; s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
+        s.profileScreen = 'menu'; s.poolEditMode = false; s.poolAddMode = null; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
       });
       document.getElementById('btn-done-editing')?.addEventListener('click', () => {
-        s.poolEditMode = false; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
+        s.poolEditMode = false; s.poolAddMode = null; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
       });
 
       // Back from store manage → Profile menu
@@ -2177,7 +2263,7 @@
           }
         }));
       document.querySelector('[data-cancel-edit]')?.addEventListener('click', () => {
-        s.editingTask = null; s.poolEditMode = false; render();
+        s.editingTask = null; s.poolEditMode = false; s.poolAddMode = null; render();
       });
       document.querySelector('[data-save-task]')?.addEventListener('click', () => {
         const title = document.getElementById('edit-title')?.value.trim();
@@ -2186,8 +2272,37 @@
         savePoolTask({ ...s.editingTask, title, description });
       });
       document.getElementById('btn-add-task')?.addEventListener('click', () => {
+        s.poolAddMode = 'choice';
+        render();
+      });
+      document.getElementById('btn-pick-from-list')?.addEventListener('click', () => {
+        s.poolAddMode = 'pick-list';
+        render();
+      });
+      document.getElementById('btn-add-your-own')?.addEventListener('click', () => {
+        s.poolAddMode = null;
         s.editingTask = { id: '', title: '', description: '', type: '' };
         render();
+      });
+      document.getElementById('btn-cancel-add-choice')?.addEventListener('click', () => {
+        s.poolAddMode = null;
+        render();
+      });
+      document.getElementById('btn-back-to-choice')?.addEventListener('click', () => {
+        s.poolAddMode = 'choice';
+        render();
+      });
+      document.querySelectorAll('[data-pick-default]').forEach(el => {
+        el.addEventListener('click', () => {
+          const active = s.tasks.filter(t => !t.archived);
+          const activeTitles = new Set(active.map(t => t.title.toLowerCase()));
+          const available = POOL_DEFAULTS.filter(d => !activeTitles.has(d.title.toLowerCase()));
+          const d = available[parseInt(el.dataset.pickDefault, 10)];
+          if (!d) return;
+          s.poolAddMode = null;
+          s.editingTask = { id: '', title: d.title, description: d.description, type: d.type };
+          render();
+        });
       });
 
       // Testing Tools toggle
@@ -2628,6 +2743,7 @@
     s.editingTask = null;
     s.confirmEditTask = null;
     s.poolEditMode = false;
+    s.poolAddMode = null;
     render();
     await Promise.all([api('POST', '/api/tasks', task), saveWallet()]);
   }
