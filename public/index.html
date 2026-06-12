@@ -254,10 +254,9 @@
     .pick-list-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .pick-list-back { background: none; border: none; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); cursor: pointer; padding: 0; }
     .pick-list-title { font-size: 0.88rem; font-weight: 700; color: var(--subtext); }
-    .pick-default-card { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 16px; cursor: pointer; box-shadow: var(--shadow); transition: border-color 0.15s; gap: 10px; }
-    .pick-default-card:hover { border-color: var(--accent); }
-    .pick-default-card.card-legendary { border-color: rgba(234,179,8,0.25); }
-    .pick-default-card.card-legendary:hover { border-color: var(--legendary); }
+    .pick-default-card { display: flex; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 16px; cursor: pointer; box-shadow: var(--shadow); transition: border-color 0.15s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    .pick-default-card:active { border-color: var(--accent); }
+    @media (hover: hover) { .pick-default-card:hover { border-color: var(--accent); } }
     .pick-default-info { flex: 1; min-width: 0; }
     .pick-default-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
     .pick-default-desc { font-size: 0.78rem; color: var(--subtext); margin-top: 2px; }
@@ -564,7 +563,6 @@
     { type: 'common',    title: 'Dance',               description: 'Dance for at least 10 minutes, alone or not' },
     { type: 'common',    title: 'Compliment Someone',  description: 'Say something genuinely nice to a real person' },
     { type: 'common',    title: 'The Quiet Hour',      description: 'One hour of silence. No music, no podcasts, nothing' },
-    { type: 'common',    title: 'Sunset',              description: 'Watch the sun set today' },
     { type: 'common',    title: 'Journal',             description: 'Write something private just for yourself' },
     { type: 'common',    title: 'Meditate',            description: '15 minutes of intentional breathing' },
     { type: 'common',    title: 'No Alcohol',          description: 'Stay alcohol-free today' },
@@ -572,6 +570,7 @@
     { type: 'common',    title: 'No Caffeine',         description: 'No coffee, no energy drinks today' },
     { type: 'common',    title: 'Sugar Free',          description: 'No added sugar today' },
     { type: 'legendary', title: 'No Cigarettes',       description: 'Go the full day without smoking' },
+    { type: 'common',    title: 'Sunset',              description: 'Watch the sun set today' },
     { type: 'legendary', title: 'Sunrise',             description: 'Watch the sun rise today' },
     { type: 'legendary', title: 'Full Album',          description: 'Listen to one album without doing anything else' },
     { type: 'legendary', title: 'No Gaming',           description: 'Go full day without any form of video games' },
@@ -932,7 +931,7 @@
     if (screen === 'leaderboard') return htmlLeaderboard();
     if (screen === 'history')     return htmlHistory();
     if (screen === 'store')     return s.storeScreen === 'craft' ? htmlCraft() : htmlStore();
-    if (screen === 'tasks')     return s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
+    if (screen === 'tasks')     return s.profileScreen === 'addact' ? htmlAddAct() : s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
     if (screen === 'concluded') return htmlConcluded();
     if (screen === 'reward')    return htmlReward();
     if (screen === 'bad-luck')  return htmlBadLuck();
@@ -1372,19 +1371,90 @@
       </div>`
   }
 
+  /* ── Shared pool edit form ── */
+  function poolEditForm(task) {
+    const saveClass = task.type ? `save-${task.type}` : '';
+    return `
+      <div class="task-edit-form">
+        <input class="form-input" id="edit-title" placeholder="Act name" value="${task.title||''}">
+        <input class="form-input" id="edit-desc"  placeholder="Description" value="${task.description||''}">
+        <div class="form-row">
+          <button class="form-type-btn${task.type==='common'?' active-common':''}" data-set-type="common">Common</button>
+          <button class="form-type-btn${task.type==='legendary'?' active-legendary':''}" data-set-type="legendary">Legendary</button>
+        </div>
+        <div class="form-actions">
+          <button class="btn-cancel" data-cancel-edit>Cancel</button>
+          <button class="btn-save ${saveClass}" data-save-task>Save</button>
+        </div>
+      </div>`;
+  }
+
+  /* ── Add New Act full page ── */
+  function htmlAddAct() {
+    const showPickList = s.poolAddMode === 'pick-list';
+    const showCustom   = s.poolAddMode === 'custom';
+    const showPickEdit = s.poolAddMode === 'pick-edit';
+    // Default to choice if none of the sub-screens are active
+    const showChoice   = !showPickList && !showCustom && !showPickEdit;
+
+    const active = s.tasks.filter(t => !t.archived);
+    const activeTitles = new Set(active.map(t => t.title.toLowerCase()));
+    const availableDefaults = POOL_DEFAULTS.filter(d => !activeTitles.has(d.title.toLowerCase()));
+
+    const backLabel = (showPickList || showCustom || showPickEdit) ? '‹ Back' : '‹ Act Pool';
+
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <button class="btn-back" id="btn-back-addact">${backLabel}</button>
+        <div class="section-title">Add New Act</div>
+      </div>
+      ${showChoice ? `
+        <div class="add-act-choice">
+          <div class="add-act-choice-card" id="btn-pick-from-list">
+            <div>
+              <div class="add-act-choice-label">Pick from a list</div>
+              <div class="add-act-choice-sub">Browse curated acts and customize before adding</div>
+            </div>
+            <span style="color:var(--subtext);font-size:1.1rem">›</span>
+          </div>
+          <div class="add-act-choice-card" id="btn-add-your-own">
+            <div>
+              <div class="add-act-choice-label">Add your own</div>
+              <div class="add-act-choice-sub">Write a completely custom act</div>
+            </div>
+            <span style="color:var(--subtext);font-size:1.1rem">›</span>
+          </div>
+        </div>
+      ` : showPickList ? `
+        <div class="pick-list-header" style="margin-bottom:8px">
+          <div class="pick-list-title">${availableDefaults.length} act${availableDefaults.length !== 1 ? 's' : ''} available</div>
+        </div>
+        <div class="pick-list">
+          ${availableDefaults.length === 0
+            ? `<div class="pick-empty">You already have all available acts in your pool.</div>`
+            : availableDefaults.map((d, i) => `
+              <div class="pick-default-card" data-pick-default="${i}">
+                <div class="pick-default-info">
+                  <div class="pick-default-title">${d.title}</div>
+                  <div class="pick-default-desc">${d.description}</div>
+                </div>
+              </div>`).join('')}
+        </div>
+      ` : (showCustom || showPickEdit) && s.editingTask ? `
+        <div class="new-task-card">
+          <div class="new-task-label">New Act</div>
+          ${poolEditForm(s.editingTask)}
+        </div>
+      ` : ''}`;
+  }
+
   /* ── Task Pool tab ── */
   function htmlTaskPool() {
     const active    = s.tasks.filter(t => !t.archived);
     const common    = active.filter(t => t.type === 'common');
     const legendary = active.filter(t => t.type === 'legendary');
-    const isAdding  = s.editingTask?.id === '';
-    const editing   = s.poolEditMode;
+    const deleting  = s.poolEditMode;
     const canAdd    = s.wallet.legendary >= 1;
-    const showChoice   = s.poolAddMode === 'choice';
-    const showPickList = s.poolAddMode === 'pick-list';
-
-    const activeTitles = new Set(active.map(t => t.title.toLowerCase()));
-    const availableDefaults = POOL_DEFAULTS.filter(d => !activeTitles.has(d.title.toLowerCase()));
 
     // Compute per-task stats from session history
     const stats = {};
@@ -1401,42 +1471,32 @@
     }
 
     function taskRow(t) {
-      const isEditing  = s.editingTask?.id === t.id;
+      const isConfirmingDelete = s.deletingTask === t.id;
       const st = stats[t.id] || { chosen: 0, completed: 0 };
       return `
-        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''}>
+        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} data-pool-task-id="${t.id}">
           <div class="pool-task-row">
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
             </div>
-            ${editing ? `
+            ${deleting ? `
             <div class="pool-task-actions">
-              <button class="btn-icon" data-edit-task="${t.id}" title="Edit">✏️</button>
+              <button class="btn-icon del" data-delete-task="${t.id}" title="Delete">🗑️</button>
             </div>` : `
             <div class="pool-task-stats">
               <div class="pool-stat">Chosen <span>${st.chosen}</span></div>
               <div class="pool-stat">Completed <span>${st.completed}</span></div>
             </div>`}
           </div>
-          ${isEditing ? editForm(s.editingTask) : ''}
-        </div>`;
-    }
-
-    function editForm(task) {
-      const saveClass = task.type ? `save-${task.type}` : '';
-      return `
-        <div class="task-edit-form">
-          <input class="form-input" id="edit-title" placeholder="Act name" value="${task.title||''}">
-          <input class="form-input" id="edit-desc"  placeholder="Description" value="${task.description||''}">
-          <div class="form-row">
-            <button class="form-type-btn${task.type==='common'?' active-common':''}" data-set-type="common">Common</button>
-            <button class="form-type-btn${task.type==='legendary'?' active-legendary':''}" data-set-type="legendary">Legendary</button>
-          </div>
-          <div class="form-actions">
-            <button class="btn-cancel" data-cancel-edit>Cancel</button>
-            <button class="btn-save ${saveClass}" data-save-task>Save</button>
-          </div>
+          ${isConfirmingDelete ? `
+            <div class="task-edit-form" style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
+              <div style="font-size:0.88rem;color:var(--text);margin-bottom:10px">Delete <strong>${t.title}</strong>?</div>
+              <div class="form-actions">
+                <button class="btn-cancel" data-cancel-delete>Keep it</button>
+                <button class="btn-save" style="background:var(--danger);opacity:1;pointer-events:auto" data-confirm-delete="${t.id}">Delete</button>
+              </div>
+            </div>` : ''}
         </div>`;
     }
 
@@ -1444,72 +1504,25 @@
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-profile">‹ Profile</button>
         <div class="section-title">Act Pool</div>
-        <div class="section-sub">${active.length} acts · ${common.length} common · ${legendary.length} legendary</div>
       </div>
-      ${isAdding ? `
-        <div class="new-task-card">
-          <div class="new-task-label">New Act</div>
-          ${editForm(s.editingTask)}
+      <div class="store-card${!canAdd ? '' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
+        <div class="store-card-top">
+          <div class="store-card-name">Add New Act</div>
+          <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
-      ` : showChoice ? `
-        <div class="add-act-choice">
-          <div class="pick-list-header" style="margin-bottom:4px">
-            <div class="section-sub" style="margin:0">How would you like to add an act?</div>
-          </div>
-          <div class="add-act-choice-card" id="btn-pick-from-list">
-            <div>
-              <div class="add-act-choice-label">Pick from a list</div>
-              <div class="add-act-choice-sub">Browse curated acts and customize before adding</div>
-            </div>
-            <span style="color:var(--subtext);font-size:1.1rem">›</span>
-          </div>
-          <div class="add-act-choice-card" id="btn-add-your-own">
-            <div>
-              <div class="add-act-choice-label">Add your own</div>
-              <div class="add-act-choice-sub">Write a completely custom act</div>
-            </div>
-            <span style="color:var(--subtext);font-size:1.1rem">›</span>
-          </div>
-          <button class="add-act-choice-cancel" id="btn-cancel-add-choice">Cancel</button>
+      </div>
+      ${!deleting ? `
+      <div class="store-card" id="btn-enter-edit-mode">
+        <div class="store-card-top">
+          <div class="store-card-name">Delete An Act</div>
         </div>
-      ` : showPickList ? `
-        <div>
-          <div class="pick-list-header">
-            <button class="pick-list-back" id="btn-back-to-choice">‹ Back</button>
-            <div class="pick-list-title">${availableDefaults.length} act${availableDefaults.length !== 1 ? 's' : ''} available</div>
-          </div>
-          <div class="pick-list">
-            ${availableDefaults.length === 0 ? `<div class="pick-empty">You already have all available acts in your pool.</div>` :
-              availableDefaults.map((d, i) => `
-                <div class="pick-default-card card-${d.type}" data-pick-default="${i}">
-                  <div class="pick-default-info">
-                    <div class="pick-default-title">${d.title}</div>
-                    <div class="pick-default-desc">${d.description}</div>
-                  </div>
-                  <div style="flex-shrink:0">${rarityTag(d.type)}</div>
-                </div>`).join('')}
-          </div>
-        </div>
-      ` : `
-        <div class="store-card${!canAdd ? '' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
-          <div class="store-card-top">
-            <div class="store-card-name">Add New Act</div>
-            <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
-          </div>
-        </div>
-        ${!editing ? `
-        <div class="store-card" id="btn-enter-edit-mode"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
-          <div class="store-card-top">
-            <div class="store-card-name">Edit Existing Act</div>
-            <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
-          </div>
-        </div>` : ''}`}
+      </div>` : ''}
       <div class="pool-section-label label-common">Common</div>
       ${common.map(taskRow).join('')}
       <div class="pool-section-label label-legendary">Legendary</div>
       ${legendary.map(taskRow).join('')}
       <div style="height:16px"></div>
-      ${editing ? `<button class="btn-primary" id="btn-done-editing">Done</button>` : ''}`;
+      ${deleting ? `<button class="btn-primary" id="btn-done-editing">Done</button>` : ''}`;
   }
 
   /* ── Store ── */
@@ -2134,7 +2147,7 @@
         s.profileScreen = 'menu'; s.poolEditMode = false; s.poolAddMode = null; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
       });
       document.getElementById('btn-done-editing')?.addEventListener('click', () => {
-        s.poolEditMode = false; s.poolAddMode = null; s.editingTask = null; s.deletingTask = null; s.confirmEditTask = null; render();
+        s.poolEditMode = false; s.deletingTask = null; render();
       });
 
       // Back from store manage → Profile menu
@@ -2233,18 +2246,18 @@
         if (!name) return;
         saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity: 'mythic' });
       });
-      // Enter edit mode — deduction happens on Save, not here
-      document.getElementById('btn-enter-edit-mode')?.addEventListener('click', () => {
-        s.poolEditMode = true;
-        render();
+      // Add New Act → open full page
+      document.getElementById('btn-add-task')?.addEventListener('click', () => {
+        s.profileScreen = 'addact'; s.poolAddMode = null; s.editingTask = null; render();
       });
-      // Pick which act to edit (in edit mode)
-      document.querySelectorAll('[data-edit-task]').forEach(el =>
+      // Enter delete mode
+      document.getElementById('btn-enter-edit-mode')?.addEventListener('click', () => {
+        s.poolEditMode = true; render();
+      });
+      // Delete confirmation
+      document.querySelectorAll('[data-delete-task]').forEach(el =>
         el.addEventListener('click', () => {
-          const t = getTask(el.dataset.editTask);
-          s.editingTask = t ? { ...t } : null;
-          s.deletingTask = null;
-          render();
+          s.deletingTask = el.dataset.deleteTask; render();
         }));
       document.querySelector('[data-cancel-delete]')?.addEventListener('click', () => {
         s.deletingTask = null; render();
@@ -2253,6 +2266,39 @@
       if (confirmDelBtn) confirmDelBtn.addEventListener('click', () => {
         deletePoolTask(confirmDelBtn.dataset.confirmDelete);
       });
+      // Add New Act page — back button (context-aware)
+      document.getElementById('btn-back-addact')?.addEventListener('click', () => {
+        if (s.poolAddMode === 'pick-list') {
+          s.poolAddMode = null; render();
+        } else if (s.poolAddMode === 'pick-edit') {
+          s.poolAddMode = 'pick-list'; s.editingTask = null; render();
+        } else if (s.poolAddMode === 'custom') {
+          s.poolAddMode = null; s.editingTask = null; render();
+        } else {
+          s.profileScreen = 'taskpool'; s.poolAddMode = null; s.editingTask = null; render();
+        }
+      });
+      // Add New Act — choice screen
+      document.getElementById('btn-pick-from-list')?.addEventListener('click', () => {
+        s.poolAddMode = 'pick-list'; render();
+      });
+      document.getElementById('btn-add-your-own')?.addEventListener('click', () => {
+        s.poolAddMode = 'custom'; s.editingTask = { id: '', title: '', description: '', type: '' }; render();
+      });
+      // Pick from list — select a default act
+      document.querySelectorAll('[data-pick-default]').forEach(el => {
+        el.addEventListener('click', () => {
+          const active = s.tasks.filter(t => !t.archived);
+          const activeTitles = new Set(active.map(t => t.title.toLowerCase()));
+          const available = POOL_DEFAULTS.filter(d => !activeTitles.has(d.title.toLowerCase()));
+          const d = available[parseInt(el.dataset.pickDefault, 10)];
+          if (!d) return;
+          s.poolAddMode = 'pick-edit';
+          s.editingTask = { id: '', title: d.title, description: d.description, type: d.type };
+          render();
+        });
+      });
+      // Edit form — type buttons, cancel, save
       document.querySelectorAll('[data-set-type]').forEach(el =>
         el.addEventListener('click', () => {
           if (s.editingTask) {
@@ -2263,46 +2309,17 @@
           }
         }));
       document.querySelector('[data-cancel-edit]')?.addEventListener('click', () => {
-        s.editingTask = null; s.poolEditMode = false; s.poolAddMode = null; render();
+        if (s.poolAddMode === 'pick-edit') {
+          s.poolAddMode = 'pick-list'; s.editingTask = null; render();
+        } else {
+          s.poolAddMode = null; s.editingTask = null; render();
+        }
       });
       document.querySelector('[data-save-task]')?.addEventListener('click', () => {
         const title = document.getElementById('edit-title')?.value.trim();
         const description = document.getElementById('edit-desc')?.value.trim();
         if (!title || !s.editingTask?.type) return;
         savePoolTask({ ...s.editingTask, title, description });
-      });
-      document.getElementById('btn-add-task')?.addEventListener('click', () => {
-        s.poolAddMode = 'choice';
-        render();
-      });
-      document.getElementById('btn-pick-from-list')?.addEventListener('click', () => {
-        s.poolAddMode = 'pick-list';
-        render();
-      });
-      document.getElementById('btn-add-your-own')?.addEventListener('click', () => {
-        s.poolAddMode = null;
-        s.editingTask = { id: '', title: '', description: '', type: '' };
-        render();
-      });
-      document.getElementById('btn-cancel-add-choice')?.addEventListener('click', () => {
-        s.poolAddMode = null;
-        render();
-      });
-      document.getElementById('btn-back-to-choice')?.addEventListener('click', () => {
-        s.poolAddMode = 'choice';
-        render();
-      });
-      document.querySelectorAll('[data-pick-default]').forEach(el => {
-        el.addEventListener('click', () => {
-          const active = s.tasks.filter(t => !t.archived);
-          const activeTitles = new Set(active.map(t => t.title.toLowerCase()));
-          const available = POOL_DEFAULTS.filter(d => !activeTitles.has(d.title.toLowerCase()));
-          const d = available[parseInt(el.dataset.pickDefault, 10)];
-          if (!d) return;
-          s.poolAddMode = null;
-          s.editingTask = { id: '', title: d.title, description: d.description, type: d.type };
-          render();
-        });
       });
 
       // Testing Tools toggle
@@ -2744,8 +2761,37 @@
     s.confirmEditTask = null;
     s.poolEditMode = false;
     s.poolAddMode = null;
+    if (isNew) s.profileScreen = 'taskpool';
     render();
+    if (isNew) {
+      setTimeout(() => {
+        const cardEl = document.querySelector(`[data-pool-task-id="${task.id}"]`);
+        if (cardEl) {
+          cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => shineNewActCard(cardEl, task.type === 'legendary'), 350);
+        }
+      }, 50);
+    }
     await Promise.all([api('POST', '/api/tasks', task), saveWallet()]);
+  }
+
+  function shineNewActCard(cardEl, isLegendary) {
+    cardEl.style.overflow = 'hidden';
+    cardEl.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.025)' }, { transform: 'scale(1)' }],
+      { duration: 380, easing: 'ease-out' }
+    );
+    const ribbon = document.createElement('div');
+    ribbon.style.cssText = 'position:absolute;top:-20%;left:0;width:40%;height:140%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.8),transparent);transform:skewX(-25deg) translateX(-250%);pointer-events:none;z-index:5;';
+    cardEl.appendChild(ribbon);
+    ribbon.animate(
+      [{ transform: 'skewX(-25deg) translateX(-250%)' }, { transform: 'skewX(-25deg) translateX(420%)' }],
+      { duration: 550, easing: 'ease-in-out', fill: 'forwards' }
+    ).onfinish = () => {
+      ribbon.remove();
+      cardEl.style.overflow = '';
+      if (isLegendary) legendaryGlowBurst(cardEl);
+    };
   }
 
   async function archivePoolTask(id) {
@@ -2763,6 +2809,7 @@
   async function deletePoolTask(id) {
     s.tasks = s.tasks.filter(t => t.id !== id);
     s.deletingTask = null;
+    s.poolEditMode = false;
     render();
     await api('DELETE', '/api/tasks', { id });
   }
