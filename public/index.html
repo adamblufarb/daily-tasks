@@ -442,6 +442,36 @@
     /* Tab locking */
     .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
 
+    /* Profile avatar + nickname */
+    .profile-identity { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0 4px; }
+    .profile-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); background: var(--common-light); display: block; }
+    .profile-avatar-initials { width: 72px; height: 72px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--border); }
+    .profile-avatar-wrap { position: relative; display: inline-block; }
+    .btn-avatar-change { position: absolute; bottom: -2px; right: -2px; background: var(--card); border: 1px solid var(--border); border-radius: 50%; width: 24px; height: 24px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); }
+    .profile-nickname-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+    .profile-nickname-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.95rem; font-weight: 600; color: var(--text); background: var(--card); outline: none; }
+    .profile-nickname-input:focus { border-color: var(--accent); }
+
+    /* Leaderboard */
+    .lb-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+    .lb-tab { flex: 1; padding: 10px 6px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--subtext); cursor: pointer; }
+    .lb-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .lb-subtabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .lb-subtab { flex: 1; padding: 7px; background: var(--common-light); border: 1px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 0.76rem; font-weight: 600; color: var(--subtext); cursor: pointer; }
+    .lb-subtab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .lb-list { display: flex; flex-direction: column; gap: 10px; }
+    .lb-row { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); }
+    .lb-rank { font-size: 0.8rem; font-weight: 700; color: var(--subtext); width: 26px; text-align: center; flex-shrink: 0; }
+    .lb-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: var(--common-light); border: 1px solid var(--border); flex-shrink: 0; }
+    .lb-avatar-initials { width: 36px; height: 36px; border-radius: 50%; background: var(--accent2); color: #fff; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); }
+    .lb-name { flex: 1; font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .lb-score { font-size: 0.9rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
+    .lb-score.lb-streak { color: #e59c3c; }
+    .lb-score.lb-mythic { color: var(--mythic); }
+    .lb-empty { text-align: center; color: var(--subtext); font-size: 0.88rem; padding: 40px 0; }
+    .btn-lb-enter { width: 100%; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); margin-top: 16px; }
+    .btn-lb-enter:active { background: var(--border); }
+
     /* Tutorial overlay */
     .tutorial-gradient { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 66.67vh; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.40) 50%, transparent 100%); }
     .tutorial-box { position: fixed; bottom: calc(120px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; }
@@ -583,6 +613,12 @@
       editingStoreItem: null,
       storeEditMode: false,
       wallet: { common: 0, legendary: 0, mythic: 0, streak: 0 },
+      profile: { nickname: '', hideFromLeaderboard: false },
+      leaderboardOpen: false,
+      leaderboardTab: 'streak',
+      leaderboardSubTab: 0,
+      leaderboardData: null,
+      leaderboardLoading: false,
       lastPurchaseDate: null,
       lastPurchasedItem: null,
       selectedStoreItem: null,
@@ -797,7 +833,7 @@
   }
 
   function render() {
-    const screen = s.tab === 'history' ? 'history'
+    const screen = s.tab === 'history' ? (s.leaderboardOpen ? 'leaderboard' : 'history')
                  : s.tab === 'tasks'   ? 'tasks'
                  : s.tab === 'store'   ? 'store'
                  : getScreen();
@@ -846,10 +882,11 @@
   }
 
   function buildHtml(screen) {
-    if (screen === 'loading')   return `<div class="loading">Loading…</div>`;
-    if (screen === 'splash')    return htmlSplash();
-    if (screen === 'slides')    return htmlSlides();
-    if (screen === 'history')   return htmlHistory();
+    if (screen === 'loading')     return `<div class="loading">Loading…</div>`;
+    if (screen === 'splash')      return htmlSplash();
+    if (screen === 'slides')      return htmlSlides();
+    if (screen === 'leaderboard') return htmlLeaderboard();
+    if (screen === 'history')     return htmlHistory();
     if (screen === 'store')     return s.storeScreen === 'craft' ? htmlCraft() : htmlStore();
     if (screen === 'tasks')     return s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
     if (screen === 'concluded') return htmlConcluded();
@@ -1128,10 +1165,34 @@
     const bazaarUnlocked = s.onboardingRitualCount >= 2;
     const isAdmin = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
     const showTesting = isAdmin && localStorage.getItem('showTestingTools') === 'true';
+    const avatarUrl = clerk.user?.imageUrl;
+    const avatarHtml = avatarUrl
+      ? `<img class="profile-avatar" src="${avatarUrl}" alt="avatar">`
+      : `<div class="profile-avatar-initials">${(s.profile.nickname || clerk.user?.firstName || '?')[0].toUpperCase()}</div>`;
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Profile</div>
       </div>
+      <div class="profile-identity">
+        <div class="profile-avatar-wrap">
+          ${avatarHtml}
+          <label class="btn-avatar-change" for="avatar-upload" title="Change photo">📷</label>
+          <input type="file" id="avatar-upload" accept="image/*" style="display:none">
+        </div>
+        <div class="profile-nickname-row">
+          <input class="profile-nickname-input" id="input-nickname" value="${s.profile.nickname}" placeholder="Nickname" maxlength="24" autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="settings-section" style="margin-top:16px">
+        <div class="settings-row">
+          <div class="settings-label">Hide from Leaderboard</div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-hide-leaderboard"${s.profile.hideFromLeaderboard ? ' checked' : ''}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div style="height:12px"></div>
       <div class="profile-menu">
         <button class="profile-menu-item" id="btn-profile-taskpool">
           <span class="profile-menu-label">Act Pool</span>
@@ -1469,9 +1530,74 @@
   }
 
   /* ── History ── */
+  function htmlLeaderboard() {
+    const tabsHtml = [
+      ['streak', 'Streak'],
+      ['acts',   'Acts'],
+      ['mythic', 'Mythical'],
+    ].map(([k, label]) =>
+      `<button class="lb-tab${s.leaderboardTab === k ? ' active' : ''}" data-lb-tab="${k}">${label}</button>`
+    ).join('');
+
+    const hasSubTabs = s.leaderboardTab !== 'mythic';
+    const sub0 = s.leaderboardTab === 'streak' ? 'Active' : '7 Days';
+    const subTabsHtml = hasSubTabs ? `
+      <div class="lb-subtabs">
+        <button class="lb-subtab${s.leaderboardSubTab === 0 ? ' active' : ''}" data-lb-sub="0">${sub0}</button>
+        <button class="lb-subtab${s.leaderboardSubTab === 1 ? ' active' : ''}" data-lb-sub="1">All Time</button>
+      </div>` : '';
+
+    let bodyHtml;
+    if (s.leaderboardLoading) {
+      bodyHtml = `<div class="lb-empty">Loading…</div>`;
+    } else if (!s.leaderboardData) {
+      bodyHtml = `<div class="lb-empty">Failed to load leaderboard.</div>`;
+    } else {
+      const users = [...(s.leaderboardData.users || [])];
+      let sortKey;
+      if (s.leaderboardTab === 'streak') sortKey = s.leaderboardSubTab === 0 ? 'currentStreak' : 'longestStreak';
+      else if (s.leaderboardTab === 'acts') sortKey = s.leaderboardSubTab === 0 ? 'acts7d' : 'actsAllTime';
+      else sortKey = 'mythicEarned';
+
+      users.sort((a, b) => b[sortKey] - a[sortKey]);
+
+      const scoreSuffix = s.leaderboardTab === 'streak' ? '🔥' : s.leaderboardTab === 'mythic' ? '🔮' : ' pts';
+      const scoreCls = s.leaderboardTab === 'streak' ? 'lb-streak' : s.leaderboardTab === 'mythic' ? 'lb-mythic' : '';
+      const medals = ['🥇','🥈','🥉'];
+
+      if (!users.length) {
+        bodyHtml = `<div class="lb-empty">No entries yet.</div>`;
+      } else {
+        bodyHtml = `<div class="lb-list">` + users.map((u, i) => {
+          const rankHtml = i < 3 ? medals[i] : `#${i+1}`;
+          const avatarHtml = u.avatarUrl
+            ? `<img class="lb-avatar" src="${u.avatarUrl}" alt="">`
+            : `<div class="lb-avatar-initials">${(u.nickname || '?')[0].toUpperCase()}</div>`;
+          return `<div class="lb-row">
+            <div class="lb-rank">${rankHtml}</div>
+            ${avatarHtml}
+            <div class="lb-name">${u.nickname}</div>
+            <div class="lb-score ${scoreCls}">${u[sortKey]}${scoreSuffix}</div>
+          </div>`;
+        }).join('') + `</div>`;
+      }
+    }
+
+    return `
+      <div class="section-header" style="padding-bottom:0;display:flex;align-items:center;gap:12px">
+        <button class="btn-back" id="btn-lb-back">‹ Record</button>
+        <div class="section-title" style="font-size:1.35rem;flex:1">Leaderboard</div>
+      </div>
+      <div style="height:20px"></div>
+      <div class="lb-tabs">${tabsHtml}</div>
+      ${subTabsHtml}
+      ${bodyHtml}`;
+  }
+
   function htmlHistory() {
     const pts = computePoints();
     const sorted = s.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
+    const isAdmin = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
     return `
       <div class="section-header" style="padding-bottom:20px; display:flex; align-items:center; justify-content:space-between">
         <div class="section-title">Record</div>
@@ -1492,6 +1618,7 @@
         </div>
       </div>
 
+      ${isAdmin ? `<button class="btn-lb-enter" id="btn-enter-leaderboard"><span>🏆 Leaderboard</span><span>›</span></button>` : ''}
       ${!sorted.length ? `<div class="empty"><div class="empty-emoji">📜</div><div>No history yet.</div></div>` : ''}
       ${sorted.map(sess => {
         const tasks = (sess.picked_ids||[]).map(id => getTaskForHistory(sess, id)).filter(Boolean);
@@ -1684,6 +1811,38 @@
         s.profileScreen = 'menu';
         render();
       });
+      document.getElementById('btn-enter-leaderboard')?.addEventListener('click', async () => {
+        s.leaderboardOpen = true;
+        s.leaderboardLoading = !s.leaderboardData;
+        render();
+        if (!s.leaderboardData) {
+          try {
+            s.leaderboardData = await api('GET', '/api/leaderboard');
+          } catch {
+            s.leaderboardData = { users: [] };
+          }
+          s.leaderboardLoading = false;
+          render();
+        }
+      });
+    }
+
+    if (screen === 'leaderboard') {
+      document.getElementById('btn-lb-back')?.addEventListener('click', () => {
+        s.leaderboardOpen = false;
+        render();
+      });
+      document.querySelectorAll('[data-lb-tab]').forEach(btn =>
+        btn.addEventListener('click', () => {
+          s.leaderboardTab = btn.dataset.lbTab;
+          s.leaderboardSubTab = 0;
+          render();
+        }));
+      document.querySelectorAll('[data-lb-sub]').forEach(btn =>
+        btn.addEventListener('click', () => {
+          s.leaderboardSubTab = parseInt(btn.dataset.lbSub);
+          render();
+        }));
     }
 
     if (screen === 'concluded') {
@@ -1911,6 +2070,33 @@
       });
 
       document.getElementById('btn-sign-out')?.addEventListener('click', () => clerk.signOut());
+
+      // Nickname save on blur
+      document.getElementById('input-nickname')?.addEventListener('blur', async e => {
+        const val = e.target.value.trim();
+        if (!val || val === s.profile.nickname) return;
+        s.profile.nickname = val;
+        await saveProfile();
+      });
+
+      // Avatar upload via Clerk
+      document.getElementById('avatar-upload')?.addEventListener('change', async e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          await clerk.user.setProfileImage({ file });
+          render();
+        } catch (err) {
+          console.error('Avatar upload failed:', err);
+        }
+      });
+
+      // Hide from leaderboard toggle
+      document.getElementById('toggle-hide-leaderboard')?.addEventListener('change', async e => {
+        s.profile.hideFromLeaderboard = e.target.checked;
+        s.leaderboardData = null; // invalidate cached leaderboard
+        await saveProfile();
+      });
 
       // Reset records flow
       document.getElementById('btn-show-reset')?.addEventListener('click', () => {
@@ -2373,6 +2559,13 @@
     });
   }
 
+  async function saveProfile() {
+    await api('PATCH', '/api/profile', {
+      nickname: s.profile.nickname,
+      hide_from_leaderboard: s.profile.hideFromLeaderboard,
+    });
+  }
+
   async function purchaseItem(itemId) {
     const activeItems = s.storeItems.length ? s.storeItems : STORE_ITEMS;
     const item = activeItems.find(x => x.id === itemId);
@@ -2476,6 +2669,11 @@
         s.hasShownBazaarTutorial   = data.settings.has_shown_bazaar_tutorial  ?? false;
       }
 
+      if (data.profile) {
+        s.profile.nickname = data.profile.nickname || '';
+        s.profile.hideFromLeaderboard = data.profile.hide_from_leaderboard || false;
+      }
+
       if (data.storeItems.length > 0) s.storeItems = data.storeItems;
 
       s.tasks = data.tasks;
@@ -2530,7 +2728,7 @@
 
   // Tab listeners — attached once; tab-bar is inside #app-wrap so always in DOM
   document.querySelectorAll('.tab-btn').forEach(b =>
-    b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; s.storeScreen = 'store'; render(); }));
+    b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; s.storeScreen = 'store'; s.leaderboardOpen = false; render(); }));
 
   // ── Clerk auth flow ──
   // With data-clerk-publishable-key, window.Clerk is a pre-configured singleton

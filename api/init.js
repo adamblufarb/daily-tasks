@@ -85,6 +85,13 @@ module.exports = withAuth(async (req, res, userId) => {
       PRIMARY KEY (user_id, id)
     )
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS profiles_v2 (
+      user_id               text PRIMARY KEY,
+      nickname              text NOT NULL DEFAULT '',
+      hide_from_leaderboard boolean NOT NULL DEFAULT false
+    )
+  `;
 
   // Remove retired acts (idempotent)
   await sql`
@@ -107,13 +114,22 @@ module.exports = withAuth(async (req, res, userId) => {
   `;
 
   // Fetch all user data in parallel
-  const [sessionRows, taskRows, walletRows, settingsRows, storeRows] = await Promise.all([
+  const [sessionRows, taskRows, walletRows, settingsRows, storeRows, profileRows] = await Promise.all([
     sql`SELECT * FROM daily_sessions_v2 WHERE user_id = ${userId} ORDER BY date DESC`,
     sql`SELECT * FROM tasks_v2 WHERE user_id = ${userId}`,
     sql`SELECT * FROM wallet_v2 WHERE user_id = ${userId}`,
     sql`SELECT * FROM settings_v2 WHERE user_id = ${userId}`,
     sql`SELECT * FROM store_items_v2 WHERE user_id = ${userId}`,
+    sql`SELECT * FROM profiles_v2 WHERE user_id = ${userId}`,
   ]);
+
+  // Seed profile with random nickname for new users
+  if (profileRows.length === 0) {
+    const NICKNAMES = ['Templar','Arcanist','Sovereign','Paladin','Warden','Monarch','Oracle','Malice','Overlord','Paragon','Amazon','Mystic','Enchanter','Prophet','Tyrant'];
+    const nickname = NICKNAMES[Math.floor(Math.random() * NICKNAMES.length)];
+    await sql`INSERT INTO profiles_v2 (user_id, nickname) VALUES (${userId}, ${nickname}) ON CONFLICT DO NOTHING`;
+    profileRows.push({ user_id: userId, nickname, hide_from_leaderboard: false });
+  }
 
   // Seed default offerings for new users
   if (storeRows.length === 0) {
@@ -146,6 +162,7 @@ module.exports = withAuth(async (req, res, userId) => {
     tasks:      taskRows,
     wallet:     walletRows[0] ? { ...walletRows[0], streak: walletRows[0].streak ?? 0 } : null,
     settings:   settingsRows[0] || null,
+    profile:    profileRows[0] || null,
     storeItems: storeRows.map(r => ({
       id: r.id, name: r.name, desc: r.description, cost: r.cost, rarity: r.rarity,
     })),
