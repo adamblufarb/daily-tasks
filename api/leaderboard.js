@@ -5,30 +5,45 @@ const { createClerkClient } = require('@clerk/backend');
 module.exports = withAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).end();
 
-  // Only include users who haven't opted out
-  const profiles = await sql`SELECT * FROM profiles_v2 WHERE hide_from_leaderboard = false`;
-  const includedIds = profiles.map(p => p.user_id);
-
-  if (includedIds.length === 0) return res.json({ users: [] });
-
-  const [sessions, wallets] = await Promise.all([
-    sql`SELECT user_id, date, status, picked_ids, completed_ids, task_snapshots
-        FROM daily_sessions_v2
-        WHERE user_id = ANY(${includedIds})
-        ORDER BY user_id, date ASC`,
-    sql`SELECT user_id, streak FROM wallet_v2 WHERE user_id = ANY(${includedIds})`,
+  // Fetch all activity sources + profiles in parallel
+  const [sessionUserRows, wallets, profiles] = await Promise.all([
+    sql`SELECT DISTINCT user_id FROM daily_sessions_v2`,
+    sql`SELECT user_id, streak FROM wallet_v2`,
+    sql`SELECT * FROM profiles_v2`,
   ]);
 
-  // Resolve Clerk imageUrl for each user
+  // Build opt-out set — only users who explicitly hid themselves
+  const optedOut = new Set(profiles.filter(p => p.hide_from_leaderboard).map(p => p.user_id));
+  const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
+
+  // All users with any activity, excluding opted-out
+  const allIds = [...new Set([
+    ...sessionUserRows.map(r => r.user_id),
+    ...wallets.map(r => r.user_id),
+  ])].filter(id => !optedOut.has(id));
+
+  if (allIds.length === 0) return res.json({ users: [] });
+
+  const [sessions, walletRows] = await Promise.all([
+    sql`SELECT user_id, date, status, picked_ids, completed_ids, task_snapshots
+        FROM daily_sessions_v2
+        WHERE user_id = ANY(${allIds})
+        ORDER BY user_id, date ASC`,
+    sql`SELECT user_id, streak FROM wallet_v2 WHERE user_id = ANY(${allIds})`,
+  ]);
+
+  // Resolve Clerk imageUrl + nickname fallback for each user
   const clerkAdmin = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-  const imageMap = {};
-  await Promise.all(includedIds.map(async id => {
+  const clerkMap = {};
+  await Promise.all(allIds.map(async id => {
     const u = await clerkAdmin.users.getUser(id).catch(() => null);
-    imageMap[id] = u?.imageUrl || null;
+    clerkMap[id] = {
+      imageUrl: u?.imageUrl || null,
+      displayName: u?.firstName || u?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',
+    };
   }));
 
-  const walletMap = Object.fromEntries(wallets.map(w => [w.user_id, w]));
-  const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
+  const walletMap = Object.fromEntries(walletRows.map(w => [w.user_id, w]));
 
   const sessionsByUser = {};
   for (const sess of sessions) {
@@ -40,10 +55,10 @@ module.exports = withAuth(async (req, res) => {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const cutoff = sevenDaysAgo.toISOString().slice(0, 10);
 
-  const users = includedIds.map(uid => {
+  const users = allIds.map(uid => {
     const userSessions = sessionsByUser[uid] || [];
     const wallet = walletMap[uid] || {};
-    const profile = profileMap[uid] || {};
+    const profile = profileMap[uid];
 
     // Longest all-time streak (replay session history)
     let longestStreak = 0, runStreak = 0;
@@ -73,9 +88,12 @@ module.exports = withAuth(async (req, res) => {
       if (sess.picked_ids?.length === 5) mythicEarned++;
     }
 
+    // Nickname: profile row wins, then Clerk name fallback
+    const nickname = profile?.nickname || clerkMap[uid]?.displayName || 'Unknown';
+
     return {
-      nickname: profile.nickname || 'Unknown',
-      avatarUrl: imageMap[uid] || null,
+      nickname,
+      avatarUrl: clerkMap[uid]?.imageUrl || null,
       currentStreak: wallet.streak || 0,
       longestStreak,
       acts7d,
