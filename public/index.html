@@ -469,8 +469,10 @@
     .lb-score.lb-streak { color: #e59c3c; }
     .lb-score.lb-mythic { color: var(--mythic); }
     .lb-empty { text-align: center; color: var(--subtext); font-size: 0.88rem; padding: 40px 0; }
-    .btn-lb-enter { width: 100%; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); margin-top: 16px; }
-    .btn-lb-enter:active { background: var(--border); }
+    .btn-lb-enter { position: fixed; bottom: calc(110px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; z-index: 50; padding: 14px 18px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-family: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 20px rgba(54,60,105,0.35); }
+    .btn-lb-enter:active { opacity: 0.85; }
+    .lb-section { margin-bottom: 28px; }
+    .lb-section-title { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 10px; }
 
     /* Tutorial overlay */
     .tutorial-gradient { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 66.67vh; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.40) 50%, transparent 100%); }
@@ -615,8 +617,8 @@
       wallet: { common: 0, legendary: 0, mythic: 0, streak: 0 },
       profile: { nickname: '', hideFromLeaderboard: false },
       leaderboardOpen: false,
-      leaderboardTab: 'streak',
-      leaderboardSubTab: 0,
+      leaderboardStreakSub: 0,
+      leaderboardActsSub: 0,
       leaderboardData: null,
       leaderboardLoading: false,
       lastPurchaseDate: null,
@@ -1171,6 +1173,7 @@
       : `<div class="profile-avatar-initials">${(s.profile.nickname || clerk.user?.firstName || '?')[0].toUpperCase()}</div>`;
     return `
       <div class="section-header" style="padding-bottom:8px">
+        <button class="btn-back" id="btn-profile-back">‹ Record</button>
         <div class="section-title">Profile</div>
       </div>
       <div class="profile-identity">
@@ -1183,6 +1186,17 @@
           <input class="profile-nickname-input" id="input-nickname" value="${s.profile.nickname}" placeholder="Nickname" maxlength="24" autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
       </div>
+      <div style="height:16px"></div>
+      <div class="profile-menu">
+        <button class="profile-menu-item" id="btn-profile-taskpool" style="background:linear-gradient(to right,var(--common) 0%,var(--common) 30%,var(--legendary) 70%,var(--legendary) 100%);color:#fff;border-color:transparent">
+          <span class="profile-menu-label">Act Pool</span>
+          <span class="profile-menu-arrow">›</span>
+        </button>
+        <button class="profile-menu-item" id="btn-profile-storemanage"${bazaarUnlocked ? '' : ' disabled'} style="background:var(--mythic);color:#fff;border-color:transparent">
+          <span class="profile-menu-label">Bazaar Offerings</span>
+          <span class="profile-menu-arrow">›</span>
+        </button>
+      </div>
       <div class="settings-section" style="margin-top:16px">
         <div class="settings-row">
           <div class="settings-label">Hide from Leaderboard</div>
@@ -1191,17 +1205,6 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-      </div>
-      <div style="height:12px"></div>
-      <div class="profile-menu">
-        <button class="profile-menu-item" id="btn-profile-taskpool">
-          <span class="profile-menu-label">Act Pool</span>
-          <span class="profile-menu-arrow">›</span>
-        </button>
-        <button class="profile-menu-item" id="btn-profile-storemanage"${bazaarUnlocked ? '' : ' disabled'}>
-          <span class="profile-menu-label">Bazaar Offerings</span>
-          <span class="profile-menu-arrow">›</span>
-        </button>
       </div>
       <div class="settings-section" id="tutorial-settings-section">
         <div class="settings-row">
@@ -1531,21 +1534,23 @@
 
   /* ── History ── */
   function htmlLeaderboard() {
-    const tabsHtml = [
-      ['streak', 'Streak'],
-      ['acts',   'Acts'],
-      ['mythic', 'Mythical'],
-    ].map(([k, label]) =>
-      `<button class="lb-tab${s.leaderboardTab === k ? ' active' : ''}" data-lb-tab="${k}">${label}</button>`
-    ).join('');
+    const medals = ['🥇','🥈','🥉'];
 
-    const hasSubTabs = s.leaderboardTab !== 'mythic';
-    const sub0 = s.leaderboardTab === 'streak' ? 'Active' : '7 Days';
-    const subTabsHtml = hasSubTabs ? `
-      <div class="lb-subtabs">
-        <button class="lb-subtab${s.leaderboardSubTab === 0 ? ' active' : ''}" data-lb-sub="0">${sub0}</button>
-        <button class="lb-subtab${s.leaderboardSubTab === 1 ? ' active' : ''}" data-lb-sub="1">All Time</button>
-      </div>` : '';
+    function lbList(sortedUsers, sortKey, scoreSuffix, scoreCls) {
+      if (!sortedUsers.length) return `<div class="lb-empty">No entries yet.</div>`;
+      return `<div class="lb-list">` + sortedUsers.map((u, i) => {
+        const rankHtml = i < 3 ? medals[i] : `#${i+1}`;
+        const avatarHtml = u.avatarUrl
+          ? `<img class="lb-avatar" src="${u.avatarUrl}" alt="">`
+          : `<div class="lb-avatar-initials">${(u.nickname || '?')[0].toUpperCase()}</div>`;
+        return `<div class="lb-row">
+          <div class="lb-rank">${rankHtml}</div>
+          ${avatarHtml}
+          <div class="lb-name">${u.nickname}</div>
+          <div class="lb-score ${scoreCls}">${u[sortKey]}${scoreSuffix}</div>
+        </div>`;
+      }).join('') + `</div>`;
+    }
 
     let bodyHtml;
     if (s.leaderboardLoading) {
@@ -1553,44 +1558,50 @@
     } else if (!s.leaderboardData) {
       bodyHtml = `<div class="lb-empty">Failed to load leaderboard.</div>`;
     } else {
-      const users = [...(s.leaderboardData.users || [])];
-      let sortKey;
-      if (s.leaderboardTab === 'streak') sortKey = s.leaderboardSubTab === 0 ? 'currentStreak' : 'longestStreak';
-      else if (s.leaderboardTab === 'acts') sortKey = s.leaderboardSubTab === 0 ? 'acts7d' : 'actsAllTime';
-      else sortKey = 'mythicEarned';
+      const all = [...(s.leaderboardData.users || [])];
 
-      users.sort((a, b) => b[sortKey] - a[sortKey]);
+      // Streak section
+      const streakKey = s.leaderboardStreakSub === 0 ? 'currentStreak' : 'longestStreak';
+      const streakUsers = [...all].sort((a, b) => b[streakKey] - a[streakKey]);
+      const streakSection = `
+        <div class="lb-section">
+          <div class="lb-section-title">🔥 Streak</div>
+          <div class="lb-subtabs">
+            <button class="lb-subtab${s.leaderboardStreakSub === 0 ? ' active' : ''}" data-streak-sub="0">Active</button>
+            <button class="lb-subtab${s.leaderboardStreakSub === 1 ? ' active' : ''}" data-streak-sub="1">All Time</button>
+          </div>
+          ${lbList(streakUsers, streakKey, ' 🔥', 'lb-streak')}
+        </div>`;
 
-      const scoreSuffix = s.leaderboardTab === 'streak' ? '🔥' : s.leaderboardTab === 'mythic' ? '🔮' : ' pts';
-      const scoreCls = s.leaderboardTab === 'streak' ? 'lb-streak' : s.leaderboardTab === 'mythic' ? 'lb-mythic' : '';
-      const medals = ['🥇','🥈','🥉'];
+      // Acts section
+      const actsKey = s.leaderboardActsSub === 0 ? 'acts7d' : 'actsAllTime';
+      const actsUsers = [...all].sort((a, b) => b[actsKey] - a[actsKey]);
+      const actsSection = `
+        <div class="lb-section">
+          <div class="lb-section-title">🧿 Acts</div>
+          <div class="lb-subtabs">
+            <button class="lb-subtab${s.leaderboardActsSub === 0 ? ' active' : ''}" data-acts-sub="0">7 Days</button>
+            <button class="lb-subtab${s.leaderboardActsSub === 1 ? ' active' : ''}" data-acts-sub="1">All Time</button>
+          </div>
+          ${lbList(actsUsers, actsKey, ' pts', '')}
+        </div>`;
 
-      if (!users.length) {
-        bodyHtml = `<div class="lb-empty">No entries yet.</div>`;
-      } else {
-        bodyHtml = `<div class="lb-list">` + users.map((u, i) => {
-          const rankHtml = i < 3 ? medals[i] : `#${i+1}`;
-          const avatarHtml = u.avatarUrl
-            ? `<img class="lb-avatar" src="${u.avatarUrl}" alt="">`
-            : `<div class="lb-avatar-initials">${(u.nickname || '?')[0].toUpperCase()}</div>`;
-          return `<div class="lb-row">
-            <div class="lb-rank">${rankHtml}</div>
-            ${avatarHtml}
-            <div class="lb-name">${u.nickname}</div>
-            <div class="lb-score ${scoreCls}">${u[sortKey]}${scoreSuffix}</div>
-          </div>`;
-        }).join('') + `</div>`;
-      }
+      // Mythical section
+      const mythicUsers = [...all].sort((a, b) => b.mythicEarned - a.mythicEarned);
+      const mythicSection = `
+        <div class="lb-section">
+          <div class="lb-section-title">🔱 Mythical</div>
+          ${lbList(mythicUsers, 'mythicEarned', ' 🔱', 'lb-mythic')}
+        </div>`;
+
+      bodyHtml = streakSection + actsSection + mythicSection;
     }
 
     return `
-      <div class="section-header" style="padding-bottom:0;display:flex;align-items:center;gap:12px">
+      <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-lb-back">‹ Record</button>
-        <div class="section-title" style="font-size:1.35rem;flex:1">Leaderboard</div>
+        <div class="section-title">Leaderboard</div>
       </div>
-      <div style="height:20px"></div>
-      <div class="lb-tabs">${tabsHtml}</div>
-      ${subTabsHtml}
       ${bodyHtml}`;
   }
 
@@ -1618,7 +1629,7 @@
         </div>
       </div>
 
-      ${isAdmin ? `<button class="btn-lb-enter" id="btn-enter-leaderboard"><span>🏆 Leaderboard</span><span>›</span></button>` : ''}
+      ${isAdmin ? `<button class="btn-lb-enter" id="btn-enter-leaderboard"><span>🏰 Enter Leaderboards</span><span>›</span></button>` : ''}
       ${!sorted.length ? `<div class="empty"><div class="empty-emoji">📜</div><div>No history yet.</div></div>` : ''}
       ${sorted.map(sess => {
         const tasks = (sess.picked_ids||[]).map(id => getTaskForHistory(sess, id)).filter(Boolean);
@@ -1832,15 +1843,14 @@
         s.leaderboardOpen = false;
         render();
       });
-      document.querySelectorAll('[data-lb-tab]').forEach(btn =>
+      document.querySelectorAll('[data-streak-sub]').forEach(btn =>
         btn.addEventListener('click', () => {
-          s.leaderboardTab = btn.dataset.lbTab;
-          s.leaderboardSubTab = 0;
+          s.leaderboardStreakSub = parseInt(btn.dataset.streakSub);
           render();
         }));
-      document.querySelectorAll('[data-lb-sub]').forEach(btn =>
+      document.querySelectorAll('[data-acts-sub]').forEach(btn =>
         btn.addEventListener('click', () => {
-          s.leaderboardSubTab = parseInt(btn.dataset.lbSub);
+          s.leaderboardActsSub = parseInt(btn.dataset.actsSub);
           render();
         }));
     }
@@ -2048,6 +2058,11 @@
     }
 
     if (screen === 'tasks') {
+      // Back to Record from profile menu
+      document.getElementById('btn-profile-back')?.addEventListener('click', () => {
+        s.tab = 'history'; render();
+      });
+
       // Profile menu navigation
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
         s.profileScreen = 'taskpool'; s.poolEditMode = false; render();
