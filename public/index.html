@@ -1588,7 +1588,6 @@
   function htmlHistory() {
     const pts = computePoints();
     const sorted = s.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
-    const isAdmin = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
     return `
       <div class="section-header" style="padding-bottom:20px; display:flex; align-items:center; justify-content:space-between">
         <div class="section-title">Record</div>
@@ -1609,7 +1608,7 @@
         </div>
       </div>
 
-      ${isAdmin ? `<button class="btn-lb-enter" id="btn-enter-leaderboard"><span>🏰 Enter Leaderboards</span><span>›</span></button>` : ''}
+      <button class="btn-lb-enter" id="btn-enter-leaderboard"><span>🏰 Enter Leaderboards</span><span>›</span></button>
       ${!sorted.length ? `<div class="empty"><div class="empty-emoji">📜</div><div>No history yet.</div></div>` : ''}
       ${sorted.map(sess => {
         const tasks = (sess.picked_ids||[]).map(id => getTaskForHistory(sess, id)).filter(Boolean);
