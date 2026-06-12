@@ -638,6 +638,7 @@
       ftueSlide: 0,
       hasShownRecordTutorial: false,
       hasShownBazaarTutorial: false,
+      hasShownActPoolTutorial: false,
       tutorialFlow: null,
       tutorialStep: 0,
     };
@@ -1406,14 +1407,14 @@
         </div>` : `
         <div class="store-card${!canAdd ? '' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
           <div class="store-card-top">
-            <div class="store-card-name">Add Act</div>
+            <div class="store-card-name">Add New Act</div>
             <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
           </div>
         </div>
         ${!editing ? `
         <div class="store-card" id="btn-enter-edit-mode"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
           <div class="store-card-top">
-            <div class="store-card-name">Edit Act</div>
+            <div class="store-card-name">Edit Existing Act</div>
             <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
           </div>
         </div>` : ''}`}
@@ -1534,17 +1535,18 @@
 
   /* ── History ── */
   function htmlLeaderboard() {
-    const medals = ['🥇','🥈','🥉'];
-
     function lbList(sortedUsers, sortKey, scoreSuffix, scoreCls) {
       if (!sortedUsers.length) return `<div class="lb-empty">No entries yet.</div>`;
       return `<div class="lb-list">` + sortedUsers.map((u, i) => {
-        const rankHtml = i < 3 ? medals[i] : `#${i+1}`;
+        let rankDisplay;
+        if (i === 0) rankDisplay = '1';
+        else if (u[sortKey] === sortedUsers[i - 1][sortKey]) rankDisplay = '';
+        else rankDisplay = String(i + 1);
         const avatarHtml = u.avatarUrl
           ? `<img class="lb-avatar" src="${u.avatarUrl}" alt="">`
           : `<div class="lb-avatar-initials">${(u.nickname || '?')[0].toUpperCase()}</div>`;
         return `<div class="lb-row">
-          <div class="lb-rank">${rankHtml}</div>
+          <div class="lb-rank">${rankDisplay}</div>
           ${avatarHtml}
           <div class="lb-name">${u.nickname}</div>
           <div class="lb-score ${scoreCls}">${u[sortKey]}${scoreSuffix}</div>
@@ -2035,6 +2037,7 @@
       // Profile menu navigation
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
         s.profileScreen = 'taskpool'; s.poolEditMode = false; render();
+        if (!s.hasShownActPoolTutorial) setTimeout(() => startTutorial('actpool'), 150);
       });
       document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
         s.profileScreen = 'storemanage'; s.editingStoreItem = null; s.storeEditMode = false; render();
@@ -2215,8 +2218,9 @@
       reset_hour: RESET_HOUR,
       has_completed_onboarding: s.hasCompletedOnboarding,
       onboarding_ritual_count: s.onboardingRitualCount,
-      has_shown_record_tutorial: s.hasShownRecordTutorial,
-      has_shown_bazaar_tutorial: s.hasShownBazaarTutorial,
+      has_shown_record_tutorial:  s.hasShownRecordTutorial,
+      has_shown_bazaar_tutorial:  s.hasShownBazaarTutorial,
+      has_shown_actpool_tutorial: s.hasShownActPoolTutorial,
     });
   }
 
@@ -2360,6 +2364,11 @@
     { type: 'highlight', elId: 'btn-profile-taskpool',      title: 'Your Act pool lives here, grow it as you level up', finish: true },
   ];
 
+  const ACT_POOL_TUTORIAL = [
+    { type: 'info', title: 'Every Ritual is forged from the Acts in your pool' },
+    { type: 'info', title: `Spend ${rarityTag('legendary')} Tokens to grow your Act Pool`, finish: true },
+  ];
+
   const BAZAAR_TUTORIAL = [
     { type: 'tap-tab',   tabId: 'tab-store',                label: 'Bazaar' },
     { type: 'info',      title: 'Browse and spend your earned Tokens' },
@@ -2386,8 +2395,9 @@
   }
 
   function completeTutorial() {
-    if (s.tutorialFlow === 'record') s.hasShownRecordTutorial = true;
-    if (s.tutorialFlow === 'bazaar') s.hasShownBazaarTutorial = true;
+    if (s.tutorialFlow === 'record')  s.hasShownRecordTutorial  = true;
+    if (s.tutorialFlow === 'bazaar')  s.hasShownBazaarTutorial  = true;
+    if (s.tutorialFlow === 'actpool') s.hasShownActPoolTutorial = true;
     s.tutorialFlow = null;
     s.tutorialStep = 0;
     document.getElementById('tutorial-overlay')?.remove();
@@ -2400,7 +2410,10 @@
     cleanupTutorial();
 
     if (!s.tutorialFlow) return;
-    const steps = s.tutorialFlow === 'record' ? RECORD_TUTORIAL : BAZAAR_TUTORIAL;
+    const steps = s.tutorialFlow === 'record'  ? RECORD_TUTORIAL
+                : s.tutorialFlow === 'bazaar'  ? BAZAAR_TUTORIAL
+                : s.tutorialFlow === 'actpool' ? ACT_POOL_TUTORIAL
+                : [];
     const step  = steps[s.tutorialStep];
     if (!step) { completeTutorial(); return; }
 
@@ -2472,10 +2485,13 @@
       if (step.type === 'highlight') {
         const el = document.getElementById(step.elId);
         if (el) {
-          el.style.position      = 'relative';
-          el.style.zIndex        = '301';
-          el.style.pointerEvents = 'none';
+          el.style.position = 'relative';
+          el.style.zIndex   = '301';
+          // Element stays interactive — user can click it during the tutorial
           setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+          if (step.finish) {
+            el.addEventListener('click', () => completeTutorial(), { once: true });
+          }
         }
       }
       const box = document.createElement('div');
@@ -2654,8 +2670,9 @@
         s.today = todayStr();
         s.hasCompletedOnboarding   = data.settings.has_completed_onboarding   ?? false;
         s.onboardingRitualCount    = data.settings.onboarding_ritual_count    ?? 0;
-        s.hasShownRecordTutorial   = data.settings.has_shown_record_tutorial  ?? false;
+        s.hasShownRecordTutorial   = data.settings.has_shown_record_tutorial   ?? false;
         s.hasShownBazaarTutorial   = data.settings.has_shown_bazaar_tutorial  ?? false;
+        s.hasShownActPoolTutorial  = data.settings.has_shown_actpool_tutorial ?? false;
       }
 
       if (data.profile) {

@@ -74,6 +74,7 @@ module.exports = withAuth(async (req, res, userId) => {
   await sql`ALTER TABLE settings_v2 ADD COLUMN IF NOT EXISTS onboarding_ritual_count int NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE settings_v2 ADD COLUMN IF NOT EXISTS has_shown_record_tutorial boolean NOT NULL DEFAULT false`;
   await sql`ALTER TABLE settings_v2 ADD COLUMN IF NOT EXISTS has_shown_bazaar_tutorial boolean NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE settings_v2 ADD COLUMN IF NOT EXISTS has_shown_actpool_tutorial boolean NOT NULL DEFAULT false`;
   await sql`
     CREATE TABLE IF NOT EXISTS store_items_v2 (
       id          text NOT NULL,
