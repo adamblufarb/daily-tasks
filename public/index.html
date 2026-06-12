@@ -1021,7 +1021,7 @@
           <div class="task-confirm">
             <span class="task-confirm-text">Did you complete this?</span>
             <div style="display:flex;gap:8px">
-              <button class="btn-confirm-no" data-confirm-no="${t.id}">No</button>
+              <button class="btn-confirm-no" data-confirm-no="${t.id}">Back</button>
               <button class="btn-confirm-yes" data-confirm-yes="${t.id}">Yes ✓</button>
             </div>
           </div>` : ''}
@@ -1808,7 +1808,7 @@
         btn.addEventListener('click', e => {
           e.stopPropagation();
           s.confirmTask = null;
-          uncompleteTask(btn.dataset.confirmNo);
+          render();
         }));
       document.querySelectorAll('[data-confirm-yes]').forEach(btn =>
         btn.addEventListener('click', e => {
