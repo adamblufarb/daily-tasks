@@ -451,6 +451,8 @@
     .profile-nickname-row { display: flex; align-items: center; gap: 8px; width: 100%; }
     .profile-nickname-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 0.95rem; font-weight: 600; color: var(--text); background: var(--card); outline: none; }
     .profile-nickname-input:focus { border-color: var(--accent); }
+    .btn-nickname-edit { background: none; border: none; font-size: 1rem; cursor: pointer; padding: 4px 6px; flex-shrink: 0; opacity: 0.45; line-height: 1; }
+    .btn-nickname-edit:active { opacity: 1; }
 
     /* Leaderboard */
     .lb-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -617,8 +619,6 @@
       wallet: { common: 0, legendary: 0, mythic: 0, streak: 0 },
       profile: { nickname: '', hideFromLeaderboard: false },
       leaderboardOpen: false,
-      leaderboardStreakSub: 0,
-      leaderboardActsSub: 0,
       leaderboardData: null,
       leaderboardLoading: false,
       lastPurchaseDate: null,
@@ -1184,15 +1184,16 @@
         </div>
         <div class="profile-nickname-row">
           <input class="profile-nickname-input" id="input-nickname" value="${s.profile.nickname}" placeholder="Nickname" maxlength="24" autocomplete="off" autocorrect="off" spellcheck="false">
+          <button class="btn-nickname-edit" id="btn-nickname-edit" type="button">✏️</button>
         </div>
       </div>
       <div style="height:16px"></div>
-      <div class="profile-menu">
+      <div class="profile-menu" style="display:flex;flex-direction:column;gap:10px">
         <button class="profile-menu-item" id="btn-profile-taskpool" style="background:linear-gradient(to right,var(--common) 0%,var(--common) 30%,var(--legendary) 70%,var(--legendary) 100%);color:#fff;border-color:transparent">
           <span class="profile-menu-label">Act Pool</span>
           <span class="profile-menu-arrow">›</span>
         </button>
-        <button class="profile-menu-item" id="btn-profile-storemanage"${bazaarUnlocked ? '' : ' disabled'} style="background:var(--mythic);color:#fff;border-color:transparent">
+        <button class="profile-menu-item" id="btn-profile-storemanage"${bazaarUnlocked ? '' : ' disabled'}${bazaarUnlocked ? ' style="background:var(--mythic);color:#fff;border-color:transparent"' : ''}>
           <span class="profile-menu-label">Bazaar Offerings</span>
           <span class="profile-menu-arrow">›</span>
         </button>
@@ -1560,41 +1561,21 @@
     } else {
       const all = [...(s.leaderboardData.users || [])];
 
-      // Streak section
-      const streakKey = s.leaderboardStreakSub === 0 ? 'currentStreak' : 'longestStreak';
-      const streakUsers = [...all].sort((a, b) => b[streakKey] - a[streakKey]);
       const streakSection = `
         <div class="lb-section">
           <div class="lb-section-title">🔥 Streak</div>
-          <div class="lb-subtabs">
-            <button class="lb-subtab${s.leaderboardStreakSub === 0 ? ' active' : ''}" data-streak-sub="0">Active</button>
-            <button class="lb-subtab${s.leaderboardStreakSub === 1 ? ' active' : ''}" data-streak-sub="1">All Time</button>
-          </div>
-          ${lbList(streakUsers, streakKey, ' 🔥', 'lb-streak')}
+          ${lbList([...all].sort((a, b) => b.currentStreak - a.currentStreak), 'currentStreak', ' 🔥', 'lb-streak')}
         </div>`;
 
-      // Acts section
-      const actsKey = s.leaderboardActsSub === 0 ? 'acts7d' : 'actsAllTime';
-      const actsUsers = [...all].sort((a, b) => b[actsKey] - a[actsKey]);
+      const actsNote = `<div style="font-size:0.75rem;color:var(--subtext);margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${rarityTag('common')} = 1pt &nbsp; ${rarityTag('legendary')} = 3pt</div>`;
       const actsSection = `
         <div class="lb-section">
           <div class="lb-section-title">🧿 Acts</div>
-          <div class="lb-subtabs">
-            <button class="lb-subtab${s.leaderboardActsSub === 0 ? ' active' : ''}" data-acts-sub="0">7 Days</button>
-            <button class="lb-subtab${s.leaderboardActsSub === 1 ? ' active' : ''}" data-acts-sub="1">All Time</button>
-          </div>
-          ${lbList(actsUsers, actsKey, ' pts', '')}
+          ${actsNote}
+          ${lbList([...all].sort((a, b) => b.actsAllTime - a.actsAllTime), 'actsAllTime', ' pts', '')}
         </div>`;
 
-      // Mythical section
-      const mythicUsers = [...all].sort((a, b) => b.mythicEarned - a.mythicEarned);
-      const mythicSection = `
-        <div class="lb-section">
-          <div class="lb-section-title">🔱 Mythical</div>
-          ${lbList(mythicUsers, 'mythicEarned', ' 🔱', 'lb-mythic')}
-        </div>`;
-
-      bodyHtml = streakSection + actsSection + mythicSection;
+      bodyHtml = streakSection + actsSection;
     }
 
     return `
@@ -1843,16 +1824,6 @@
         s.leaderboardOpen = false;
         render();
       });
-      document.querySelectorAll('[data-streak-sub]').forEach(btn =>
-        btn.addEventListener('click', () => {
-          s.leaderboardStreakSub = parseInt(btn.dataset.streakSub);
-          render();
-        }));
-      document.querySelectorAll('[data-acts-sub]').forEach(btn =>
-        btn.addEventListener('click', () => {
-          s.leaderboardActsSub = parseInt(btn.dataset.actsSub);
-          render();
-        }));
     }
 
     if (screen === 'concluded') {
@@ -2085,6 +2056,11 @@
       });
 
       document.getElementById('btn-sign-out')?.addEventListener('click', () => clerk.signOut());
+
+      // Edit icon focuses the nickname input
+      document.getElementById('btn-nickname-edit')?.addEventListener('click', () => {
+        document.getElementById('input-nickname')?.focus();
+      });
 
       // Nickname save on blur
       document.getElementById('input-nickname')?.addEventListener('blur', async e => {
