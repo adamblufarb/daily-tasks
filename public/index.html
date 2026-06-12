@@ -2488,7 +2488,11 @@
           el.style.position = 'relative';
           el.style.zIndex   = '301';
           // Element stays interactive — user can click it during the tutorial
-          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+          // Scroll so element sits at ~30% from top, keeping it above the tutorial box
+          setTimeout(() => {
+            const rect = el.getBoundingClientRect();
+            window.scrollBy({ top: rect.top - window.innerHeight * 0.30, behavior: 'smooth' });
+          }, 50);
           if (step.finish) {
             el.addEventListener('click', () => completeTutorial(), { once: true });
           }
