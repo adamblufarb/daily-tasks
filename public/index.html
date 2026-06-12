@@ -1408,6 +1408,7 @@
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-addact">${backLabel}</button>
         <div class="section-title">Add New Act</div>
+        ${showChoice ? `<div class="section-sub">Add an act to expand your pool</div>` : ''}
       </div>
       ${showChoice ? `
         <div class="add-act-choice">
@@ -1508,14 +1509,17 @@
       <div class="section-header" style="padding-bottom:8px">
         <button class="btn-back" id="btn-back-profile">‹ Profile</button>
         <div class="section-title">Act Pool</div>
+        ${deleting
+          ? `<div class="section-sub">Deleted acts will be removed from your pool</div>`
+          : `<div class="section-sub">${active.length} act${active.length !== 1 ? 's' : ''} · ${common.length} common · ${legendary.length} legendary</div>`}
       </div>
+      ${!deleting ? `
       <div class="store-card${!canAdd ? '' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
         <div class="store-card-top">
           <div class="store-card-name">Add New Act</div>
           <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
       </div>
-      ${!deleting ? `
       <div class="store-card" id="btn-enter-edit-mode"${!canDelete ? ' style="opacity:0.5;pointer-events:none"' : ''}>
         <div class="store-card-top">
           <div class="store-card-name">Delete An Act</div>
@@ -1527,7 +1531,7 @@
       <div class="pool-section-label label-legendary">Legendary</div>
       ${legendary.map(taskRow).join('')}
       <div style="height:16px"></div>
-      ${deleting ? `<button class="btn-primary" id="btn-done-editing">Done</button>` : ''}`;
+      ${deleting ? `<button class="btn-cancel" style="width:100%;padding:14px;border-radius:var(--radius);font-size:0.9rem;font-weight:600" id="btn-done-editing">Cancel</button>` : ''}`;
   }
 
   /* ── Store ── */
