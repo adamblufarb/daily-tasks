@@ -931,7 +931,7 @@
       ? `Committed: <strong>${n} / ${maxPicks}</strong>`
       : `Committed: <strong>${n} / 3</strong>`;
     const rerollDisabled = isRevealing || s.wallet.common < 1;
-    const rerollLabel = `↺ Re-Roll Acts <span style="font-weight:400;font-size:0.8rem">x1</span>${rarityTag('common')}`;
+    const rerollLabel = `↺ Re-Roll Acts <span style="display:inline-flex;align-items:center;gap:3px"><span style="font-weight:400;font-size:0.8rem">x1</span>${rarityTag('common')}</span>`;
     const showReroll = !isOnboarding;
     return `
       <div class="section-header">
@@ -1960,12 +1960,10 @@
         if (!name) return;
         saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity: 'mythic' });
       });
-      // Enter edit mode — deduct legendary immediately
-      document.getElementById('btn-enter-edit-mode')?.addEventListener('click', async () => {
-        s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
+      // Enter edit mode — deduction happens on Save, not here
+      document.getElementById('btn-enter-edit-mode')?.addEventListener('click', () => {
         s.poolEditMode = true;
         render();
-        await saveWallet();
       });
       // Pick which act to edit (in edit mode)
       document.querySelectorAll('[data-edit-task]').forEach(el =>
@@ -2395,17 +2393,15 @@
     if (isNew) task.id = Date.now().toString();
     if (isNew) {
       s.tasks.push(task);
-      s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
     } else {
       s.tasks = s.tasks.map(t => t.id === task.id ? task : t);
     }
+    s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
     s.editingTask = null;
     s.confirmEditTask = null;
     s.poolEditMode = false;
     render();
-    const saves = [api('POST', '/api/tasks', task)];
-    if (isNew) saves.push(saveWallet());
-    await Promise.all(saves);
+    await Promise.all([api('POST', '/api/tasks', task), saveWallet()]);
   }
 
   async function archivePoolTask(id) {
