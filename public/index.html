@@ -582,7 +582,7 @@
       storeItems: [],
       editingStoreItem: null,
       storeEditMode: false,
-      wallet: { common: 0, legendary: 0, mythic: 0 },
+      wallet: { common: 0, legendary: 0, mythic: 0, streak: 0 },
       lastPurchaseDate: null,
       lastPurchasedItem: null,
       selectedStoreItem: null,
@@ -1089,11 +1089,14 @@
   /* ── Claim Tokens screen ── */
   function htmlReward() {
     const r = s.pendingReward || { common: 0, legendary: 0, mythic: 0 };
-    const tokenRows = [
+    const baseRows = [
       r.common    ? `<div class="reward-token-row">+${r.common} ${rarityTag('common')}</div>`    : '',
       r.legendary ? `<div class="reward-token-row">+${r.legendary} ${rarityTag('legendary')}</div>` : '',
-      r.mythic    ? `<div class="reward-token-row">+${r.mythic} ${rarityTag('mythic')}</div>`    : '',
-    ].filter(Boolean).join('');
+      (r.mythic && !r.streakBonus) ? `<div class="reward-token-row">+${r.mythic} ${rarityTag('mythic')}</div>` : '',
+      (r.mythic && r.streakBonus && r.mythic > 1) ? `<div class="reward-token-row">+${r.mythic - 1} ${rarityTag('mythic')}</div>` : '',
+      r.streakBonus ? `<div class="reward-token-row">+1 ${rarityTag('mythic')} &nbsp;<span style="font-size:0.78rem;opacity:0.85;font-weight:400">${r.streakCount} Ritual Streak!</span></div>` : '',
+    ];
+    const tokenRows = baseRows.filter(Boolean).join('');
     return `
       <div class="reward-screen" style="background:var(--accent)">
         <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
@@ -1153,6 +1156,12 @@
         <span class="profile-menu-label">Sign Out</span>
         <span class="profile-menu-arrow">›</span>
       </button>
+      ${isAdmin ? `
+      <div style="height:16px"></div>
+      <a href="/admin" class="profile-menu-item" style="text-decoration:none;display:flex;align-items:center;justify-content:space-between;color:var(--text)">
+        <span class="profile-menu-label">Admin Dashboard</span>
+        <span class="profile-menu-arrow">›</span>
+      </a>` : ''}
       ${isAdmin ? `
       <div class="settings-section" style="margin-top:20px">
         <div class="settings-row">
@@ -2117,12 +2126,20 @@
         const t = getTaskForHistory(todaySess, id);
         if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
       }
+      s.wallet.streak = (s.wallet.streak || 0) + 1;
+    } else {
+      s.wallet.streak = 0;
     }
-    s.pendingReward  = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
+    const streakBonus = allCompleted && s.wallet.streak > 0 && s.wallet.streak % 3 === 0;
+    if (streakBonus) earnedMythic += 1;
+    s.pendingReward  = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic, streakBonus, streakCount: s.wallet.streak };
     s.overlayScreen  = allCompleted ? 'reward' : 'bad-luck';
     s.sessions = s.sessions.map(x => x.id === todaySess.id ? { ...x, status: 'done' } : x);
     render();
-    await api('PATCH', '/api/sessions', { id: todaySess.id, status: 'done' });
+    await Promise.all([
+      api('PATCH', '/api/sessions', { id: todaySess.id, status: 'done' }),
+      saveWallet(),
+    ]);
   }
 
   async function claimTokens() {
@@ -2325,15 +2342,23 @@
         const t = getTaskForHistory(pending, id);
         if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
       }
+      s.wallet.streak = (s.wallet.streak || 0) + 1;
+    } else {
+      s.wallet.streak = 0;
     }
-    s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
+    const streakBonus = allCompleted && s.wallet.streak > 0 && s.wallet.streak % 3 === 0;
+    if (streakBonus) earnedMythic += 1;
+    s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic, streakBonus, streakCount: s.wallet.streak };
     s.overlayScreen = allCompleted ? 'reward' : 'bad-luck';
     s.reviewDeclined = [];
     s.graceConfirmTask = null;
     s.sessions = s.sessions.map(x => x.id === pending.id
       ? { ...x, completed_ids: completedIds, status: 'done' } : x);
     render();
-    await api('PATCH', '/api/sessions', { id: pending.id, completed_ids: completedIds, status: 'done' });
+    await Promise.all([
+      api('PATCH', '/api/sessions', { id: pending.id, completed_ids: completedIds, status: 'done' }),
+      saveWallet(),
+    ]);
   }
 
   async function saveWallet() {
@@ -2341,6 +2366,7 @@
       common: s.wallet.common,
       legendary: s.wallet.legendary,
       mythic: s.wallet.mythic,
+      streak: s.wallet.streak ?? 0,
       last_purchase_date: s.lastPurchaseDate,
       last_purchase_item_name: s.lastPurchasedItem?.name || null,
       last_purchase_item_rarity: s.lastPurchasedItem?.rarity || null,
@@ -2431,7 +2457,7 @@
 
       if (data.wallet) {
         const w = data.wallet;
-        s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic };
+        s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic, streak: w.streak ?? 0 };
         s.lastPurchaseDate = w.last_purchase_date || null;
         s.lastPurchasedItem = w.last_purchase_item_name
           ? { name: w.last_purchase_item_name, rarity: w.last_purchase_item_rarity }

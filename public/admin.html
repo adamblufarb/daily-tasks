@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ritual — Admin Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      flex-direction: column;
+      gap: 12px;
+      color: #94a3b8;
+      font-size: 1rem;
+    }
+
+    #status .error {
+      color: #f87171;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      padding: 16px 24px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    #dashboard { display: none; max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
+
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #1e2535;
+    }
+
+    .dash-title { font-size: 1.4rem; font-weight: 700; color: #f1f5f9; }
+    .dash-meta { font-size: 0.8rem; color: #475569; }
+
+    .btn-signout {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+    }
+    .btn-signout:hover { background: #1e2535; color: #e2e8f0; }
+
+    .user-count { font-size: 0.85rem; color: #64748b; margin-bottom: 20px; }
+
+    .user-card {
+      background: #161b27;
+      border: 1px solid #1e2535;
+      border-radius: 14px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .user-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: #1a2032;
+      border-bottom: 1px solid #1e2535;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .user-email { font-weight: 600; color: #f1f5f9; font-size: 0.95rem; }
+    .user-id { font-size: 0.72rem; color: #475569; font-family: monospace; margin-top: 2px; }
+
+    .badge {
+      font-size: 0.72rem;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+    .badge-yellow { background: rgba(234,179,8,0.15); color: #facc15; border: 1px solid rgba(234,179,8,0.25); }
+    .badge-gray { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.25); }
+
+    .user-card-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-box {
+      background: #0f1117;
+      border: 1px solid #1e2535;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .stat-value { font-size: 1.15rem; font-weight: 700; color: #f1f5f9; }
+    .stat-sub { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+
+    .section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #475569;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .token-table, .act-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .token-table th, .act-table th {
+      text-align: left;
+      color: #475569;
+      font-weight: 500;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 6px 10px;
+      border-bottom: 1px solid #1e2535;
+    }
+
+    .token-table td, .act-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #1a2032;
+      color: #cbd5e1;
+    }
+
+    .token-table tr:last-child td, .act-table tr:last-child td { border-bottom: none; }
+
+    .rarity-common { color: #94a3b8; }
+    .rarity-legendary { color: #f59e0b; }
+    .rarity-mythic { color: #a78bfa; }
+
+    .act-type-legendary { color: #f59e0b; font-size: 0.7rem; }
+    .act-type-common { color: #64748b; font-size: 0.7rem; }
+
+    .pct-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pct-track {
+      width: 48px;
+      height: 4px;
+      background: #1e2535;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .pct-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: #3b82f6;
+    }
+    .pct-fill.good { background: #22c55e; }
+    .pct-fill.mid { background: #f59e0b; }
+    .pct-fill.low { background: #ef4444; }
+
+    .divider { height: 1px; background: #1e2535; }
+
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #1e2535;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <script
+    data-clerk-publishable-key="pk_test_d29ya2FibGUtcGVsaWNhbi0xOC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://workable-pelican-18.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+    crossorigin="anonymous"
+  ></script>
+</head>
+<body>
+  <div id="status"><div class="spinner"></div><span>Loading…</span></div>
+  <div id="dashboard"></div>
+
+  <script>
+  (async () => {
+    const statusEl = document.getElementById('status');
+    const dashEl = document.getElementById('dashboard');
+
+    function showStatus(html) {
+      statusEl.style.display = 'flex';
+      statusEl.innerHTML = html;
+    }
+
+    function showError(msg) {
+      showStatus(`<div class="error">${msg}</div>`);
+    }
+
+    // Init Clerk
+    let clerk;
+    try {
+      clerk = window.Clerk;
+      await clerk.load();
+    } catch (e) {
+      showError('Auth failed: ' + e.message);
+      return;
+    }
+
+    if (!clerk.user) {
+      window.location.href = '/';
+      return;
+    }
+
+    // Fetch admin data
+    let data;
+    try {
+      const token = await clerk.session.getToken();
+      const res = await fetch('/api/admin', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 403) { showError('Access denied. This page is restricted.'); return; }
+      if (res.status === 401) { showError('Not authenticated.'); return; }
+      if (!res.ok) { showError('Server error: ' + res.status); return; }
+      data = await res.json();
+    } catch (e) {
+      showError('Failed to load data: ' + e.message);
+      return;
+    }
+
+    // Render
+    statusEl.style.display = 'none';
+    dashEl.style.display = 'block';
+
+    const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never';
+    const fmtTs = d => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
+
+    function onboardingBadge(stage) {
+      if (stage === 'Completed') return `<span class="badge badge-green">${stage}</span>`;
+      if (stage === 'New User') return `<span class="badge badge-gray">${stage}</span>`;
+      return `<span class="badge badge-yellow">${stage}</span>`;
+    }
+
+    function pctBar(pct) {
+      const cls = pct >= 80 ? 'good' : pct >= 50 ? 'mid' : 'low';
+      return `<span class="pct-bar">
+        <span class="pct-track"><span class="pct-fill ${cls}" style="width:${pct}%"></span></span>
+        ${pct}%
+      </span>`;
+    }
+
+    function renderTokenRow(label, rarityClass, earned, balance, spent) {
+      return `<tr>
+        <td class="${rarityClass}" style="font-weight:600">${label}</td>
+        <td>${earned}</td>
+        <td>${balance}</td>
+        <td>${spent > 0 ? spent : '<span style="color:#475569">0</span>'}</td>
+      </tr>`;
+    }
+
+    function renderUser(u) {
+      const actRows = u.actStats.map(a => {
+        const pct = a.assigned > 0 ? Math.round((a.completed / a.assigned) * 100) : 0;
+        const failed = a.assigned - a.completed;
+        return `<tr>
+          <td>${a.title}</td>
+          <td class="${a.type === 'legendary' ? 'act-type-legendary' : 'act-type-common'}">${a.type}</td>
+          <td>${a.assigned}</td>
+          <td>${a.completed}</td>
+          <td>${failed > 0 ? `<span style="color:#ef4444">${failed}</span>` : '<span style="color:#475569">0</span>'}</td>
+          <td>${pctBar(pct)}</td>
+        </tr>`;
+      }).join('');
+
+      const hasTokenActivity = u.tokensEarned.common > 0 || u.tokensEarned.legendary > 0 || u.tokensEarned.mythic > 0
+        || u.walletBalance.common > 0 || u.walletBalance.legendary > 0 || u.walletBalance.mythic > 0;
+
+      return `
+        <div class="user-card">
+          <div class="user-card-header">
+            <div>
+              <div class="user-email">${u.email}</div>
+              <div class="user-id">${u.userId}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              ${onboardingBadge(u.onboardingStage)}
+            </div>
+          </div>
+          <div class="user-card-body">
+
+            <div class="stats-grid">
+              <div class="stat-box">
+                <div class="stat-label">Rituals</div>
+                <div class="stat-value">${u.total}</div>
+                <div class="stat-sub">${u.honored} honored</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Completion</div>
+                <div class="stat-value">${u.completionRate}%</div>
+                <div class="stat-sub">${u.total - u.honored} failed</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Streak</div>
+                <div class="stat-value">${u.currentStreak}</div>
+                <div class="stat-sub">Best: ${u.longestStreak}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Last Active</div>
+                <div class="stat-value" style="font-size:0.88rem">${u.lastActive ? u.lastActive : '—'}</div>
+                <div class="stat-sub">${u.lastActive ? fmt(u.lastActive) : 'Never'}</div>
+              </div>
+            </div>
+
+            ${hasTokenActivity ? `
+            <div>
+              <div class="section-label">Tokens</div>
+              <table class="token-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Earned</th>
+                    <th>Balance</th>
+                    <th>Spent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${u.tokensEarned.common > 0 || u.walletBalance.common > 0 ? renderTokenRow('Common', 'rarity-common', u.tokensEarned.common, u.walletBalance.common, u.tokensSpent.common) : ''}
+                  ${u.tokensEarned.legendary > 0 || u.walletBalance.legendary > 0 ? renderTokenRow('Legendary', 'rarity-legendary', u.tokensEarned.legendary, u.walletBalance.legendary, u.tokensSpent.legendary) : ''}
+                  ${u.tokensEarned.mythic > 0 || u.walletBalance.mythic > 0 ? renderTokenRow('Mythic', 'rarity-mythic', u.tokensEarned.mythic, u.walletBalance.mythic, u.tokensSpent.mythic) : ''}
+                </tbody>
+              </table>
+            </div>
+            ` : ''}
+
+            ${u.actStats.length > 0 ? `
+            <div>
+              <div class="section-label">Act Stats</div>
+              <table class="act-table">
+                <thead>
+                  <tr>
+                    <th>Act</th>
+                    <th>Type</th>
+                    <th>Assigned</th>
+                    <th>Completed</th>
+                    <th>Failed</th>
+                    <th>Rate</th>
+                  </tr>
+                </thead>
+                <tbody>${actRows}</tbody>
+              </table>
+            </div>
+            ` : '<div style="color:#475569;font-size:0.82rem">No ritual history yet.</div>'}
+
+          </div>
+        </div>`;
+    }
+
+    const { users, generatedAt } = data;
+    dashEl.innerHTML = `
+      <div class="dash-header">
+        <div>
+          <div class="dash-title">🧿 Ritual Admin</div>
+          <div class="dash-meta">Generated ${fmtTs(generatedAt)}</div>
+        </div>
+        <button class="btn-signout" id="btn-signout">Sign Out</button>
+      </div>
+      <div class="user-count">${users.length} user${users.length !== 1 ? 's' : ''}</div>
+      ${users.map(renderUser).join('')}
+    `;
+
+    document.getElementById('btn-signout').addEventListener('click', async () => {
+      await clerk.signOut();
+      window.location.href = '/';
+    });
+  })();
+  </script>
+</body>
+</html>

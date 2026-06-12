@@ -61,6 +61,7 @@ module.exports = withAuth(async (req, res, userId) => {
       last_purchase_item_rarity text
     )
   `;
+  await sql`ALTER TABLE wallet_v2 ADD COLUMN IF NOT EXISTS streak int NOT NULL DEFAULT 0`;
   await sql`
     CREATE TABLE IF NOT EXISTS settings_v2 (
       user_id                    text PRIMARY KEY,
@@ -143,7 +144,7 @@ module.exports = withAuth(async (req, res, userId) => {
   res.json({
     sessions:   sessionRows,
     tasks:      taskRows,
-    wallet:     walletRows[0] || null,
+    wallet:     walletRows[0] ? { ...walletRows[0], streak: walletRows[0].streak ?? 0 } : null,
     settings:   settingsRows[0] || null,
     storeItems: storeRows.map(r => ({
       id: r.id, name: r.name, desc: r.description, cost: r.cost, rarity: r.rarity,
