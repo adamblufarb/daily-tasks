@@ -1429,22 +1429,28 @@
             <span style="color:var(--subtext);font-size:1.1rem">›</span>
           </div>
         </div>
-      ` : showPickList ? `
+      ` : showPickList ? (() => {
+        const REC_LEGENDARY = new Set(['Family First','The Quiet Hour','No Cigarettes','Sunrise','Sunset','Full Album','Schedule Dinner','Go Offline','Beach Day']);
+        const recCommon    = availableDefaults.map((d, i) => ({ d, i })).filter(({ d }) => !REC_LEGENDARY.has(d.title));
+        const recLegendary = availableDefaults.map((d, i) => ({ d, i })).filter(({ d }) =>  REC_LEGENDARY.has(d.title));
+        const cardHtml = ({ d, i }) => `
+          <div class="pick-default-card" data-pick-default="${i}">
+            <div class="pick-default-info">
+              <div class="pick-default-title">${d.title}</div>
+              <div class="pick-default-desc">${d.description}</div>
+            </div>
+          </div>`;
+        return `
         <div class="pick-list-header" style="margin-bottom:8px">
           <div class="pick-list-title">${availableDefaults.length} act${availableDefaults.length !== 1 ? 's' : ''} available</div>
         </div>
-        <div class="pick-list">
-          ${availableDefaults.length === 0
-            ? `<div class="pick-empty">You already have all available acts in your pool.</div>`
-            : availableDefaults.map((d, i) => `
-              <div class="pick-default-card" data-pick-default="${i}">
-                <div class="pick-default-info">
-                  <div class="pick-default-title">${d.title}</div>
-                  <div class="pick-default-desc">${d.description}</div>
-                </div>
-              </div>`).join('')}
-        </div>
-      ` : (showCustom || showPickEdit) && s.editingTask ? `
+        ${availableDefaults.length === 0 ? `<div class="pick-empty">You already have all available acts in your pool.</div>` : `
+        <div class="pool-section-label label-common" style="margin-top:4px">Recommended Common</div>
+        <div class="pick-list">${recCommon.map(cardHtml).join('') || '<div class="pick-empty">None available</div>'}</div>
+        <div class="pool-section-label label-legendary">Recommended Legendary</div>
+        <div class="pick-list">${recLegendary.map(cardHtml).join('') || '<div class="pick-empty">None available</div>'}</div>
+        `}`;
+      })() : (showCustom || showPickEdit) && s.editingTask ? `
         <div class="new-task-card">
           <div class="new-task-label">New Act</div>
           ${poolEditForm(s.editingTask)}
