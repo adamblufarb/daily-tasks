@@ -1442,9 +1442,9 @@
           </div>`;
         return `
         ${availableDefaults.length === 0 ? `<div class="pick-empty">You already have all available acts in your pool.</div>` : `
-        <div class="pool-section-label label-common" style="margin-top:4px">Recommended Common</div>
+        <div class="pool-section-label label-common" style="margin-top:16px">Recommended Common</div>
         <div class="pick-list">${recCommon.map(cardHtml).join('') || '<div class="pick-empty">None available</div>'}</div>
-        <div class="pool-section-label label-legendary">Recommended Legendary</div>
+        <div class="pool-section-label label-legendary" style="margin-top:24px">Recommended Legendary</div>
         <div class="pick-list">${recLegendary.map(cardHtml).join('') || '<div class="pick-empty">None available</div>'}</div>
         `}`;
       })() : (showCustom || showPickEdit) && s.editingTask ? `
