@@ -576,6 +576,8 @@
     { type: 'legendary', title: 'Full Album',          description: 'Listen to one album without doing anything else' },
     { type: 'legendary', title: 'No Gaming',           description: 'Go full day without any form of video games' },
     { type: 'legendary', title: 'Go Offline',          description: 'No internet until noon' },
+    { type: 'common',    title: 'Schedule Dinner',      description: 'Schedule a dinner with friends' },
+    { type: 'common',    title: 'Beach Day',            description: 'Make time to go to the beach' },
   ];
 
   function displayRarity(r) {
@@ -1913,17 +1915,15 @@
       });
       document.getElementById('btn-enter-leaderboard')?.addEventListener('click', async () => {
         s.leaderboardOpen = true;
-        s.leaderboardLoading = !s.leaderboardData;
+        s.leaderboardLoading = true;
         render();
-        if (!s.leaderboardData) {
-          try {
-            s.leaderboardData = await api('GET', '/api/leaderboard');
-          } catch {
-            s.leaderboardData = { users: [] };
-          }
-          s.leaderboardLoading = false;
-          render();
+        try {
+          s.leaderboardData = await api('GET', '/api/leaderboard');
+        } catch {
+          s.leaderboardData = s.leaderboardData || { users: [] };
         }
+        s.leaderboardLoading = false;
+        render();
       });
     }
 
