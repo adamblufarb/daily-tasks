@@ -2997,6 +2997,24 @@
   clerk.addListener(syncAuth);
   syncAuth();
 
+  // ── Day rollover detection ──
+  // Checks whether the logical "today" has changed (i.e. reset hour crossed).
+  // Runs on visibility restore, window focus, and every 60s while open.
+  function checkDayRollover() {
+    if (!appLoaded || s.loading) return;
+    const current = todayStr();
+    if (current !== s.today) {
+      s.today = current;
+      load(); // re-fetches all data and re-renders
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkDayRollover();
+  });
+  window.addEventListener('focus', checkDayRollover);
+  setInterval(checkDayRollover, 60_000);
+
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 </script>
 </body>
