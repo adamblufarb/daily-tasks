@@ -507,7 +507,7 @@
     /* Tutorial overlay */
     .tutorial-gradient { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 66.67vh; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.40) 50%, transparent 100%); }
     .tutorial-box { position: fixed; bottom: calc(120px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; }
-    .tutorial-box-center { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; text-align: center; }
+    .tutorial-box-center { position: fixed; top: 50%; left: 50%; transform: translate(-50%, calc(-50% - 20px)); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; text-align: center; }
     .tutorial-title { font-size: 1.1rem; font-weight: 500; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
     .tutorial-title .rarity-tag { vertical-align: middle; position: relative; top: -2px; }
   </style>
@@ -2807,7 +2807,7 @@
     if (step.type === 'intro') {
       const box = document.createElement('div');
       box.className = 'tutorial-box-center';
-      box.innerHTML = `${step.emoji ? `<div class="ftue-emoji" style="margin-bottom:16px">${step.emoji}</div>` : ''}<div class="tutorial-title" style="margin-bottom:20px">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.cta || 'Next'}</button>`;
+      box.innerHTML = `${step.emoji ? `<div class="ftue-emoji" style="margin-bottom:16px;font-size:2.5rem;height:auto">${step.emoji}</div>` : ''}<div class="tutorial-title" style="margin-bottom:20px">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.cta || 'Next'}</button>`;
       overlay.appendChild(box);
       document.getElementById('btn-tutorial-cta')?.addEventListener('click', () => {
         s.tab = 'tasks'; s.profileScreen = 'menu';
