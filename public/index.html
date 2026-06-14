@@ -2717,6 +2717,7 @@
   }
 
   function completeTutorial() {
+    const wasRecord = s.tutorialFlow === 'record';
     if (s.tutorialFlow === 'record')   s.hasShownRecordTutorial   = true;
     if (s.tutorialFlow === 'bazaar')   s.hasShownBazaarTutorial   = true;
     if (s.tutorialFlow === 'actpool')  s.hasShownActPoolTutorial  = true;
@@ -2726,6 +2727,8 @@
     document.getElementById('tutorial-overlay')?.remove();
     cleanupTutorial();
     saveSettings();
+    if (wasRecord && !s.hasShownKeyAffixTutorial)
+      setTimeout(() => startTutorial('keyaffix'), 800);
   }
 
   function renderTutorial() {
@@ -3181,11 +3184,10 @@
 
       // Resume any tutorial that wasn't completed before app closed
       if (!s.ftueScreen) {
-        const isAdmin = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
-        if (isAdmin && !s.hasShownKeyAffixTutorial)
-          setTimeout(() => startTutorial('keyaffix'), 800);
-        else if (s.onboardingRitualCount >= 1 && !s.hasShownRecordTutorial)
+        if (s.onboardingRitualCount >= 1 && !s.hasShownRecordTutorial)
           setTimeout(() => startTutorial('record'), 800);
+        else if (s.onboardingRitualCount >= 1 && s.hasShownRecordTutorial && !s.hasShownKeyAffixTutorial)
+          setTimeout(() => startTutorial('keyaffix'), 800);
         else if (s.onboardingRitualCount >= 2 && !s.hasShownBazaarTutorial)
           setTimeout(() => startTutorial('bazaar'), 800);
       }
