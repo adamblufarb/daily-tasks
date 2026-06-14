@@ -2693,10 +2693,10 @@
   ];
 
   const KEY_AFFIX_TUTORIAL = [
-    { type: 'intro',         title: 'You can now edit your Acts',              cta: 'See How' },
-    { type: 'tap-el-box',    elId: 'btn-profile-taskpool',                     title: 'Open your Act Pool' },
-    { type: 'tap-affix-act',                                                   title: 'Tap an Act to edit its Key Affix' },
-    { type: 'info',          title: 'Edit the Key Affix to match your goal',   finish: true },
+    { type: 'intro',         title: 'You can now personalize your Acts',        cta: 'See How', emoji: '✏️' },
+    { type: 'tap-el-box',    elId: 'btn-profile-taskpool',                      title: 'Open your Act Pool' },
+    { type: 'tap-affix-act',                                                    title: 'Tap an Act to customize it' },
+    { type: 'info',          title: 'Set a Key Affix that matches your intention', finish: true },
   ];
 
   function startTutorial(flow) {
@@ -2807,7 +2807,7 @@
     if (step.type === 'intro') {
       const box = document.createElement('div');
       box.className = 'tutorial-box-center';
-      box.innerHTML = `<div class="tutorial-title" style="margin-bottom:20px">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.cta || 'Next'}</button>`;
+      box.innerHTML = `${step.emoji ? `<div class="ftue-emoji" style="margin-bottom:16px">${step.emoji}</div>` : ''}<div class="tutorial-title" style="margin-bottom:20px">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.cta || 'Next'}</button>`;
       overlay.appendChild(box);
       document.getElementById('btn-tutorial-cta')?.addEventListener('click', () => {
         s.tab = 'tasks'; s.profileScreen = 'menu';
