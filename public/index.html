@@ -404,9 +404,10 @@
     .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
     .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
-.btn-craft-action { display: grid; grid-template-columns: 1fr auto; align-items: center; background: #fff; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: flex-start; color: var(--text); }
-    .craft-action-cost { display: flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 0.8rem; font-weight: 400; color: var(--subtext); white-space: nowrap; }
+.btn-craft-action { display: grid; grid-template-columns: 1fr auto; align-items: center; background: #fff; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; overflow: hidden; touch-action: none; user-select: none; }
+    .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: flex-start; color: var(--text); position: relative; z-index: 1; }
+    .craft-action-cost { display: flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 0.8rem; font-weight: 400; color: var(--subtext); white-space: nowrap; position: relative; z-index: 1; }
+    .craft-hold-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0%; pointer-events: none; z-index: 0; }
 
     /* Purchased screen */
     .purchased-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); padding: 40px 24px; text-align: center; background: var(--mythic); }
@@ -1700,11 +1701,13 @@
         <div class="store-wallet-chip mythic" id="craft-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       <button class="btn-primary btn-craft-action" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'}>
+        <div class="craft-hold-fill" id="fill-craft-legendary" style="background:var(--legendary-dark)"></div>
         <span class="craft-action-label">Craft ${rarityTag('legendary')}</span>
         <span class="craft-action-cost">x3 ${rarityTag('common')}</span>
       </button>
       <div style="height:10px"></div>
       <button class="btn-primary btn-craft-action" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'}>
+        <div class="craft-hold-fill" id="fill-craft-mythical" style="background:var(--mythic-dark)"></div>
         <span class="craft-action-label">Craft ${rarityTag('mythic')}</span>
         <span class="craft-action-cost">x3 ${rarityTag('legendary')}</span>
       </button>
@@ -1970,22 +1973,49 @@
         document.getElementById('btn-back-craft')?.addEventListener('click', () => {
           s.storeScreen = 'store'; render();
         });
-        document.getElementById('btn-craft-legendary')?.addEventListener('click', () => {
-          if (s.wallet.common < 3) return;
-          s.wallet.common -= 3;
-          s.wallet.legendary += 1;
-          s.lastCraftResult = 'legendary';
-          render();
-          saveWallet();
-        });
-        document.getElementById('btn-craft-mythical')?.addEventListener('click', () => {
-          if (s.wallet.legendary < 3) return;
-          s.wallet.legendary -= 3;
-          s.wallet.mythic += 1;
-          s.lastCraftResult = 'mythical';
-          render();
-          saveWallet();
-        });
+        function attachCraftHold(btnId, fillId, costKey, gainKey, craftResult) {
+          const btn  = document.getElementById(btnId);
+          const fill = document.getElementById(fillId);
+          if (!btn || !fill || btn.disabled) return;
+          let startTime = null;
+          let animFrame = null;
+          function reset() {
+            if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+            fill.style.width = '0%';
+            btn.style.transform = '';
+            startTime = null;
+          }
+          function animLoop() {
+            const elapsed  = Date.now() - startTime;
+            const progress = Math.min(elapsed / 1500, 1);
+            fill.style.width = (progress * 100) + '%';
+            btn.style.transform = `translateX(${Math.sin(elapsed / 55) * progress * 6}px)`;
+            if (progress < 1) {
+              animFrame = requestAnimationFrame(animLoop);
+            } else {
+              btn.style.transform = '';
+              fill.style.width = '0%';
+              animFrame = null;
+              startTime = null;
+              s.wallet[costKey] -= 3;
+              s.wallet[gainKey] += 1;
+              s.lastCraftResult = craftResult;
+              render();
+              saveWallet();
+            }
+          }
+          btn.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            btn.setPointerCapture(e.pointerId);
+            startTime = Date.now();
+            animFrame = requestAnimationFrame(animLoop);
+          });
+          btn.addEventListener('pointerup',    () => { if (startTime) reset(); });
+          btn.addEventListener('pointercancel', reset);
+          btn.addEventListener('contextmenu',   e => e.preventDefault());
+        }
+        attachCraftHold('btn-craft-legendary', 'fill-craft-legendary', 'common',    'legendary', 'legendary');
+        attachCraftHold('btn-craft-mythical',  'fill-craft-mythical',  'legendary', 'mythic',    'mythical');
         if (s.lastCraftResult) {
           const result = s.lastCraftResult;
           s.lastCraftResult = null;
