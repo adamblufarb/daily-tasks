@@ -209,6 +209,16 @@
     .pool-task-card.card-archived { opacity: 0.55; }
     .pool-task-card.pool-pickable { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
     .pool-task-card.pool-pickable:active { transform: scale(0.98); }
+    /* Key Affix view */
+    .viewact-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+    .viewact-desc { font-size: 0.85rem; color: var(--subtext); line-height: 1.55; }
+    .affix-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+    .affix-input { width: 90px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 1.15rem; font-weight: 700; color: var(--text); background: var(--bg); outline: none; text-align: center; -moz-appearance: textfield; }
+    .affix-input::-webkit-outer-spin-button, .affix-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .affix-input:focus { border-color: var(--common); }
+    .affix-unit { font-size: 1rem; font-weight: 600; color: var(--subtext); }
+    .viewact-no-affix { font-size: 0.88rem; color: var(--subtext); padding: 14px 0 4px; font-style: italic; }
+    .affix-actions { display: flex; gap: 8px; margin-top: 20px; }
     .pool-task-row { display: flex; align-items: center; gap: 10px; }
     .pool-task-info { flex: 1; min-width: 0; }
     .pool-task-title { font-size: 0.95rem; font-weight: 700; }
@@ -563,7 +573,7 @@
     { type: 'common',    title: 'Draw Something',      description: 'Spend 15 minutes drawing anything' },
     { type: 'common',    title: 'Dance',               description: 'Dance for at least 10 minutes, alone or not' },
     { type: 'common',    title: 'Compliment Someone',  description: 'Say something genuinely nice to a real person' },
-    { type: 'common',    title: 'The Quiet Hour',      description: 'One hour of silence. No music, no podcasts, nothing' },
+    { type: 'common',    title: 'The Quiet Hour',      description: '1 hour of silence. No music, no podcasts, nothing' },
     { type: 'common',    title: 'Journal',             description: 'Write something private just for yourself' },
     { type: 'common',    title: 'Meditate',            description: '15 minutes of intentional breathing' },
     { type: 'common',    title: 'No Alcohol',          description: 'Stay alcohol-free today' },
@@ -684,6 +694,7 @@
       hasShownActPoolTutorial: false,
       tutorialFlow: null,
       tutorialStep: 0,
+      viewingTaskId: null,
     };
   }
   let s = initialState();
@@ -937,7 +948,7 @@
     if (screen === 'leaderboard') return htmlLeaderboard();
     if (screen === 'history')     return htmlHistory();
     if (screen === 'store')     return s.storeScreen === 'craft' ? htmlCraft() : htmlStore();
-    if (screen === 'tasks')     return s.profileScreen === 'addact' ? htmlAddAct() : s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
+    if (screen === 'tasks')     return s.profileScreen === 'addact' ? htmlAddAct() : s.profileScreen === 'viewact' ? htmlViewAct() : s.profileScreen === 'taskpool' ? htmlTaskPool() : s.profileScreen === 'storemanage' ? htmlStoreManage() : htmlProfile();
     if (screen === 'concluded') return htmlConcluded();
     if (screen === 'reward')    return htmlReward();
     if (screen === 'bad-luck')  return htmlBadLuck();
@@ -1395,6 +1406,61 @@
       </div>`;
   }
 
+  /* ── Key Affix utilities ── */
+  function parseKeyAffix(desc) {
+    const timeM = desc.match(/\b(\d{1,2}):(\d{2})\b/);
+    if (timeM) return { value: parseInt(timeM[1], 10), unit: ':' + timeM[2], type: 'time' };
+    const patterns = [
+      { re: /\b(\d+)\s+(hours?)\b/i,   type: 'duration' },
+      { re: /\b(\d+)\s+(minutes?)\b/i, type: 'duration' },
+      { re: /\b(\d+)\s+(pages?)\b/i,   type: 'count'    },
+      { re: /\b(\d+)\s+(liters?)\b/i,  type: 'count'    },
+    ];
+    for (const { re, type } of patterns) {
+      const m = desc.match(re);
+      if (m) return { value: parseInt(m[1], 10), unit: m[2], type };
+    }
+    return null;
+  }
+
+  function updateDescWithAffix(desc, affix, newVal) {
+    if (affix.type === 'time') {
+      return desc.replace(/\b\d{1,2}:\d{2}\b/, newVal + affix.unit);
+    }
+    return desc.replace(new RegExp('\\b' + affix.value + '\\b'), String(newVal));
+  }
+
+  /* ── View / Edit Act (Key Affix) ── */
+  function htmlViewAct() {
+    const task = s.tasks.find(t => t.id === s.viewingTaskId);
+    if (!task) return '';
+    const affix = parseKeyAffix(task.description);
+    return `
+      <div class="section-header" style="padding-bottom:8px">
+        <button class="btn-back" id="btn-back-viewact">‹ Act Pool</button>
+      </div>
+      <div class="pool-task-card card-${task.type}${task.type==='legendary'?' legendary-glow':''}" style="margin-bottom:20px">
+        <div class="viewact-title">${task.title}</div>
+        <div class="viewact-desc" id="viewact-desc">${task.description}</div>
+      </div>
+      ${affix ? `
+        <div class="pool-section-label label-common" style="margin-top:4px">Key Affix</div>
+        <div class="affix-row">
+          <input class="affix-input" id="affix-input" type="number" min="${affix.type === 'time' ? 0 : 1}"${affix.type === 'time' ? ' max="23"' : ''} value="${affix.value}" inputmode="numeric">
+          <span class="affix-unit">${affix.unit}</span>
+        </div>
+        <div class="affix-actions">
+          <button class="btn-cancel" id="btn-cancel-viewact">Cancel</button>
+          <button class="btn-save" id="btn-save-affix">Save</button>
+        </div>
+      ` : `
+        <div class="viewact-no-affix">Cannot be edited</div>
+        <div class="affix-actions">
+          <button class="btn-cancel" id="btn-cancel-viewact" style="width:100%">Cancel</button>
+        </div>
+      `}`;
+  }
+
   /* ── Add New Act full page ── */
   function htmlAddAct() {
     const showPickList = s.poolAddMode === 'pick-list';
@@ -1466,6 +1532,7 @@
     const deleting  = s.poolEditMode;
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
+    const isAdmin   = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
 
     // Compute per-task stats from session history
     const stats = {};
@@ -1484,8 +1551,9 @@
     function taskRow(t) {
       const isConfirmingDelete = s.deletingTask === t.id;
       const st = stats[t.id] || { chosen: 0, completed: 0 };
+      const tappable = isAdmin && !deleting && !isConfirmingDelete;
       return `
-        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} data-pool-task-id="${t.id}">
+        <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}${tappable?' pool-pickable':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} data-pool-task-id="${t.id}"${tappable?' data-view-task="'+t.id+'"':''}>
           <div class="pool-task-row">
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
@@ -2336,6 +2404,60 @@
         const description = document.getElementById('edit-desc')?.value.trim();
         if (!title || !s.editingTask?.type) return;
         savePoolTask({ ...s.editingTask, title, description });
+      });
+
+      // View act (Key Affix editing) — admin only
+      document.querySelectorAll('[data-view-task]').forEach(el => {
+        el.addEventListener('click', () => {
+          s.viewingTaskId = el.dataset.viewTask;
+          s.profileScreen = 'viewact';
+          render();
+        });
+      });
+      document.getElementById('btn-back-viewact')?.addEventListener('click', () => {
+        s.viewingTaskId = null; s.profileScreen = 'taskpool'; render();
+      });
+      document.getElementById('btn-cancel-viewact')?.addEventListener('click', () => {
+        s.viewingTaskId = null; s.profileScreen = 'taskpool'; render();
+      });
+      const affixInput = document.getElementById('affix-input');
+      if (affixInput) {
+        const affixTask = s.tasks.find(t => t.id === s.viewingTaskId);
+        const affix = affixTask ? parseKeyAffix(affixTask.description) : null;
+        affixInput.addEventListener('input', e => {
+          const newVal = parseInt(e.target.value, 10);
+          const saveBtn = document.getElementById('btn-save-affix');
+          if (!saveBtn) return;
+          if (isNaN(newVal) || newVal < (affix?.type === 'time' ? 0 : 1)) {
+            saveBtn.classList.remove('save-common', 'save-legendary', 'save-mythic');
+            return;
+          }
+          if (affixTask && affix) {
+            const newDesc = updateDescWithAffix(affixTask.description, affix, newVal);
+            const descEl = document.getElementById('viewact-desc');
+            if (descEl) descEl.textContent = newDesc;
+          }
+          if (newVal !== affix?.value) {
+            saveBtn.classList.add(`save-${affixTask?.type || 'common'}`);
+          } else {
+            saveBtn.classList.remove('save-common', 'save-legendary', 'save-mythic');
+          }
+        });
+      }
+      document.getElementById('btn-save-affix')?.addEventListener('click', async () => {
+        const task = s.tasks.find(t => t.id === s.viewingTaskId);
+        if (!task) return;
+        const affix = parseKeyAffix(task.description);
+        if (!affix) return;
+        const newVal = parseInt(document.getElementById('affix-input')?.value, 10);
+        if (isNaN(newVal) || newVal === affix.value) return;
+        const newDesc = updateDescWithAffix(task.description, affix, newVal);
+        const updatedTask = { ...task, description: newDesc };
+        s.tasks = s.tasks.map(t => t.id === task.id ? updatedTask : t);
+        s.viewingTaskId = null;
+        s.profileScreen = 'taskpool';
+        render();
+        await api('POST', '/api/tasks', updatedTask);
       });
 
       // Testing Tools toggle
