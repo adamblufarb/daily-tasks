@@ -1409,10 +1409,11 @@
   /* ── Key Affix utilities ── */
   function parseKeyAffix(desc) {
     const timeM = desc.match(/\b(\d{1,2}):(\d{2})\b/);
-    if (timeM) return { value: parseInt(timeM[1], 10), unit: ':' + timeM[2], type: 'time' };
+    if (timeM) return { hour: parseInt(timeM[1], 10), minute: parseInt(timeM[2], 10), type: 'time' };
     const patterns = [
       { re: /\b(\d+)\s+(hours?)\b/i,   type: 'duration' },
       { re: /\b(\d+)\s+(minutes?)\b/i, type: 'duration' },
+      { re: /\b(\d+)\s+(glasses?)\b/i, type: 'count'    },
       { re: /\b(\d+)\s+(pages?)\b/i,   type: 'count'    },
       { re: /\b(\d+)\s+(liters?)\b/i,  type: 'count'    },
     ];
@@ -1425,7 +1426,9 @@
 
   function updateDescWithAffix(desc, affix, newVal) {
     if (affix.type === 'time') {
-      return desc.replace(/\b\d{1,2}:\d{2}\b/, newVal + affix.unit);
+      const h = newVal.hour;
+      const m = String(newVal.minute).padStart(2, '0');
+      return desc.replace(/\b\d{1,2}:\d{2}\b/, h + ':' + m);
     }
     return desc.replace(new RegExp('\\b' + affix.value + '\\b'), String(newVal));
   }
@@ -1446,8 +1449,14 @@
       ${affix ? `
         <div class="pool-section-label label-common" style="margin-top:4px">Key Affix</div>
         <div class="affix-row">
-          <input class="affix-input" id="affix-input" type="number" min="${affix.type === 'time' ? 0 : 1}"${affix.type === 'time' ? ' max="23"' : ''} value="${affix.value}" inputmode="numeric">
-          <span class="affix-unit">${affix.unit}</span>
+          ${affix.type === 'time' ? `
+            <input class="affix-input" id="affix-hour" type="number" min="0" max="23" value="${affix.hour}" inputmode="numeric">
+            <span class="affix-unit">:</span>
+            <input class="affix-input" id="affix-minute" type="number" min="0" max="59" value="${affix.minute}" inputmode="numeric">
+          ` : `
+            <input class="affix-input" id="affix-input" type="number" min="1" value="${affix.value}" inputmode="numeric">
+            <span class="affix-unit">${affix.unit}</span>
+          `}
         </div>
         <div class="affix-actions">
           <button class="btn-cancel" id="btn-cancel-viewact">Cancel</button>
@@ -2420,25 +2429,45 @@
       document.getElementById('btn-cancel-viewact')?.addEventListener('click', () => {
         s.viewingTaskId = null; s.profileScreen = 'taskpool'; render();
       });
-      const affixInput = document.getElementById('affix-input');
-      if (affixInput) {
-        const affixTask = s.tasks.find(t => t.id === s.viewingTaskId);
-        const affix = affixTask ? parseKeyAffix(affixTask.description) : null;
-        affixInput.addEventListener('input', e => {
-          const newVal = parseInt(e.target.value, 10);
+      const affixTask = s.tasks.find(t => t.id === s.viewingTaskId);
+      const affix = affixTask ? parseKeyAffix(affixTask.description) : null;
+      if (affix?.type === 'time') {
+        const hourInput = document.getElementById('affix-hour');
+        const minInput  = document.getElementById('affix-minute');
+        const onTimeInput = () => {
+          const h = parseInt(hourInput?.value, 10);
+          const m = parseInt(minInput?.value, 10);
           const saveBtn = document.getElementById('btn-save-affix');
           if (!saveBtn) return;
-          if (isNaN(newVal) || newVal < (affix?.type === 'time' ? 0 : 1)) {
+          if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
             saveBtn.classList.remove('save-common', 'save-legendary', 'save-mythic');
             return;
           }
-          if (affixTask && affix) {
-            const newDesc = updateDescWithAffix(affixTask.description, affix, newVal);
-            const descEl = document.getElementById('viewact-desc');
-            if (descEl) descEl.textContent = newDesc;
+          const newDesc = updateDescWithAffix(affixTask.description, affix, { hour: h, minute: m });
+          const descEl = document.getElementById('viewact-desc');
+          if (descEl) descEl.textContent = newDesc;
+          if (h !== affix.hour || m !== affix.minute) {
+            saveBtn.classList.add(`save-${affixTask.type || 'common'}`);
+          } else {
+            saveBtn.classList.remove('save-common', 'save-legendary', 'save-mythic');
           }
-          if (newVal !== affix?.value) {
-            saveBtn.classList.add(`save-${affixTask?.type || 'common'}`);
+        };
+        hourInput?.addEventListener('input', onTimeInput);
+        minInput?.addEventListener('input', onTimeInput);
+      } else if (affix) {
+        document.getElementById('affix-input')?.addEventListener('input', e => {
+          const newVal = parseInt(e.target.value, 10);
+          const saveBtn = document.getElementById('btn-save-affix');
+          if (!saveBtn) return;
+          if (isNaN(newVal) || newVal < 1) {
+            saveBtn.classList.remove('save-common', 'save-legendary', 'save-mythic');
+            return;
+          }
+          const newDesc = updateDescWithAffix(affixTask.description, affix, newVal);
+          const descEl = document.getElementById('viewact-desc');
+          if (descEl) descEl.textContent = newDesc;
+          if (newVal !== affix.value) {
+            saveBtn.classList.add(`save-${affixTask.type || 'common'}`);
           } else {
             saveBtn.classList.remove('save-common', 'save-legendary', 'save-mythic');
           }
@@ -2449,9 +2478,17 @@
         if (!task) return;
         const affix = parseKeyAffix(task.description);
         if (!affix) return;
-        const newVal = parseInt(document.getElementById('affix-input')?.value, 10);
-        if (isNaN(newVal) || newVal === affix.value) return;
-        const newDesc = updateDescWithAffix(task.description, affix, newVal);
+        let newDesc;
+        if (affix.type === 'time') {
+          const h = parseInt(document.getElementById('affix-hour')?.value, 10);
+          const m = parseInt(document.getElementById('affix-minute')?.value, 10);
+          if (isNaN(h) || isNaN(m) || (h === affix.hour && m === affix.minute)) return;
+          newDesc = updateDescWithAffix(task.description, affix, { hour: h, minute: m });
+        } else {
+          const newVal = parseInt(document.getElementById('affix-input')?.value, 10);
+          if (isNaN(newVal) || newVal === affix.value) return;
+          newDesc = updateDescWithAffix(task.description, affix, newVal);
+        }
         const updatedTask = { ...task, description: newDesc };
         s.tasks = s.tasks.map(t => t.id === task.id ? updatedTask : t);
         s.viewingTaskId = null;
