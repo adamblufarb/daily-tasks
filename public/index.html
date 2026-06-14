@@ -1546,8 +1546,6 @@
     const deleting  = s.poolEditMode;
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
-    const isAdmin   = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
-
     // Compute per-task stats from session history
     const stats = {};
     for (const sess of s.sessions) {
@@ -1565,7 +1563,7 @@
     function taskRow(t) {
       const isConfirmingDelete = s.deletingTask === t.id;
       const st = stats[t.id] || { chosen: 0, completed: 0 };
-      const tappable = isAdmin && !deleting && !isConfirmingDelete;
+      const tappable = !deleting && !isConfirmingDelete;
       return `
         <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}${tappable?' pool-pickable':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} data-pool-task-id="${t.id}"${tappable?' data-view-task="'+t.id+'"':''}>
           <div class="pool-task-row">
@@ -2849,11 +2847,9 @@
       }
     }
 
-    // tap-affix-act: find first act with a Key Affix, highlight it, arrow after scroll, bottom text box
+    // tap-affix-act: highlight the first act card in the pool
     if (step.type === 'tap-affix-act') {
-      const active = s.tasks.filter(t => !t.archived);
-      const affixTask = active.find(t => parseKeyAffix(t.description));
-      const el = affixTask ? document.querySelector(`[data-view-task="${affixTask.id}"]`) : null;
+      const el = document.querySelector('[data-view-task]');
       if (el) {
         el.style.position = 'relative';
         el.style.zIndex   = '301';
