@@ -507,6 +507,7 @@
     /* Tutorial overlay */
     .tutorial-gradient { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 66.67vh; pointer-events: none; background: linear-gradient(to top, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.40) 50%, transparent 100%); }
     .tutorial-box { position: fixed; bottom: calc(120px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; }
+    .tutorial-box-center { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: calc(100% - 40px); max-width: 440px; background: #fff; border-radius: var(--radius); padding: 24px; pointer-events: all; text-align: center; }
     .tutorial-title { font-size: 1.1rem; font-weight: 500; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
     .tutorial-title .rarity-tag { vertical-align: middle; position: relative; top: -2px; }
   </style>
@@ -692,6 +693,7 @@
       hasShownRecordTutorial: false,
       hasShownBazaarTutorial: false,
       hasShownActPoolTutorial: false,
+      hasShownKeyAffixTutorial: false,
       tutorialFlow: null,
       tutorialStep: 0,
       viewingTaskId: null,
@@ -1306,6 +1308,9 @@
         <div style="display:flex;gap:8px">
           <button class="btn-primary" id="btn-test-record" style="flex:1;font-size:0.85rem;padding:13px">Unlock Record</button>
           <button class="btn-primary" id="btn-test-bazaar" style="flex:1;font-size:0.85rem;padding:13px">Unlock Bazaar</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-primary" id="btn-test-keyaffix" style="flex:1;font-size:0.85rem;padding:13px">Unlock Key Affix Tutorial</button>
         </div>
         <div class="testing-group-label danger">Danger Zone</div>
         ${s.showResetConfirm ? `
@@ -2516,6 +2521,7 @@
       // Tutorial replay
       document.getElementById('btn-test-record')?.addEventListener('click', () => startTutorial('record'));
       document.getElementById('btn-test-bazaar')?.addEventListener('click', () => startTutorial('bazaar'));
+      document.getElementById('btn-test-keyaffix')?.addEventListener('click', () => startTutorial('keyaffix'));
     }
   }
 
@@ -2525,9 +2531,10 @@
       reset_hour: RESET_HOUR,
       has_completed_onboarding: s.hasCompletedOnboarding,
       onboarding_ritual_count: s.onboardingRitualCount,
-      has_shown_record_tutorial:  s.hasShownRecordTutorial,
-      has_shown_bazaar_tutorial:  s.hasShownBazaarTutorial,
-      has_shown_actpool_tutorial: s.hasShownActPoolTutorial,
+      has_shown_record_tutorial:    s.hasShownRecordTutorial,
+      has_shown_bazaar_tutorial:    s.hasShownBazaarTutorial,
+      has_shown_actpool_tutorial:   s.hasShownActPoolTutorial,
+      has_shown_key_affix_tutorial: s.hasShownKeyAffixTutorial,
     });
   }
 
@@ -2685,6 +2692,13 @@
     { type: 'highlight', elId: 'tutorial-wallet-mythic',    title: `Spend ${rarityTag('mythic')} Tokens on exclusive Offerings`, finish: true },
   ];
 
+  const KEY_AFFIX_TUTORIAL = [
+    { type: 'intro',         title: 'You can now edit your Acts',              cta: 'See How' },
+    { type: 'tap-el-box',    elId: 'btn-profile-taskpool',                     title: 'Open your Act Pool' },
+    { type: 'tap-affix-act',                                                   title: 'Tap an Act to edit its Key Affix' },
+    { type: 'info',          title: 'Edit the Key Affix to match your goal',   finish: true },
+  ];
+
   function startTutorial(flow) {
     s.tutorialFlow = flow;
     s.tutorialStep = 0;
@@ -2703,9 +2717,10 @@
   }
 
   function completeTutorial() {
-    if (s.tutorialFlow === 'record')  s.hasShownRecordTutorial  = true;
-    if (s.tutorialFlow === 'bazaar')  s.hasShownBazaarTutorial  = true;
-    if (s.tutorialFlow === 'actpool') s.hasShownActPoolTutorial = true;
+    if (s.tutorialFlow === 'record')   s.hasShownRecordTutorial   = true;
+    if (s.tutorialFlow === 'bazaar')   s.hasShownBazaarTutorial   = true;
+    if (s.tutorialFlow === 'actpool')  s.hasShownActPoolTutorial  = true;
+    if (s.tutorialFlow === 'keyaffix') s.hasShownKeyAffixTutorial = true;
     s.tutorialFlow = null;
     s.tutorialStep = 0;
     document.getElementById('tutorial-overlay')?.remove();
@@ -2718,9 +2733,10 @@
     cleanupTutorial();
 
     if (!s.tutorialFlow) return;
-    const steps = s.tutorialFlow === 'record'  ? RECORD_TUTORIAL
-                : s.tutorialFlow === 'bazaar'  ? BAZAAR_TUTORIAL
-                : s.tutorialFlow === 'actpool' ? ACT_POOL_TUTORIAL
+    const steps = s.tutorialFlow === 'record'   ? RECORD_TUTORIAL
+                : s.tutorialFlow === 'bazaar'   ? BAZAAR_TUTORIAL
+                : s.tutorialFlow === 'actpool'  ? ACT_POOL_TUTORIAL
+                : s.tutorialFlow === 'keyaffix' ? KEY_AFFIX_TUTORIAL
                 : [];
     const step  = steps[s.tutorialStep];
     if (!step) { completeTutorial(); return; }
@@ -2728,15 +2744,15 @@
     const overlay = document.createElement('div');
     overlay.id = 'tutorial-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:300;pointer-events:all;';
-    // Backdrop for tap-target and highlight steps; plain info steps keep the screen visible
-    if (step.type === 'tap-tab' || step.type === 'tap-el' || step.type === 'highlight') {
+    // Solid backdrop for tap-target, highlight, intro, and new key-affix step types
+    if (step.type === 'tap-tab' || step.type === 'tap-el' || step.type === 'highlight' ||
+        step.type === 'intro'   || step.type === 'tap-el-box' || step.type === 'tap-affix-act') {
       const backdrop = document.createElement('div');
       backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.82);pointer-events:all;';
       overlay.appendChild(backdrop);
-      // Match status bar to dark overlay so it doesn't show as a black bar
       document.querySelector('meta[name="theme-color"]').content = '#151515';
     }
-    // Gradient only on info steps — highlight steps already have a black overlay
+    // Gradient only on info steps
     if (step.type === 'info') {
       const grad = document.createElement('div');
       grad.className = 'tutorial-gradient';
@@ -2772,16 +2788,88 @@
         const rect = el.getBoundingClientRect();
         const cx   = Math.round(rect.left + rect.width / 2);
         const topY = Math.round(rect.bottom + 12);
-        // Arrow: centered directly under the element, position unchanged
         const arrow = document.createElement('div');
         arrow.style.cssText = `position:fixed;left:${cx}px;top:${topY}px;transform:translateX(-50%);z-index:302;color:#fff;pointer-events:none;font-size:1.6rem;line-height:1;`;
         arrow.textContent = '↑';
         overlay.appendChild(arrow);
-        // Label: right edge flush with arrow centre (extends leftward, never clips right)
         const lbl = document.createElement('div');
         lbl.style.cssText = `position:fixed;left:${cx}px;top:${topY + 34}px;transform:translateX(calc(-100% + 12px));z-index:302;color:#fff;pointer-events:none;font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;`;
         lbl.textContent = `Tap ${step.label}`;
         overlay.appendChild(lbl);
+        el.addEventListener('click', () => {
+          s.tutorialStep++;
+          requestAnimationFrame(() => renderTutorial());
+        }, { once: true });
+      }
+    }
+
+    // intro: full black overlay + centered box + custom CTA, navigates before advancing
+    if (step.type === 'intro') {
+      const box = document.createElement('div');
+      box.className = 'tutorial-box-center';
+      box.innerHTML = `<div class="tutorial-title" style="margin-bottom:20px">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.cta || 'Next'}</button>`;
+      overlay.appendChild(box);
+      document.getElementById('btn-tutorial-cta')?.addEventListener('click', () => {
+        s.tab = 'tasks'; s.profileScreen = 'menu';
+        render();
+        s.tutorialStep++;
+        renderTutorial();
+      });
+    }
+
+    // tap-el-box: highlight element, scroll it into top 2/3, arrow after scroll, bottom text box, user taps element to advance
+    if (step.type === 'tap-el-box') {
+      const el = document.getElementById(step.elId);
+      if (el) {
+        el.style.position = 'relative';
+        el.style.zIndex   = '301';
+        const box = document.createElement('div');
+        box.className = 'tutorial-box';
+        box.innerHTML = `<div class="tutorial-title" style="margin-bottom:0">${step.title}</div>`;
+        overlay.appendChild(box);
+        setTimeout(() => {
+          const rect = el.getBoundingClientRect();
+          window.scrollBy({ top: rect.top - window.innerHeight * 0.30, behavior: 'smooth' });
+          setTimeout(() => {
+            const r2 = el.getBoundingClientRect();
+            const cx = Math.round(r2.left + r2.width / 2);
+            const arrow = document.createElement('div');
+            arrow.style.cssText = `position:fixed;left:${cx}px;top:${Math.round(r2.bottom + 12)}px;transform:translateX(-50%);z-index:302;color:#fff;pointer-events:none;font-size:1.6rem;line-height:1;`;
+            arrow.textContent = '↑';
+            overlay.appendChild(arrow);
+          }, 380);
+        }, 50);
+        el.addEventListener('click', () => {
+          s.tutorialStep++;
+          requestAnimationFrame(() => renderTutorial());
+        }, { once: true });
+      }
+    }
+
+    // tap-affix-act: find first act with a Key Affix, highlight it, arrow after scroll, bottom text box
+    if (step.type === 'tap-affix-act') {
+      const active = s.tasks.filter(t => !t.archived);
+      const affixTask = active.find(t => parseKeyAffix(t.description));
+      const el = affixTask ? document.querySelector(`[data-view-task="${affixTask.id}"]`) : null;
+      if (el) {
+        el.style.position = 'relative';
+        el.style.zIndex   = '301';
+        const box = document.createElement('div');
+        box.className = 'tutorial-box';
+        box.innerHTML = `<div class="tutorial-title" style="margin-bottom:0">${step.title}</div>`;
+        overlay.appendChild(box);
+        setTimeout(() => {
+          const rect = el.getBoundingClientRect();
+          window.scrollBy({ top: rect.top - window.innerHeight * 0.30, behavior: 'smooth' });
+          setTimeout(() => {
+            const r2 = el.getBoundingClientRect();
+            const cx = Math.round(r2.left + r2.width / 2);
+            const arrow = document.createElement('div');
+            arrow.style.cssText = `position:fixed;left:${cx}px;top:${Math.round(r2.bottom + 12)}px;transform:translateX(-50%);z-index:302;color:#fff;pointer-events:none;font-size:1.6rem;line-height:1;`;
+            arrow.textContent = '↑';
+            overlay.appendChild(arrow);
+          }, 380);
+        }, 50);
         el.addEventListener('click', () => {
           s.tutorialStep++;
           requestAnimationFrame(() => renderTutorial());
@@ -2795,8 +2883,6 @@
         if (el) {
           el.style.position = 'relative';
           el.style.zIndex   = '301';
-          // Element stays interactive — user can click it during the tutorial
-          // Scroll so element sits at ~30% from top, keeping it above the tutorial box
           setTimeout(() => {
             const rect = el.getBoundingClientRect();
             window.scrollBy({ top: rect.top - window.innerHeight * 0.30, behavior: 'smooth' });
@@ -3043,9 +3129,10 @@
         s.today = todayStr();
         s.hasCompletedOnboarding   = data.settings.has_completed_onboarding   ?? false;
         s.onboardingRitualCount    = data.settings.onboarding_ritual_count    ?? 0;
-        s.hasShownRecordTutorial   = data.settings.has_shown_record_tutorial   ?? false;
-        s.hasShownBazaarTutorial   = data.settings.has_shown_bazaar_tutorial  ?? false;
-        s.hasShownActPoolTutorial  = data.settings.has_shown_actpool_tutorial ?? false;
+        s.hasShownRecordTutorial    = data.settings.has_shown_record_tutorial    ?? false;
+        s.hasShownBazaarTutorial    = data.settings.has_shown_bazaar_tutorial   ?? false;
+        s.hasShownActPoolTutorial   = data.settings.has_shown_actpool_tutorial  ?? false;
+        s.hasShownKeyAffixTutorial  = data.settings.has_shown_key_affix_tutorial ?? false;
       }
 
       if (data.profile) {
@@ -3094,7 +3181,10 @@
 
       // Resume any tutorial that wasn't completed before app closed
       if (!s.ftueScreen) {
-        if (s.onboardingRitualCount >= 1 && !s.hasShownRecordTutorial)
+        const isAdmin = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
+        if (isAdmin && !s.hasShownKeyAffixTutorial)
+          setTimeout(() => startTutorial('keyaffix'), 800);
+        else if (s.onboardingRitualCount >= 1 && !s.hasShownRecordTutorial)
           setTimeout(() => startTutorial('record'), 800);
         else if (s.onboardingRitualCount >= 2 && !s.hasShownBazaarTutorial)
           setTimeout(() => startTutorial('bazaar'), 800);
