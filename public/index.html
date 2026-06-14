@@ -697,7 +697,10 @@
       const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
       if (pending) return 'concluded';
     }
-    if (s.activePlanId && s.sessions.find(x => x.id === s.activePlanId)) return 'active';
+    if (s.activePlanId) {
+      const plan = s.sessions.find(x => x.id === s.activePlanId);
+      if (plan && plan.date === s.today) return 'active';
+    }
     return 'pick';
   }
 
@@ -1974,6 +1977,7 @@
       document.getElementById('btn-acknowledge')?.addEventListener('click', async () => {
         s.pendingReward = null;
         s.overlayScreen = null;
+        s.today = todayStr();
         let advancedOnboarding = false;
         if (!s.hasCompletedOnboarding) {
           s.onboardingRitualCount++;
@@ -2473,6 +2477,7 @@
     }
     s.pendingReward = null;
     s.overlayScreen = null;
+    s.today = todayStr();
     let advancedOnboarding = false;
     if (!s.hasCompletedOnboarding) {
       s.onboardingRitualCount++;
@@ -3000,23 +3005,64 @@
   clerk.addListener(syncAuth);
   syncAuth();
 
-  // ── Day rollover detection ──
-  // Checks whether the logical "today" has changed (i.e. reset hour crossed).
-  // Runs on visibility restore, window focus, and every 60s while open.
-  function checkDayRollover() {
+  // ── Centralized state evaluation ──
+  // Called after claiming tokens, on visibility restore, on focus, every 60s,
+  // and at exact reset/grace-end boundaries so the correct screen always shows.
+  function evaluateState() {
     if (!appLoaded || s.loading) return;
-    const current = todayStr();
-    if (current !== s.today) {
-      s.today = current;
-      load(); // re-fetches all data and re-renders
+
+    const newToday = todayStr();
+    if (newToday !== s.today) {
+      s.today = newToday;
+      load(); // full refresh on new day
+      return;
+    }
+
+    // Auto-fail any stale active sessions now that grace period has ended
+    if (!isInGracePeriod()) {
+      const stale = s.sessions.filter(x => x.status === 'active' && x.date !== s.today);
+      if (stale.length) {
+        s.sessions = s.sessions.map(x =>
+          stale.find(st => st.id === x.id) ? { ...x, status: 'done', completed_ids: [] } : x
+        );
+        stale.forEach(x =>
+          api('PATCH', '/api/sessions', { id: x.id, completed_ids: [], status: 'done' })
+        );
+        render();
+      }
     }
   }
 
+  // Schedules a one-shot timer to fire at the next significant boundary
+  // (reset time or grace-end time), then reschedules itself.
+  function scheduleNextBoundary() {
+    const now = new Date();
+    const elapsedMins = now.getHours() * 60 + now.getMinutes();
+    const elapsedSecs = elapsedMins * 60 + now.getSeconds();
+    const resetSecs    = RESET_HOUR * 3600;
+    const graceEndSecs = (RESET_HOUR + GRACE_HOURS) * 3600;
+
+    let secsUntilNext;
+    if (elapsedSecs < resetSecs) {
+      secsUntilNext = resetSecs - elapsedSecs;
+    } else if (elapsedSecs < graceEndSecs) {
+      secsUntilNext = graceEndSecs - elapsedSecs;
+    } else {
+      secsUntilNext = 86400 - elapsedSecs + resetSecs; // tomorrow's reset
+    }
+
+    setTimeout(() => {
+      evaluateState();
+      scheduleNextBoundary();
+    }, Math.max(secsUntilNext * 1000, 1000));
+  }
+
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') checkDayRollover();
+    if (document.visibilityState === 'visible') evaluateState();
   });
-  window.addEventListener('focus', checkDayRollover);
-  setInterval(checkDayRollover, 60_000);
+  window.addEventListener('focus', evaluateState);
+  setInterval(evaluateState, 60_000);
+  scheduleNextBoundary();
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 </script>
