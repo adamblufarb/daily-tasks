@@ -1371,13 +1371,6 @@
           <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
       </div>
-      ${!storeEditing ? `
-      <div class="store-card" id="btn-enter-store-edit"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
-        <div class="store-card-top">
-          <div class="store-card-name">Edit Offering</div>
-          <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
-        </div>
-      </div>` : ''}`}
       <div class="pool-section-label label-common">Bazaar Offerings</div>
       ${items.map(storeRow).join('')}
       <div style="height:16px"></div>
