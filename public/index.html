@@ -1453,7 +1453,7 @@
       </div>
       ${affix ? `
         <div class="pool-section-label label-common" style="margin-top:4px">Key Affix</div>
-        <div class="affix-row">
+        <div class="affix-row" id="affix-row">
           ${affix.type === 'time' ? `
             <input class="affix-input" id="affix-hour" type="number" min="0" max="23" value="${affix.hour}" inputmode="numeric">
             <span class="affix-unit">:</span>
@@ -2694,7 +2694,7 @@
     { type: 'intro',         title: 'You can now personalize your Acts',           cta: 'See How', emoji: '✏️' },
     { type: 'tap-el-box',    elId: 'btn-profile-taskpool',                         title: 'Open your Act Pool' },
     { type: 'tap-affix-act',                                                        title: 'Tap an Act to customize it' },
-    { type: 'intro',         title: 'Set a Key Affix that matches your intention', cta: 'Finish', finish: true },
+    { type: 'info',          title: 'Set a Key Affix that matches your intention', finish: true, elId: 'affix-row' },
   ];
 
   function startTutorial(flow) {
@@ -2811,7 +2811,6 @@
       box.innerHTML = `${step.emoji ? `<div class="ftue-emoji" style="margin-bottom:16px;font-size:2.5rem;height:auto">${step.emoji}</div>` : ''}<div class="tutorial-title" style="margin-bottom:20px">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.cta || 'Next'}</button>`;
       overlay.appendChild(box);
       document.getElementById('btn-tutorial-cta')?.addEventListener('click', () => {
-        if (step.finish) { completeTutorial(); return; }
         s.tab = 'tasks'; s.profileScreen = 'menu';
         render();
         s.tutorialStep++;
@@ -2878,15 +2877,17 @@
     }
 
     if (step.type === 'info' || step.type === 'highlight') {
-      if (step.type === 'highlight') {
+      if (step.elId) {
         const el = document.getElementById(step.elId);
         if (el) {
           el.style.position = 'relative';
           el.style.zIndex   = '301';
-          setTimeout(() => {
-            const rect = el.getBoundingClientRect();
-            window.scrollBy({ top: rect.top - window.innerHeight * 0.30, behavior: 'smooth' });
-          }, 50);
+          if (step.type === 'highlight') {
+            setTimeout(() => {
+              const rect = el.getBoundingClientRect();
+              window.scrollBy({ top: rect.top - window.innerHeight * 0.30, behavior: 'smooth' });
+            }, 50);
+          }
           if (step.finish) {
             el.addEventListener('click', () => completeTutorial(), { once: true });
           }
