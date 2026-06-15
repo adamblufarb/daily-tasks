@@ -925,14 +925,18 @@
     const isPlanDone    = plan?.status === 'done';
     const isPlanActive  = plan?.status === 'active';
     const isMythicPlan  = isPlanActive && planTasks.length === 5;
-    const isDoneForToday = isPlanDone;
+    const isHonored     = isPlanDone && planTasks.length > 0 && planCompleted.length === planTasks.length;
+    const isFailed      = isPlanDone && !isHonored;
     const todayBtn = document.querySelector('.tab-btn[data-tab="today"]');
     if (todayBtn) {
       const iconEl  = todayBtn.querySelector('.tab-icon');
       const labelEl = todayBtn.querySelector('#tab-today-label');
-      if (isDoneForToday) {
+      if (isHonored) {
         if (iconEl)  iconEl.textContent  = '🤝';
         if (labelEl) labelEl.textContent = 'Honored';
+      } else if (isFailed) {
+        if (iconEl)  iconEl.textContent  = '🥀';
+        if (labelEl) labelEl.textContent = 'Failed';
       } else if (isPlanActive) {
         if (iconEl)  iconEl.textContent  = isMythicPlan ? '🔱' : '🧿';
         if (labelEl) labelEl.textContent = 'Active';
@@ -1063,10 +1067,11 @@
 
     // ── Done-for-today (already submitted) ──
     if (todaySess.status === 'done') {
+      const isHonoredToday = completedIds.length === tasks.length && tasks.length > 0;
       return `
         <div class="home-header">
-          <div class="home-emoji">🤝</div>
-          <div class="home-title">Ritual Honored</div>
+          <div class="home-emoji">${isHonoredToday ? '🤝' : '🥀'}</div>
+          <div class="home-title">${isHonoredToday ? 'Ritual Honored' : 'Ritual Failed'}</div>
           <div class="home-sub">Come back tomorrow</div>
         </div>
         <div class="tasks-label">Committed Acts</div>
