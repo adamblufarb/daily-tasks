@@ -23,10 +23,17 @@ module.exports = async (req, res) => {
   const email = requestingUser?.emailAddresses?.[0]?.emailAddress;
   if (email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Forbidden' });
 
-  const [sessions, wallets, settings] = await Promise.all([
+  const [sessions, wallets, settings, editedActRows] = await Promise.all([
     sql`SELECT * FROM daily_sessions_v2 ORDER BY user_id, date ASC`,
     sql`SELECT * FROM wallet_v2`,
     sql`SELECT * FROM settings_v2`,
+    sql`
+      SELECT id, title, type, SUM(edit_count) AS total_edits
+      FROM tasks_v2
+      WHERE edit_count > 0
+      GROUP BY id, title, type
+      ORDER BY total_edits DESC
+    `,
   ]);
 
   const allUserIds = [...new Set([
@@ -125,5 +132,23 @@ module.exports = async (req, res) => {
     };
   });
 
-  res.json({ users, generatedAt: new Date().toISOString() });
+  // Aggregate act popularity across all users
+  const globalActMap = {};
+  for (const user of users) {
+    for (const act of user.actStats) {
+      const key = act.title;
+      if (!globalActMap[key]) globalActMap[key] = { title: act.title, type: act.type, selected: 0, completed: 0 };
+      globalActMap[key].selected += act.assigned;
+      globalActMap[key].completed += act.completed;
+    }
+  }
+  const globalActStats = Object.values(globalActMap).sort((a, b) => b.selected - a.selected);
+
+  const editedActs = editedActRows.map(r => ({
+    title: r.title,
+    type: r.type,
+    totalEdits: Number(r.total_edits),
+  }));
+
+  res.json({ users, globalActStats, editedActs, generatedAt: new Date().toISOString() });
 };

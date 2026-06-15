@@ -2536,7 +2536,7 @@
         s.viewingTaskId = null;
         s.profileScreen = 'taskpool';
         render();
-        await api('POST', '/api/tasks', updatedTask);
+        await api('POST', '/api/tasks', { ...updatedTask, is_affix_edit: true });
       });
 
       // Testing Tools toggle

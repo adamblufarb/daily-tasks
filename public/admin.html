@@ -178,6 +178,52 @@
 
     .divider { height: 1px; background: #1e2535; }
 
+    .global-card {
+      background: #161b27;
+      border: 1px solid #1e2535;
+      border-radius: 14px;
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .global-card-header {
+      padding: 13px 20px;
+      background: #1a2032;
+      border-bottom: 1px solid #1e2535;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+    }
+
+    .global-card table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .global-card th {
+      text-align: left;
+      color: #475569;
+      font-weight: 500;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 8px 16px;
+      border-bottom: 1px solid #1e2535;
+    }
+
+    .global-card td {
+      padding: 8px 16px;
+      border-bottom: 1px solid #1a2032;
+      color: #cbd5e1;
+    }
+
+    .global-card tr:last-child td { border-bottom: none; }
+
+    .rank-num { color: #334155; font-size: 0.75rem; width: 28px; }
+
     .spinner {
       width: 32px; height: 32px;
       border: 3px solid #1e2535;
@@ -367,7 +413,7 @@
         </div>`;
     }
 
-    const { users, generatedAt } = data;
+    const { users, globalActStats, editedActs, generatedAt } = data;
     dashEl.innerHTML = `
       <div class="dash-header">
         <div>
@@ -377,6 +423,58 @@
         <button class="btn-signout" id="btn-signout">Sign Out</button>
       </div>
       <div class="user-count">${users.length} user${users.length !== 1 ? 's' : ''}</div>
+
+      ${globalActStats.length > 0 ? `
+      <div class="global-card">
+        <div class="global-card-header">Popular Acts</div>
+        <table>
+          <thead>
+            <tr>
+              <th class="rank-num">#</th>
+              <th>Act</th>
+              <th>Type</th>
+              <th>Selected</th>
+              <th>Completed</th>
+              <th>Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${globalActStats.map((a, i) => {
+              const pct = a.selected > 0 ? Math.round((a.completed / a.selected) * 100) : 0;
+              return `<tr>
+                <td class="rank-num">${i + 1}</td>
+                <td>${a.title}</td>
+                <td class="${a.type === 'legendary' ? 'act-type-legendary' : 'act-type-common'}">${a.type}</td>
+                <td>${a.selected}</td>
+                <td>${a.completed}</td>
+                <td>${pctBar(pct)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+
+      ${editedActs.length > 0 ? `
+      <div class="global-card">
+        <div class="global-card-header">Key Affix Edits</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Act</th>
+              <th>Type</th>
+              <th>Times Edited</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${editedActs.map(a => `<tr>
+              <td>${a.title}</td>
+              <td class="${a.type === 'legendary' ? 'act-type-legendary' : 'act-type-common'}">${a.type}</td>
+              <td style="font-weight:600;color:#f1f5f9">${a.totalEdits}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+
       ${users.map(renderUser).join('')}
     `;
 
