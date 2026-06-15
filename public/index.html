@@ -536,6 +536,18 @@
     <button class="tab-btn" id="tab-store" data-tab="store"><span class="tab-icon">🕌</span><span>Bazaar</span></button>
   </div>
 </div>
+<script>
+  try {
+    const saved = localStorage.getItem('last_ritual_tab');
+    if (saved) {
+      const [icon, label] = saved.split('|');
+      const iconEl  = document.querySelector('.tab-btn[data-tab="today"] .tab-icon');
+      const labelEl = document.getElementById('tab-today-label');
+      if (iconEl && icon)   iconEl.textContent  = icon;
+      if (labelEl && label) labelEl.textContent = label;
+    }
+  } catch(e) {}
+</script>
 
 <script
   data-clerk-publishable-key="pk_test_d29ya2FibGUtcGVsaWNhbi0xOC5jbGVyay5hY2NvdW50cy5kZXYk"
@@ -905,7 +917,7 @@
     document.querySelector('meta[name="theme-color"]').content = s.ftueScreen === 'splash' ? '#7c8494' : '#f0f4ff';
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
-      b.classList.toggle('active', b.dataset.tab === s.tab));
+      b.classList.toggle('active', screen !== 'loading' && b.dataset.tab === s.tab));
     // Tab locking during onboarding
     document.getElementById('tab-history')?.classList.toggle('tab-locked', s.onboardingRitualCount < 1);
     document.getElementById('tab-store')?.classList.toggle('tab-locked', s.onboardingRitualCount < 2);
@@ -927,23 +939,17 @@
     const isMythicPlan  = isPlanActive && planTasks.length === 5;
     const isHonored     = isPlanDone && planTasks.length > 0 && planCompleted.length === planTasks.length;
     const isFailed      = isPlanDone && !isHonored;
+    const ritualIcon  = isHonored ? '🤝' : isFailed ? '🥀' : isPlanActive ? (isMythicPlan ? '🔱' : '🧿') : '🎲';
+    const ritualLabel = isHonored ? 'Honored' : isFailed ? 'Failed' : isPlanActive ? 'Active' : 'Ritual';
+    if (!s.loading) {
+      try { localStorage.setItem('last_ritual_tab', ritualIcon + '|' + ritualLabel); } catch(e) {}
+    }
     const todayBtn = document.querySelector('.tab-btn[data-tab="today"]');
     if (todayBtn) {
       const iconEl  = todayBtn.querySelector('.tab-icon');
       const labelEl = todayBtn.querySelector('#tab-today-label');
-      if (isHonored) {
-        if (iconEl)  iconEl.textContent  = '🤝';
-        if (labelEl) labelEl.textContent = 'Honored';
-      } else if (isFailed) {
-        if (iconEl)  iconEl.textContent  = '🥀';
-        if (labelEl) labelEl.textContent = 'Failed';
-      } else if (isPlanActive) {
-        if (iconEl)  iconEl.textContent  = isMythicPlan ? '🔱' : '🧿';
-        if (labelEl) labelEl.textContent = 'Active';
-      } else {
-        if (iconEl)  iconEl.textContent  = '🎲';
-        if (labelEl) labelEl.textContent = 'Ritual';
-      }
+      if (iconEl)  iconEl.textContent  = ritualIcon;
+      if (labelEl) labelEl.textContent = ritualLabel;
       todayBtn.classList.toggle('mythic-active', isMythicPlan);
     }
     bind(screen);
