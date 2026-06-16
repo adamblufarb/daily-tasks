@@ -91,7 +91,6 @@
     .points-val.common { color: var(--common); }
     .points-val.legendary { color: var(--legendary); }
     .points-val.mythic { color: var(--mythic); }
-    .points-val.streak { color: var(--accent); }
     .points-label { font-size: 0.68rem; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
 
     /* Task option cards (pick screen) */
@@ -1774,12 +1773,18 @@
     let startTime  = null;
     let fillFrame  = null;
     let shakeTimer = null;
+    // Inline transform always wins over the CSS `:active { scale(0.98) }` rule,
+    // so once we start writing translate offsets here we must keep including
+    // the press-scale ourselves or the shrink-on-press feedback disappears.
+    function setTransform(x, y) {
+      shakeEl.style.transform = startTime ? `scale(0.98) translate(${x}px,${y}px)` : '';
+    }
     function reset() {
       if (fillFrame)  { cancelAnimationFrame(fillFrame); fillFrame = null; }
       if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
       fill.style.width = '0%';
-      shakeEl.style.transform = '';
       startTime = null;
+      setTransform(0, 0);
     }
     function fillLoop() {
       const elapsed  = Date.now() - startTime;
@@ -1789,10 +1794,10 @@
         fillFrame = requestAnimationFrame(fillLoop);
       } else {
         if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
-        shakeEl.style.transform = '';
         fill.style.width = '0%';
         fillFrame = null;
         startTime = null;
+        setTransform(0, 0);
         onComplete();
       }
     }
@@ -1805,13 +1810,14 @@
       const interval  = Math.max(25, Math.round(120 - 95 * progress));
       const x = (Math.random() * 2 - 1) * amplitude;
       const y = (Math.random() * 2 - 1) * amplitude;
-      shakeEl.style.transform = `translate(${x}px,${y}px)`;
+      setTransform(x, y);
       shakeTimer = setTimeout(scheduleShake, interval);
     }
     btn.addEventListener('pointerdown', e => {
       e.preventDefault();
       btn.setPointerCapture(e.pointerId);
       startTime  = Date.now();
+      setTransform(0, 0);
       fillFrame  = requestAnimationFrame(fillLoop);
       shakeTimer = setTimeout(scheduleShake, 120);
     });
@@ -1876,7 +1882,6 @@
 
   function htmlHistory() {
     const pts = computePoints();
-    const streak = s.wallet.streak || 0;
     const sorted = s.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
     return `
       <div class="section-header" style="padding-bottom:20px; display:flex; align-items:center; justify-content:space-between">
@@ -1895,10 +1900,6 @@
         <div class="points-card mythic-glow" data-glow-id="pts-mythic">
           <div class="points-val mythic">${pts.mythic}</div>
           <div class="points-label">Mythical</div>
-        </div>
-        <div class="points-card">
-          <div class="points-val streak">${streak}</div>
-          <div class="points-label">Streak🔥</div>
         </div>
       </div>
 
