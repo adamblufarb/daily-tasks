@@ -1730,13 +1730,13 @@
         <div class="store-wallet-chip mythic" id="craft-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       <button class="btn-primary btn-craft-action" id="btn-craft-legendary"${canCraftLegendary ? '' : ' disabled'} style="-webkit-tap-highlight-color:transparent">
-        <div class="craft-hold-fill" id="fill-craft-legendary" style="background:var(--legendary-dark)"></div>
+        <div class="craft-hold-fill" id="fill-craft-legendary" style="background:var(--legendary)"></div>
         <span class="craft-action-label">Craft ${rarityTag('legendary')}</span>
         <span class="craft-action-cost">x3 ${rarityTag('common')}</span>
       </button>
       <div style="height:10px"></div>
       <button class="btn-primary btn-craft-action" id="btn-craft-mythical"${canCraftMythical ? '' : ' disabled'} style="-webkit-tap-highlight-color:transparent">
-        <div class="craft-hold-fill" id="fill-craft-mythical" style="background:var(--mythic-dark)"></div>
+        <div class="craft-hold-fill" id="fill-craft-mythical" style="background:var(--mythic)"></div>
         <span class="craft-action-label">Craft ${rarityTag('mythic')}</span>
         <span class="craft-action-cost">x3 ${rarityTag('legendary')}</span>
       </button>
