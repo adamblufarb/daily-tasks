@@ -476,6 +476,29 @@
     /* Shared footer — same for splash and slides */
     .ftue-footer { padding: 0 20px calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; position: relative; z-index: 1; }
 
+    /* ── Act FTUE (question / choice / reveal screens) ── */
+    .ftue-q-screen { min-height: 100dvh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; padding: calc(20px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
+    .ftue-q-progress { font-size: 0.75rem; font-weight: 700; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.08em; text-align: center; margin-bottom: 28px; }
+    .ftue-q-title { font-size: 1.35rem; font-weight: 700; color: var(--text); text-align: center; line-height: 1.35; margin-bottom: 28px; }
+    .ftue-q-options { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .ftue-q-option { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 16px 18px; font-family: inherit; font-size: 0.98rem; font-weight: 600; color: var(--text); text-align: left; cursor: pointer; box-shadow: var(--shadow); transition: border-color 0.15s, background 0.15s, transform 0.1s; -webkit-tap-highlight-color: transparent; }
+    .ftue-q-option:active { transform: scale(0.98); }
+    .ftue-q-option.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+    .ftue-q-continue { margin-top: 20px; }
+    .ftue-choice-screen { min-height: 100dvh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; padding: calc(20px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
+    .ftue-choice-title { font-size: 1.05rem; font-weight: 700; color: var(--subtext); text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .ftue-choice-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ftue-choice-card { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 16px 14px; box-shadow: var(--shadow); cursor: pointer; transition: border-color 0.15s, transform 0.1s; -webkit-tap-highlight-color: transparent; }
+    .ftue-choice-card:active { transform: scale(0.97); }
+    .ftue-choice-card.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+    .ftue-choice-card-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .ftue-choice-card-desc { font-size: 0.82rem; color: var(--subtext); line-height: 1.4; }
+    .ftue-choice-skip { display: block; margin: 22px auto 0; background: none; border: none; font-family: inherit; font-size: 0.85rem; font-weight: 600; color: var(--subtext); cursor: pointer; padding: 8px; -webkit-tap-highlight-color: transparent; }
+    .ftue-reveal-screen { min-height: 100dvh; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; padding: calc(20px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
+    .ftue-reveal-title { font-size: 1.6rem; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; }
+    .ftue-reveal-list { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .act-ftue-reset-btn { position: fixed; bottom: 12px; left: 12px; z-index: 999; background: var(--danger); color: #fff; border: none; border-radius: 20px; padding: 8px 14px; font-family: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.25); -webkit-tap-highlight-color: transparent; }
+
     /* Tab locking */
     .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
 
@@ -542,6 +565,7 @@
     <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Ritual</span></button>
     <button class="tab-btn" id="tab-store" data-tab="store"><span class="tab-icon">🕌</span><span>Bazaar</span></button>
   </div>
+  <button class="act-ftue-reset-btn" id="btn-act-ftue-reset" style="display:none">↺ Reset FTUE</button>
 </div>
 <script>
   try {
@@ -620,6 +644,282 @@
     { type: 'legendary', title: 'Solo Date',            description: 'Take yourself out somewhere, by yourself' },
     { type: 'legendary', title: 'Clear Out',            description: 'Fill one bag with stuff to throw out or donate' },
   ];
+
+  /* ── Act FTUE — personalized onboarding (gated, see isActFtueTester) ── */
+  const ACT_FTUE_EMAIL = 'ablufarb@gmail.com';
+  function isActFtueTester() {
+    return clerk?.user?.primaryEmailAddress?.emailAddress === ACT_FTUE_EMAIL;
+  }
+
+  // Local catalogue for this feature only. Several titles intentionally
+  // diverge from BROAD_ACT_POOL's type (e.g. The Quiet Hour, Beach Day,
+  // Sunset, Family First, Schedule Dinner are Legendary here; No Gaming is
+  // Common here) — see plan doc for why. Keyed by exact title; comparisons
+  // elsewhere lowercase both sides.
+  const ACT_FTUE_CATALOG = {
+    // Mandatory
+    'Hydrate':              { type: 'common',    description: 'Drink 8 glasses of water' },
+    'Read':                 { type: 'common',    description: 'Read for at least 15 minutes' },
+    'Long Walk':             { type: 'common',    description: 'Take a 45 minute walk outside' },
+    'Phone Detox':          { type: 'legendary', description: "Don't use your phone after 18:00" },
+    // Choice 1 (theme) options + backups
+    'Draw Something':       { type: 'common',    description: 'Spend 15 minutes drawing anything' },
+    'Dance':                { type: 'common',    description: 'Dance for at least 10 minutes, alone or not' },
+    'Little Chef':          { type: 'common',    description: 'Cook something' },
+    'Journal':              { type: 'common',    description: 'Write something private just for yourself' },
+    'Brain Dump':           { type: 'common',    description: 'Write everything on your mind and clear your head' },
+    'Meditate':             { type: 'common',    description: '15 minutes of intentional breathing' },
+    'Cold Plunge':          { type: 'common',    description: 'Ice bath or cold shower for 2 minutes' },
+    'HIIT':                 { type: 'common',    description: '10 minutes of high intensity interval training' },
+    'Stretch':              { type: 'common',    description: '10 minutes of stretching' },
+    'No Weed':              { type: 'common',    description: 'No cannabis today' },
+    'No Gaming':            { type: 'common',    description: 'Go full day without any form of video games' },
+    'Sugar Free':           { type: 'common',    description: 'No added sugar today' },
+    'One Hard Thing':       { type: 'common',    description: "Do the one task you've been avoiding" },
+    'Learn Something':      { type: 'common',    description: 'Spend 15 minutes learning something new' },
+    'Plan Tomorrow':        { type: 'common',    description: 'Write out a plan for tomorrow before bed' },
+    'Compliment Someone':   { type: 'common',    description: 'Say something genuinely nice to a real person' },
+    'Ask a Real Question':  { type: 'common',    description: 'Ask someone a question that goes beneath the surface' },
+    'Check In':             { type: 'common',    description: 'Send a message checking in on someone' },
+    // Choice 2 (substance / secondary theme) options + backups
+    'No Alcohol':           { type: 'common',    description: 'Stay alcohol-free today' },
+    'No Caffeine':          { type: 'common',    description: 'No coffee, no energy drinks today' },
+    'No Caffeine After Noon': { type: 'common',  description: 'No caffeine after 12:00' },
+    'Digital Declutter':    { type: 'common',    description: 'Delete unused apps or files from your phone' },
+    'Veggie Up':            { type: 'common',    description: 'Eat a vegetable with every meal' },
+    'Grounding':            { type: 'common',    description: 'Stand on grass or dirt barefoot for 10 minutes' },
+    'House Reset':          { type: 'common',    description: 'Make your bed, clean the sink, and organize your desk - complete any two' },
+    // Choice 3 (Legendary) options + backups
+    'Social Media Ban':     { type: 'legendary', description: 'Avoid social media all day' },
+    'Go Offline':           { type: 'legendary', description: 'No internet until noon' },
+    'The Quiet Hour':       { type: 'legendary', description: '1 hour of silence. No music, no podcasts, nothing' },
+    'Big Chef':             { type: 'legendary', description: 'Cook something new' },
+    'Full Album':           { type: 'legendary', description: 'Listen to one album without doing anything else' },
+    'Beach Day':            { type: 'legendary', description: 'Make time to go to the beach' },
+    'Sunset':               { type: 'legendary', description: 'Watch the sun set today' },
+    'Sunrise':              { type: 'legendary', description: 'Watch the sun rise today' },
+    'Solo Date':            { type: 'legendary', description: 'Take yourself out somewhere, by yourself' },
+    'Schedule Dinner':      { type: 'legendary', description: 'Schedule a dinner with friends' },
+    'Family First':         { type: 'legendary', description: 'Spend quality time with a family member' },
+    'Clear Out':            { type: 'legendary', description: 'Fill one bag with stuff to throw out or donate' },
+    // Auto-assigned
+    'Exercise':             { type: 'common',    description: 'Work out for 30 minutes' },
+    'Skip the Elevator':    { type: 'common',    description: 'Take the stairs instead of the elevator all day' },
+    'Wind Down':            { type: 'common',    description: 'Start a screen-free wind-down routine 30 minutes before bed' },
+    'Call Someone':         { type: 'common',    description: "Call someone you haven't spoken to in a while" },
+    'Quick Tidy':           { type: 'common',    description: 'Pick a single drawer or cabinet and sort it' },
+    'Cook for Someone':     { type: 'common',    description: 'Cook a meal for someone else' },
+    'Say Thank You':        { type: 'common',    description: 'Tell someone specifically why you\'re thankful for them' },
+    'Early Light':          { type: 'legendary', description: 'Get outside for natural light within 30 minutes of waking' },
+    'Sleep 8':              { type: 'legendary', description: 'Get 8 hours of sleep tonight' },
+    // Common filler (depth for the budget fill when few conditions trigger)
+    'Stairs Only':          { type: 'common',    description: 'Take the stairs every time today' },
+    'Veg Forward':          { type: 'common',    description: 'Eat a vegetable with every meal' },
+    'Barefoot':             { type: 'common',    description: 'Stand on grass or dirt barefoot for 10 minutes' },
+    'Wake And Bake':        { type: 'common',    description: 'Wake up 10 minutes earlier and get direct sunlight' },
+  };
+
+  const ACT_FTUE_QUESTIONS = [
+    { key: 'q1', multi: true,  title: 'What do you want to work on?',
+      options: [
+        { code: 'body',       label: 'Body & energy' },
+        { code: 'mind',       label: 'Mind & focus' },
+        { code: 'discipline', label: 'Discipline & habits' },
+        { code: 'self',       label: 'Self improvement' },
+        { code: 'social',     label: 'Social connection' },
+        { code: 'creativity', label: 'Creativity' },
+      ] },
+    { key: 'q2', multi: false, title: 'How active are you right now?',
+      options: [
+        { code: 'regular',    label: 'I exercise regularly' },
+        { code: 'little',     label: 'I move a little, not consistently' },
+        { code: 'stationary', label: 'Mostly stationary' },
+      ] },
+    { key: 'q3', multi: true,  title: 'Which of these are part of your life?',
+      options: [
+        { code: 'alcohol',      label: 'Alcohol' },
+        { code: 'weed',         label: 'Weed' },
+        { code: 'caffeine',     label: 'Caffeine' },
+        { code: 'social_media', label: 'Heavy phone/social media use' },
+        { code: 'gaming',       label: 'Gaming' },
+      ] },
+    { key: 'q4', multi: false, title: "How's your sleep?",
+      options: [
+        { code: 'good',    label: 'I sleep well' },
+        { code: 'improve', label: 'It can be improved' },
+      ] },
+    { key: 'q5', multi: false, title: 'How connected do you feel to people around you?',
+      options: [
+        { code: 'connected',   label: 'Pretty well connected' },
+        { code: 'intentional', label: 'Could be more intentional about it' },
+      ] },
+    { key: 'q6', multi: false, title: 'At the end of a great day, what made it great?',
+      options: [
+        { code: 'strong',             label: 'I felt strong and physically alive' },
+        { code: 'clear',              label: 'My head was clear and I was focused' },
+        { code: 'resisted',           label: 'I resisted something I usually give in to' },
+        { code: 'there_for_someone',  label: 'I was there for someone, or they were there for me' },
+        { code: 'created',            label: 'I made or created something' },
+      ] },
+  ];
+
+  /* ── Act FTUE assignment algorithm — pure functions, console-testable ── */
+  const ACT_FTUE_THEMES = ['body', 'mind', 'discipline', 'self', 'social', 'creativity'];
+  const ACT_FTUE_Q6_THEME_MAP = {
+    strong: 'body', clear: 'mind', resisted: 'discipline', there_for_someone: 'social', created: 'creativity',
+  };
+
+  function deriveDominantTheme(q1, q6) {
+    const q6Theme = ACT_FTUE_Q6_THEME_MAP[q6] || null;
+    if (q6Theme && q1.includes(q6Theme)) return q6Theme;
+    const firstQ1 = ACT_FTUE_THEMES.find(t => q1.includes(t));
+    if (firstQ1) return firstQ1;
+    return q6Theme || 'discipline';
+  }
+
+  function deriveSecondaryTheme(q1, dominant) {
+    const rest = ACT_FTUE_THEMES.filter(t => t !== dominant && q1.includes(t));
+    if (rest.length) return rest[0];
+    const idx = ACT_FTUE_THEMES.indexOf(dominant);
+    return ACT_FTUE_THEMES[(idx + 1) % ACT_FTUE_THEMES.length];
+  }
+
+  function deriveChoice1Pair(theme) {
+    const table = {
+      creativity: { a: 'Draw Something',     b: 'Dance',              backup: 'Little Chef' },
+      mind:       { a: 'Journal',            b: 'Brain Dump',         backup: 'Meditate' },
+      body:       { a: 'Cold Plunge',        b: 'HIIT',               backup: 'Stretch' },
+      discipline: { a: 'No Weed',            b: 'No Gaming',          backup: 'Sugar Free' },
+      self:       { a: 'One Hard Thing',     b: 'Learn Something',    backup: 'Plan Tomorrow' },
+      social:     { a: 'Compliment Someone', b: 'Ask a Real Question', backup: 'Check In' },
+    };
+    return table[theme] || table.discipline;
+  }
+
+  function deriveChoice2Pair(q3) {
+    const has = code => q3.includes(code);
+    if (has('alcohol') && has('caffeine')) return { a: 'No Alcohol',  b: 'No Caffeine',           backup: 'Sugar Free' };
+    if (has('weed') && has('gaming'))      return { a: 'No Weed',     b: 'No Gaming',             backup: 'Digital Declutter' };
+    if (has('alcohol'))                    return { a: 'No Alcohol',  b: 'Sugar Free',            backup: 'No Caffeine After Noon' };
+    if (has('caffeine'))                   return { a: 'No Caffeine', b: 'No Caffeine After Noon', backup: 'Sugar Free' };
+    if (has('weed'))                       return { a: 'No Weed',     b: 'Sugar Free',            backup: 'Digital Declutter' };
+    if (has('gaming'))                     return { a: 'No Gaming',   b: 'Digital Declutter',     backup: 'Sugar Free' };
+    if (q3.length === 0)                   return { a: 'Veggie Up',   b: 'Grounding',             backup: 'House Reset' };
+    return null; // unanticipated combo (e.g. social_media only) — caller falls back to secondary theme
+  }
+
+  function deriveChoice3Pair(q3, dominantTheme) {
+    if (q3.includes('social_media')) return { a: 'Social Media Ban', b: 'Go Offline', backup: 'The Quiet Hour' };
+    const table = {
+      creativity: { a: 'Big Chef',        b: 'Full Album',  backup: 'Beach Day' },
+      mind:       { a: 'The Quiet Hour',  b: 'Full Album',  backup: 'Sunset' },
+      body:       { a: 'Sunrise',         b: 'Solo Date',   backup: 'Beach Day' },
+      social:     { a: 'Schedule Dinner', b: 'Family First', backup: 'Solo Date' },
+      self:       { a: 'Clear Out',       b: 'Solo Date',   backup: 'Beach Day' },
+    };
+    return table[dominantTheme] || { a: 'Social Media Ban', b: 'Go Offline', backup: 'The Quiet Hour' };
+  }
+
+  // Returns the 3 choice-page definitions, computed once all 6 questions are answered.
+  function computeActFtueChoices(answers) {
+    const dominant  = deriveDominantTheme(answers.q1, answers.q6);
+    const secondary = deriveSecondaryTheme(answers.q1, dominant);
+    const c1 = deriveChoice1Pair(dominant);
+    const c2 = deriveChoice2Pair(answers.q3) || deriveChoice1Pair(secondary);
+    const c3 = deriveChoice3Pair(answers.q3, dominant);
+    return [
+      { type: 'common',    a: c1.a, b: c1.b, backup: c1.backup },
+      { type: 'common',    a: c2.a, b: c2.b, backup: c2.backup },
+      { type: 'legendary', a: c3.a, b: c3.b, backup: c3.backup },
+    ];
+  }
+
+  function buildCommonAutoCandidates(answers) {
+    const list = [];
+    list.push(answers.q2 === 'regular' ? 'Skip the Elevator' : 'Exercise');
+    if (answers.q4 === 'improve') list.push('Wind Down');
+    if (answers.q5 === 'intentional') list.push('Call Someone');
+    if (answers.q1.includes('creativity')) list.push('Little Chef');
+    if (answers.q1.includes('mind')) list.push('Meditate');
+    if (answers.q1.includes('self')) list.push('Quick Tidy');
+    if (answers.q6 === 'there_for_someone') list.push(answers.q1.includes('social') ? 'Cook for Someone' : 'Say Thank You');
+    return list;
+  }
+
+  function buildLegendaryAutoCandidates(answers) {
+    const list = [];
+    if (answers.q4 === 'improve') list.push('Sleep 8');
+    return list;
+  }
+
+  // Generic priority-ordered, budget-capped fill shared by both Common and Legendary passes.
+  function fillBudget(candidates, fillerList, budget, assignedTitles, fallbackType) {
+    const result = [];
+    function tryAdd(title) {
+      if (result.length >= budget) return;
+      const key = title.toLowerCase();
+      if (assignedTitles.has(key)) return;
+      const entry = ACT_FTUE_CATALOG[title];
+      if (!entry) return;
+      assignedTitles.add(key);
+      result.push({ title, type: entry.type, description: entry.description });
+    }
+    candidates.forEach(tryAdd);
+    fillerList.forEach(tryAdd);
+    if (result.length < budget) {
+      const more = BROAD_ACT_POOL.filter(a => a.type === fallbackType).map(a => a.title).sort();
+      for (const t of more) {
+        if (result.length >= budget) break;
+        const key = t.toLowerCase();
+        if (assignedTitles.has(key)) continue;
+        assignedTitles.add(key);
+        result.push({ title: t, type: fallbackType, description: BROAD_ACT_POOL.find(a => a.title === t).description });
+      }
+    }
+    return result;
+  }
+
+  // choicePicks: array of 3 titles — whatever the user actually picked (option A, B, or the silent backup) per slot.
+  function buildActFtuePool(answers, choicePicks) {
+    const assignedTitles = new Set();
+    const pool = [];
+    function addFixed(title) {
+      const entry = ACT_FTUE_CATALOG[title];
+      if (!entry) { console.error('Unknown Act FTUE title:', title); return; }
+      const key = title.toLowerCase();
+      if (assignedTitles.has(key)) return;
+      assignedTitles.add(key);
+      pool.push({ title, type: entry.type, description: entry.description });
+    }
+
+    ['Hydrate', 'Read', 'Long Walk', 'Phone Detox'].forEach(addFixed);
+    choicePicks.forEach(addFixed);
+
+    const commonBudget    = 8 - pool.filter(a => a.type === 'common').length;
+    const legendaryBudget = 4 - pool.filter(a => a.type === 'legendary').length;
+
+    const commonFiller    = ['Stretch', 'Brain Dump', 'Journal', 'Compliment Someone', 'Sugar Free', 'Cold Plunge', 'Stairs Only', 'Veg Forward', 'Barefoot', 'Wake And Bake'];
+    const legendaryFiller = ['The Quiet Hour', 'Sunset', 'Full Album', 'Beach Day', 'Go Offline', 'Clear Out'];
+
+    pool.push(...fillBudget(buildCommonAutoCandidates(answers), commonFiller, commonBudget, assignedTitles, 'common'));
+    pool.push(...fillBudget(buildLegendaryAutoCandidates(answers), legendaryFiller, legendaryBudget, assignedTitles, 'legendary'));
+
+    // Key Affix overrides — final pass, keyed only on raw answers (idempotent regardless of insertion path)
+    for (const act of pool) {
+      if (act.title === 'Read') {
+        act.description = answers.q2 === 'regular' ? 'Read for at least 30 minutes' : 'Read for at least 15 minutes';
+      } else if (act.title === 'Meditate') {
+        act.description = answers.q1.includes('mind') ? '15 minutes of intentional breathing' : '10 minutes of intentional breathing';
+      }
+    }
+
+    const finalCommon    = pool.filter(a => a.type === 'common').length;
+    const finalLegendary = pool.filter(a => a.type === 'legendary').length;
+    if (finalCommon !== 8 || finalLegendary !== 4) {
+      console.error('Act FTUE pool invariant violated', { finalCommon, finalLegendary, pool });
+    }
+    return pool;
+  }
 
   function displayRarity(r) {
     if (r === 'mythic') return 'Mythical';
@@ -720,6 +1020,13 @@
       onboardingRitualCount: 0,
       ftueScreen: null,
       ftueSlide: 0,
+      ftueQA: { step: 0, answers: { q1: [], q2: null, q3: [], q4: null, q5: null, q6: null } },
+      ftueChoiceStep: 0,
+      ftueChoices: null,
+      ftueChoicePicks: [],
+      ftueRevealReady: false,
+      ftueAssignedPool: null,
+      actFtueComplete: false,
       hasShownRecordTutorial: false,
       hasShownBazaarTutorial: false,
       hasShownActPoolTutorial: false,
@@ -940,6 +1247,9 @@
     // Hide tab bar during FTUE
     const tabBar = document.getElementById('tab-bar');
     if (tabBar) tabBar.style.display = s.ftueScreen ? 'none' : '';
+    // Act FTUE sticky reset button — tester-only, visible on every screen including mid-FTUE
+    const resetBtn = document.getElementById('btn-act-ftue-reset');
+    if (resetBtn) resetBtn.style.display = isActFtueTester() ? '' : 'none';
     // Sync per-task glow phases via CSS custom property (used by ::before)
     document.querySelectorAll('[data-glow-id]').forEach(el => {
       const id = el.dataset.glowId;
@@ -975,6 +1285,9 @@
     if (screen === 'loading')     return `<div class="loading">Loading…</div>`;
     if (screen === 'splash')      return htmlSplash();
     if (screen === 'slides')      return htmlSlides();
+    if (screen === 'act-question') return htmlActQuestion();
+    if (screen === 'act-choice')   return htmlActChoice();
+    if (screen === 'act-reveal')   return htmlActReveal();
     if (screen === 'leaderboard') return htmlLeaderboard();
     if (screen === 'history')     return htmlHistory();
     if (screen === 'store')     return s.storeScreen === 'craft' ? htmlCraft() : htmlStore();
@@ -1011,9 +1324,13 @@
       </div>`;
   }
 
+  function ftueLastSlideContent() {
+    return isActFtueTester() ? { emoji: '🎯', text: "Let's find the perfect Acts for you." } : FTUE_SLIDES[FTUE_SLIDES.length - 1];
+  }
+
   function htmlSlides() {
-    const slide  = FTUE_SLIDES[s.ftueSlide];
     const isLast = s.ftueSlide === FTUE_SLIDES.length - 1;
+    const slide  = isLast ? ftueLastSlideContent() : FTUE_SLIDES[s.ftueSlide];
     return `
       <div class="ftue-slides">
         <div class="ftue-slides-body">
@@ -1026,8 +1343,70 @@
           </div>
         </div>
         <div class="ftue-footer">
-          <button class="btn-primary" id="ftue-cta">${isLast ? 'Roll Acts →' : 'Next'}</button>
+          <button class="btn-primary" id="ftue-cta">${isLast ? (isActFtueTester() ? 'Continue' : 'Roll Acts →') : 'Next'}</button>
         </div>
+      </div>`;
+  }
+
+  /* ── Act FTUE screens ── */
+  const ACT_FTUE_TOTAL_STEPS = ACT_FTUE_QUESTIONS.length + 3; // 6 questions + 3 act choices
+
+  function htmlActQuestion() {
+    const q = ACT_FTUE_QUESTIONS[s.ftueQA.step];
+    const answer = s.ftueQA.answers[q.key];
+    const isSelected = code => q.multi ? answer.includes(code) : answer === code;
+    return `
+      <div class="ftue-q-screen">
+        <div class="ftue-q-progress">${s.ftueQA.step + 1} of ${ACT_FTUE_TOTAL_STEPS}</div>
+        <div class="ftue-q-title">${q.title}</div>
+        <div class="ftue-q-options">
+          ${q.options.map(o => `<button class="ftue-q-option${isSelected(o.code) ? ' selected' : ''}" data-q-opt="${o.code}">${o.label}</button>`).join('')}
+        </div>
+        ${q.multi ? `<button class="btn-primary ftue-q-continue" id="ftue-q-continue">Continue</button>` : ''}
+      </div>`;
+  }
+
+  function htmlActChoice() {
+    const slot = s.ftueChoices[s.ftueChoiceStep];
+    const optA = ACT_FTUE_CATALOG[slot.a];
+    const optB = ACT_FTUE_CATALOG[slot.b];
+    return `
+      <div class="ftue-choice-screen">
+        <div class="ftue-q-progress">${ACT_FTUE_QUESTIONS.length + s.ftueChoiceStep + 1} of ${ACT_FTUE_TOTAL_STEPS}</div>
+        <div class="ftue-choice-title">Choice ${s.ftueChoiceStep + 1} of ${s.ftueChoices.length}</div>
+        <div class="ftue-choice-cards">
+          <div class="ftue-choice-card" data-choice-opt="a">
+            <div class="ftue-choice-card-title">${slot.a}</div>
+            <div class="ftue-choice-card-desc">${optA.description}</div>
+          </div>
+          <div class="ftue-choice-card" data-choice-opt="b">
+            <div class="ftue-choice-card-title">${slot.b}</div>
+            <div class="ftue-choice-card-desc">${optB.description}</div>
+          </div>
+        </div>
+        <button class="ftue-choice-skip" id="ftue-choice-skip">I don't like either</button>
+      </div>`;
+  }
+
+  function htmlActReveal() {
+    const pool = s.ftueAssignedPool || [];
+    const ordered = [...pool.filter(a => a.type === 'common'), ...pool.filter(a => a.type === 'legendary')];
+    return `
+      <div class="ftue-reveal-screen">
+        <div class="ftue-reveal-title">Your Ritual</div>
+        <div class="ftue-reveal-list">
+          ${ordered.map((act, i) => `
+            <div class="pool-task-card card-${act.type}${act.type === 'legendary' ? ' legendary-glow' : ''} task-card-reveal" style="animation-delay:${300 + i * 200}ms"${act.type === 'legendary' ? ` data-glow-id="ftue-reveal-${i}"` : ''}>
+              <div class="pool-task-row">
+                <div class="pool-task-info">
+                  <div class="pool-task-title">${act.title}</div>
+                  <div class="pool-task-desc">${act.description}</div>
+                </div>
+                ${rarityTag(act.type)}
+              </div>
+            </div>`).join('')}
+        </div>
+        ${s.ftueRevealReady ? `<button class="btn-primary" id="ftue-begin" style="margin-top:20px">Begin</button>` : ''}
       </div>`;
   }
 
@@ -1964,8 +2343,8 @@
 
     setTimeout(() => {
       s.ftueSlide = newIndex;
-      const slide  = FTUE_SLIDES[newIndex];
       const isLast = newIndex === FTUE_SLIDES.length - 1;
+      const slide  = isLast ? ftueLastSlideContent() : FTUE_SLIDES[newIndex];
 
       // Emoji: instant swap (no animation)
       if (emojiEl) emojiEl.textContent = slide.emoji;
@@ -1980,7 +2359,7 @@
       if (dotsEl) dotsEl.querySelectorAll('.ftue-dot').forEach((d, i) => d.classList.toggle('active', i === newIndex));
 
       // CTA: update label (handler reads s.ftueSlide so no re-bind needed)
-      if (ctaBtn) ctaBtn.textContent = isLast ? 'Roll Acts →' : 'Next';
+      if (ctaBtn) ctaBtn.textContent = isLast ? (isActFtueTester() ? 'Continue' : 'Roll Acts →') : 'Next';
 
       // Phase 2: animate text in (double rAF ensures browser has painted new position)
       requestAnimationFrame(() => {
@@ -1991,6 +2370,64 @@
         });
       });
     }, 350);
+  }
+
+  function advanceActFtueQuestion() {
+    if (s.ftueQA.step < ACT_FTUE_QUESTIONS.length - 1) {
+      s.ftueQA.step++;
+      render();
+    } else {
+      s.ftueChoices = computeActFtueChoices(s.ftueQA.answers);
+      s.ftueChoiceStep = 0;
+      s.ftueChoicePicks = [];
+      s.ftueScreen = 'act-choice';
+      render();
+    }
+  }
+
+  function advanceActFtueChoice(title) {
+    s.ftueChoicePicks.push(title);
+    setTimeout(() => {
+      if (s.ftueChoiceStep < s.ftueChoices.length - 1) {
+        s.ftueChoiceStep++;
+        render();
+      } else {
+        const pool = buildActFtuePool(s.ftueQA.answers, s.ftueChoicePicks);
+        s.ftueAssignedPool = pool;
+        s.ftueRevealReady = false;
+        s.ftueScreen = 'act-reveal';
+        render();
+        const totalDelay = 300 + (pool.length - 1) * 200 + 450;
+        setTimeout(() => { s.ftueRevealReady = true; render(); }, totalDelay);
+      }
+    }, 220);
+  }
+
+  async function commitActFtuePool() {
+    const pool = s.ftueAssignedPool || [];
+    const tasks = pool.map((act, i) => ({
+      id: `ftue-${Date.now()}-${i}`,
+      title: act.title,
+      description: act.description,
+      type: act.type,
+    }));
+    s.tasks = tasks;
+    s.actFtueComplete = true;
+    s.ftueScreen = null;
+    s.offered = rollOffered();
+    s.picked = [];
+    s.planBuildState = 'revealing';
+    render();
+    revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
+    await api('DELETE', '/api/tasks');
+    await Promise.all([
+      ...tasks.map(t => api('POST', '/api/tasks', t)),
+      api('PATCH', '/api/profile', { act_ftue_complete: true, act_ftue_answers: s.ftueQA.answers }),
+      api('POST', '/api/sessions', {
+        type: 'draft', id: `draft-${s.today}`, date: s.today,
+        offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
+      }),
+    ]);
   }
 
   /* ── Bind ── */
@@ -2021,6 +2458,10 @@
       document.getElementById('ftue-cta')?.addEventListener('click', async () => {
         if (s.ftueSlide < FTUE_SLIDES.length - 1) {
           ftueSlideTransition(1);
+        } else if (isActFtueTester() && !s.actFtueComplete) {
+          s.ftueScreen = 'act-question';
+          s.ftueQA = { step: 0, answers: { q1: [], q2: null, q3: [], q4: null, q5: null, q6: null } };
+          render();
         } else {
           s.ftueScreen = null;
           s.offered = rollOffered();
@@ -2034,6 +2475,44 @@
           });
         }
       });
+    }
+
+    if (screen === 'act-question') {
+      const q = ACT_FTUE_QUESTIONS[s.ftueQA.step];
+      document.querySelectorAll('[data-q-opt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.dataset.qOpt;
+          if (q.multi) {
+            const arr = s.ftueQA.answers[q.key];
+            const idx = arr.indexOf(code);
+            if (idx === -1) arr.push(code); else arr.splice(idx, 1);
+            render();
+          } else {
+            btn.classList.add('selected');
+            s.ftueQA.answers[q.key] = code;
+            setTimeout(() => advanceActFtueQuestion(), 220);
+          }
+        });
+      });
+      document.getElementById('ftue-q-continue')?.addEventListener('click', () => advanceActFtueQuestion());
+    }
+
+    if (screen === 'act-choice') {
+      document.querySelectorAll('[data-choice-opt]').forEach(card => {
+        card.addEventListener('click', () => {
+          const slot = s.ftueChoices[s.ftueChoiceStep];
+          card.classList.add('selected');
+          advanceActFtueChoice(card.dataset.choiceOpt === 'a' ? slot.a : slot.b);
+        });
+      });
+      document.getElementById('ftue-choice-skip')?.addEventListener('click', () => {
+        const slot = s.ftueChoices[s.ftueChoiceStep];
+        advanceActFtueChoice(slot.backup);
+      });
+    }
+
+    if (screen === 'act-reveal') {
+      document.getElementById('ftue-begin')?.addEventListener('click', () => commitActFtuePool());
     }
 
     if (screen === 'store') {
@@ -3288,6 +3767,18 @@
         if (!hasRealSessions) s.ftueScreen = 'splash';
       }
 
+      // Act FTUE — gated test account, independent of the chain above (can fire even with prior history)
+      s.actFtueComplete = data.profile?.act_ftue_complete ?? false;
+      if (isActFtueTester() && !s.actFtueComplete && !s.ftueScreen) {
+        const hasRealSessions = s.sessions.some(x => x.status !== 'draft');
+        if (hasRealSessions) {
+          s.ftueScreen = 'act-question';
+          s.ftueQA = { step: 0, answers: { q1: [], q2: null, q3: [], q4: null, q5: null, q6: null } };
+        } else {
+          s.ftueScreen = 'splash';
+        }
+      }
+
       const activeSess    = s.sessions.find(x => x.status === 'active' && x.date === s.today);
       const doneTodaySess = s.sessions.find(x => x.status === 'done' && x.date === s.today && (x.picked_ids||[]).length > 0);
 
@@ -3322,6 +3813,16 @@
   // Tab listeners — attached once; tab-bar is inside #app-wrap so always in DOM
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; s.storeScreen = 'store'; s.leaderboardOpen = false; render(); }));
+
+  // Act FTUE sticky reset button (tester-only, attached once like the tab listeners above)
+  document.getElementById('btn-act-ftue-reset')?.addEventListener('click', async () => {
+    await Promise.all([
+      api('DELETE', '/api/tasks'),
+      api('PATCH', '/api/settings', { has_completed_onboarding: false, onboarding_ritual_count: 0 }),
+      api('PATCH', '/api/profile', { act_ftue_complete: false, act_ftue_answers: null }),
+    ]);
+    location.reload();
+  });
 
   // ── Clerk auth flow ──
   // With data-clerk-publishable-key, window.Clerk is a pre-configured singleton
