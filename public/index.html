@@ -1768,8 +1768,9 @@
 
   // Shared 1s press-and-hold confirm mechanic (fill bar + accelerating shake)
   // used by the Craft buttons and the Bazaar Streak Award button.
-  function attachHoldToConfirm(btn, fill, onComplete) {
+  function attachHoldToConfirm(btn, fill, onComplete, shakeEl) {
     if (!btn || !fill) return;
+    shakeEl = shakeEl || btn;
     let startTime  = null;
     let fillFrame  = null;
     let shakeTimer = null;
@@ -1777,7 +1778,7 @@
       if (fillFrame)  { cancelAnimationFrame(fillFrame); fillFrame = null; }
       if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
       fill.style.width = '0%';
-      btn.style.transform = '';
+      shakeEl.style.transform = '';
       startTime = null;
     }
     function fillLoop() {
@@ -1788,7 +1789,7 @@
         fillFrame = requestAnimationFrame(fillLoop);
       } else {
         if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
-        btn.style.transform = '';
+        shakeEl.style.transform = '';
         fill.style.width = '0%';
         fillFrame = null;
         startTime = null;
@@ -1804,7 +1805,7 @@
       const interval  = Math.max(25, Math.round(120 - 95 * progress));
       const x = (Math.random() * 2 - 1) * amplitude;
       const y = (Math.random() * 2 - 1) * amplitude;
-      btn.style.transform = `translate(${x}px,${y}px)`;
+      shakeEl.style.transform = `translate(${x}px,${y}px)`;
       shakeTimer = setTimeout(scheduleShake, interval);
     }
     btn.addEventListener('pointerdown', e => {
@@ -2041,6 +2042,7 @@
         {
           const streakBtn  = document.getElementById('btn-streak-award');
           const streakFill = document.getElementById('fill-streak-award');
+          const streakWrap = document.getElementById('streak-award-wrap');
           if (streakBtn && streakFill) {
             attachHoldToConfirm(streakBtn, streakFill, () => {
               s.wallet.mythic += 1;
@@ -2057,7 +2059,7 @@
               } else {
                 render();
               }
-            });
+            }, streakWrap);
           }
         }
         document.querySelectorAll('[data-store-select]').forEach(card =>
