@@ -62,6 +62,7 @@ module.exports = withAuth(async (req, res, userId) => {
     )
   `;
   await sql`ALTER TABLE wallet_v2 ADD COLUMN IF NOT EXISTS streak int NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE wallet_v2 ADD COLUMN IF NOT EXISTS streak_award_claimed int NOT NULL DEFAULT 0`;
   await sql`
     CREATE TABLE IF NOT EXISTS settings_v2 (
       user_id                    text PRIMARY KEY,

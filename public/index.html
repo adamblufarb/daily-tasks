@@ -91,6 +91,7 @@
     .points-val.common { color: var(--common); }
     .points-val.legendary { color: var(--legendary); }
     .points-val.mythic { color: var(--mythic); }
+    .points-val.streak { color: #e59c3c; }
     .points-label { font-size: 0.68rem; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
 
     /* Task option cards (pick screen) */
@@ -581,7 +582,8 @@
     { id: 'o2', name: 'Purge',            cost: 15, rarity: 'mythic', desc: 'Have a day for yourself, no consequences'         },
   ];
 
-  const POOL_DEFAULTS = [
+  /* Broad Act Pool — entire catalogue of every act available in the app */
+  const BROAD_ACT_POOL = [
     { type: 'common',    title: 'Cold Plunge',        description: 'Ice bath or cold shower for 2 minutes' },
     { type: 'common',    title: 'Brain Dump',          description: 'Write everything on your mind and clear your head' },
     { type: 'common',    title: 'Family First',        description: 'Spend quality time with a family member' },
@@ -603,6 +605,14 @@
     { type: 'legendary', title: 'Go Offline',          description: 'No internet until noon' },
     { type: 'common',    title: 'Schedule Dinner',      description: 'Schedule a dinner with friends' },
     { type: 'common',    title: 'Beach Day',            description: 'Make time to go to the beach' },
+    { type: 'common',    title: 'House Reset',          description: 'Make your bed, clean the sink, and organize your desk - complete any two' },
+    { type: 'common',    title: 'Stairs Only',          description: 'Take the stairs every time today' },
+    { type: 'common',    title: 'Veg Forward',          description: 'Eat a vegetable with every meal' },
+    { type: 'common',    title: 'Barefoot',             description: 'Stand on grass or dirt barefoot for 10 minutes' },
+    { type: 'common',    title: 'Tidy Up',              description: 'Pick a single drawer or cabinet and sort it' },
+    { type: 'common',    title: 'Wake And Bake',        description: 'Wake up 10 minutes earlier and get direct sunlight' },
+    { type: 'legendary', title: 'Solo Date',            description: 'Take yourself out somewhere, by yourself' },
+    { type: 'legendary', title: 'Clear Out',            description: 'Fill one bag with stuff to throw out or donate' },
   ];
 
   function displayRarity(r) {
@@ -684,7 +694,7 @@
       storeItems: [],
       editingStoreItem: null,
       storeEditMode: false,
-      wallet: { common: 0, legendary: 0, mythic: 0, streak: 0 },
+      wallet: { common: 0, legendary: 0, mythic: 0, streak: 0, streakAwardClaimed: 0 },
       profile: { nickname: '', hideFromLeaderboard: false },
       leaderboardOpen: false,
       leaderboardData: null,
@@ -869,23 +879,23 @@
   }
 
   function rollOffered() {
-    const active = s.tasks.filter(t => !t.archived);
+    const userActPool = s.tasks.filter(t => !t.archived);
     const isOnboarding = !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
     if (isOnboarding && s.onboardingRitualCount === 0) {
       // Ritual 1: 5 random common only
-      const common = active.filter(t => t.type === 'common');
+      const common = userActPool.filter(t => t.type === 'common');
       return shuffle(common).slice(0, Math.min(5, common.length)).map(t => t.id);
     } else if (isOnboarding && s.onboardingRitualCount === 1) {
       // Ritual 2: 4 random common + 1 random legendary
-      const common = active.filter(t => t.type === 'common');
-      const legendary = active.filter(t => t.type === 'legendary');
-      const pool = [
+      const common = userActPool.filter(t => t.type === 'common');
+      const legendary = userActPool.filter(t => t.type === 'legendary');
+      const candidates = [
         ...shuffle(common).slice(0, Math.min(4, common.length)),
         ...shuffle(legendary).slice(0, Math.min(1, legendary.length)),
       ];
-      return shuffle(pool).map(t => t.id);
+      return shuffle(candidates).map(t => t.id);
     }
-    return shuffle(active).slice(0, Math.min(5, active.length)).map(t => t.id);
+    return shuffle(userActPool).slice(0, Math.min(5, userActPool.length)).map(t => t.id);
   }
 
   /* ── Render ── */
@@ -1204,9 +1214,7 @@
     const baseRows = [
       r.common    ? `<div class="reward-token-row">+${r.common} ${rarityTag('common')}</div>`    : '',
       r.legendary ? `<div class="reward-token-row">+${r.legendary} ${rarityTag('legendary')}</div>` : '',
-      (r.mythic && !r.streakBonus) ? `<div class="reward-token-row">+${r.mythic} ${rarityTag('mythic')}</div>` : '',
-      (r.mythic && r.streakBonus && r.mythic > 1) ? `<div class="reward-token-row">+${r.mythic - 1} ${rarityTag('mythic')}</div>` : '',
-      r.streakBonus ? `<div class="reward-token-row">+1 ${rarityTag('mythic')} &nbsp;<span style="font-size:0.78rem;opacity:0.85;font-weight:400">${r.streakCount} Ritual Streak!</span></div>` : '',
+      r.mythic    ? `<div class="reward-token-row">+${r.mythic} ${rarityTag('mythic')}</div>`    : '',
     ];
     const tokenRows = baseRows.filter(Boolean).join('');
     return `
@@ -1316,6 +1324,9 @@
           <button class="btn-primary" id="btn-add-common" style="flex:1;font-size:0.78rem;padding:11px">+1 Common</button>
           <button class="btn-primary" id="btn-add-legendary" style="flex:1;font-size:0.78rem;padding:11px">+1 Legendary</button>
           <button class="btn-primary" id="btn-add-mythical" style="flex:1;font-size:0.78rem;padding:11px">+1 Mythical</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-primary" id="btn-test-streak-award" style="flex:1;font-size:0.85rem;padding:13px">Streak Award</button>
         </div>
         <div class="testing-group-label">Tutorials</div>
         <div style="display:flex;gap:8px">
@@ -1489,9 +1500,9 @@
     // Default to choice if none of the sub-screens are active
     const showChoice   = !showPickList && !showCustom && !showPickEdit;
 
-    const active = s.tasks.filter(t => !t.archived);
-    const activeTitles = new Set(active.map(t => t.title.toLowerCase()));
-    const availableDefaults = POOL_DEFAULTS.filter(d => !activeTitles.has(d.title.toLowerCase()));
+    const userActPool = s.tasks.filter(t => !t.archived);
+    const userActPoolTitles = new Set(userActPool.map(t => t.title.toLowerCase()));
+    const remainingActPool = BROAD_ACT_POOL.filter(d => !userActPoolTitles.has(d.title.toLowerCase()));
 
     const backLabel = (showPickList || showCustom || showPickEdit) ? '‹ Back' : '‹ Act Pool';
 
@@ -1520,8 +1531,8 @@
         </div>
       ` : showPickList ? (() => {
         const REC_LEGENDARY = new Set(['Family First','The Quiet Hour','No Cigarettes','Sunrise','Sunset','Full Album','Schedule Dinner','Go Offline','Beach Day']);
-        const recCommon    = availableDefaults.map((d, i) => ({ d, i })).filter(({ d }) => !REC_LEGENDARY.has(d.title));
-        const recLegendary = availableDefaults.map((d, i) => ({ d, i })).filter(({ d }) =>  REC_LEGENDARY.has(d.title));
+        const recCommon    = remainingActPool.map((d, i) => ({ d, i })).filter(({ d }) => !REC_LEGENDARY.has(d.title));
+        const recLegendary = remainingActPool.map((d, i) => ({ d, i })).filter(({ d }) =>  REC_LEGENDARY.has(d.title));
         const cardHtml = ({ d, i }) => `
           <div class="pick-default-card" data-pick-default="${i}">
             <div class="pick-default-info">
@@ -1530,7 +1541,7 @@
             </div>
           </div>`;
         return `
-        ${availableDefaults.length === 0 ? `<div class="pick-empty">You already have all available acts in your pool.</div>` : `
+        ${remainingActPool.length === 0 ? `<div class="pick-empty">You already have all available acts in your pool.</div>` : `
         <div class="pool-section-label label-common" style="margin-top:16px">Recommended Common</div>
         <div class="pick-list">${recCommon.map(cardHtml).join('') || '<div class="pick-empty">None available</div>'}</div>
         <div class="pool-section-label label-legendary" style="margin-top:24px">Recommended Legendary</div>
@@ -1546,9 +1557,9 @@
 
   /* ── Task Pool tab ── */
   function htmlTaskPool() {
-    const active    = s.tasks.filter(t => !t.archived);
-    const common    = active.filter(t => t.type === 'common');
-    const legendary = active.filter(t => t.type === 'legendary');
+    const userActPool = s.tasks.filter(t => !t.archived);
+    const common    = userActPool.filter(t => t.type === 'common');
+    const legendary = userActPool.filter(t => t.type === 'legendary');
     const deleting  = s.poolEditMode;
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
@@ -1605,7 +1616,7 @@
         <div class="section-title">Act Pool</div>
         ${deleting
           ? `<div class="section-sub">Deleted acts will be removed from your pool</div>`
-          : `<div class="section-sub">${active.length} act${active.length !== 1 ? 's' : ''} · ${common.length} common · ${legendary.length} legendary</div>`}
+          : `<div class="section-sub">${userActPool.length} act${userActPool.length !== 1 ? 's' : ''} · ${common.length} common · ${legendary.length} legendary</div>`}
       </div>
       ${!deleting ? `
       <div class="store-card${!canAdd ? '' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
@@ -1652,6 +1663,7 @@
     const sel = alreadyBoughtToday ? purchasedItemId : s.selectedStoreItem;
     const selItem = activeItems.find(x => x.id === sel);
     const canPurchase = selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday;
+    const showStreakAward = w.streak > 0 && w.streak % 3 === 0 && w.streak !== (w.streakAwardClaimed || 0);
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Bazaar</div>
@@ -1663,6 +1675,9 @@
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
       </div>
       <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:20px;background:linear-gradient(to right,var(--common) 0%,var(--common) 20%,var(--legendary) 40%,var(--legendary) 60%,var(--mythic) 80%,var(--mythic) 100%)">Craft Tokens</button>
+      ${showStreakAward ? `
+      <button class="btn-primary" id="btn-streak-award" style="margin-bottom:20px;background:var(--accent)">3 Day Streak Award — 1 ${rarityTag('mythic')}</button>
+      ` : ''}
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const isPurchased = alreadyBoughtToday && isSelected;
@@ -1718,9 +1733,8 @@
       <div style="height:20px"></div>`;
   }
 
-  function animateCraft(result) {
-    const gainedId = result === 'legendary' ? 'craft-wallet-legendary' : 'craft-wallet-mythic';
-    const chip = document.getElementById(gainedId);
+  function animateTokenChip(elId) {
+    const chip = document.getElementById(elId);
     if (!chip) return;
     chip.style.position = 'relative';
     chip.style.overflow = 'hidden';
@@ -1735,6 +1749,10 @@
       [{ transform: 'skewX(-25deg) translateX(-250%)' }, { transform: 'skewX(-25deg) translateX(420%)' }],
       { duration: 500, easing: 'cubic-bezier(0.25,0.1,0.25,1)', fill: 'forwards' }
     ).onfinish = () => { ribbon.remove(); chip.style.overflow = ''; };
+  }
+
+  function animateCraft(result) {
+    animateTokenChip(result === 'legendary' ? 'craft-wallet-legendary' : 'craft-wallet-mythic');
   }
 
   /* ── History ── */
@@ -1793,6 +1811,7 @@
 
   function htmlHistory() {
     const pts = computePoints();
+    const streak = s.wallet.streak || 0;
     const sorted = s.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
     return `
       <div class="section-header" style="padding-bottom:20px; display:flex; align-items:center; justify-content:space-between">
@@ -1811,6 +1830,10 @@
         <div class="points-card mythic-glow" data-glow-id="pts-mythic">
           <div class="points-val mythic">${pts.mythic}</div>
           <div class="points-label">Mythical</div>
+        </div>
+        <div class="points-card">
+          <div class="points-val streak">${streak > 0 ? `${streak}🔥` : '0'}</div>
+          <div class="points-label">Streak</div>
         </div>
       </div>
 
@@ -1950,6 +1973,23 @@
       if (s.storeScreen === 'store') {
         document.getElementById('btn-goto-craft')?.addEventListener('click', () => {
           s.storeScreen = 'craft'; render();
+        });
+        document.getElementById('btn-streak-award')?.addEventListener('click', () => {
+          const btn = document.getElementById('btn-streak-award');
+          if (!btn || btn.dataset.claiming) return;
+          btn.dataset.claiming = '1';
+          btn.style.pointerEvents = 'none';
+          s.wallet.mythic += 1;
+          s.wallet.streakAwardClaimed = s.wallet.streak;
+          const mythicChip = document.getElementById('tutorial-wallet-mythic');
+          if (mythicChip) mythicChip.innerHTML = `${s.wallet.mythic} <span class="store-wallet-label">Mythical</span>`;
+          animateTokenChip('tutorial-wallet-mythic');
+          saveWallet();
+          setTimeout(() => {
+            btn.style.transition = 'opacity 0.25s ease';
+            btn.style.opacity = '0';
+            setTimeout(() => render(), 250);
+          }, 550);
         });
         document.querySelectorAll('[data-store-select]').forEach(card =>
           card.addEventListener('click', () => {
@@ -2434,10 +2474,10 @@
       // Pick from list — select a default act
       document.querySelectorAll('[data-pick-default]').forEach(el => {
         el.addEventListener('click', () => {
-          const active = s.tasks.filter(t => !t.archived);
-          const activeTitles = new Set(active.map(t => t.title.toLowerCase()));
-          const available = POOL_DEFAULTS.filter(d => !activeTitles.has(d.title.toLowerCase()));
-          const d = available[parseInt(el.dataset.pickDefault, 10)];
+          const userActPool = s.tasks.filter(t => !t.archived);
+          const userActPoolTitles = new Set(userActPool.map(t => t.title.toLowerCase()));
+          const remainingActPool = BROAD_ACT_POOL.filter(d => !userActPoolTitles.has(d.title.toLowerCase()));
+          const d = remainingActPool[parseInt(el.dataset.pickDefault, 10)];
           if (!d) return;
           s.poolAddMode = 'pick-edit';
           s.editingTask = { id: '', title: d.title, description: d.description, type: '' };
@@ -2566,6 +2606,12 @@
       document.getElementById('btn-add-mythical')?.addEventListener('click', async () => {
         s.wallet.mythic++; render(); await saveWallet();
       });
+      document.getElementById('btn-test-streak-award')?.addEventListener('click', async () => {
+        s.wallet.streak = (Math.floor((s.wallet.streak || 0) / 3) + 1) * 3;
+        s.wallet.streakAwardClaimed = 0;
+        render();
+        await saveWallet();
+      });
       // Tutorial replay
       document.getElementById('btn-test-record')?.addEventListener('click', () => startTutorial('record'));
       document.getElementById('btn-test-bazaar')?.addEventListener('click', () => startTutorial('bazaar'));
@@ -2670,10 +2716,9 @@
       s.wallet.streak = (s.wallet.streak || 0) + 1;
     } else {
       s.wallet.streak = 0;
+      s.wallet.streakAwardClaimed = 0;
     }
-    const streakBonus = allCompleted && s.wallet.streak > 0 && s.wallet.streak % 3 === 0;
-    if (streakBonus) earnedMythic += 1;
-    s.pendingReward  = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic, streakBonus, streakCount: s.wallet.streak };
+    s.pendingReward  = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
     s.overlayScreen  = allCompleted ? 'reward' : 'bad-luck';
     s.sessions = s.sessions.map(x => x.id === todaySess.id ? { ...x, status: 'done' } : x);
     render();
@@ -2985,10 +3030,9 @@
       s.wallet.streak = (s.wallet.streak || 0) + 1;
     } else {
       s.wallet.streak = 0;
+      s.wallet.streakAwardClaimed = 0;
     }
-    const streakBonus = allCompleted && s.wallet.streak > 0 && s.wallet.streak % 3 === 0;
-    if (streakBonus) earnedMythic += 1;
-    s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic, streakBonus, streakCount: s.wallet.streak };
+    s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
     s.overlayScreen = allCompleted ? 'reward' : 'bad-luck';
     s.reviewDeclined = [];
     s.graceConfirmTask = null;
@@ -3007,6 +3051,7 @@
       legendary: s.wallet.legendary,
       mythic: s.wallet.mythic,
       streak: s.wallet.streak ?? 0,
+      streak_award_claimed: s.wallet.streakAwardClaimed ?? 0,
       last_purchase_date: s.lastPurchaseDate,
       last_purchase_item_name: s.lastPurchasedItem?.name || null,
       last_purchase_item_rarity: s.lastPurchasedItem?.rarity || null,
@@ -3165,7 +3210,7 @@
 
       if (data.wallet) {
         const w = data.wallet;
-        s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic, streak: w.streak ?? 0 };
+        s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic, streak: w.streak ?? 0, streakAwardClaimed: w.streak_award_claimed ?? 0 };
         s.lastPurchaseDate = w.last_purchase_date || null;
         s.lastPurchasedItem = w.last_purchase_item_name
           ? { name: w.last_purchase_item_name, rarity: w.last_purchase_item_rarity }

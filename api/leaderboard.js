@@ -32,17 +32,6 @@ module.exports = withAuth(async (req, res) => {
     sql`SELECT user_id, streak FROM wallet_v2 WHERE user_id = ANY(${allIds})`,
   ]);
 
-  // Resolve Clerk imageUrl + nickname fallback for each user
-  const clerkAdmin = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-  const clerkMap = {};
-  await Promise.all(allIds.map(async id => {
-    const u = await clerkAdmin.users.getUser(id).catch(() => null);
-    clerkMap[id] = {
-      imageUrl: u?.imageUrl || null,
-      displayName: u?.firstName || u?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',
-    };
-  }));
-
   const walletMap = Object.fromEntries(walletRows.map(w => [w.user_id, w]));
 
   const sessionsByUser = {};
@@ -55,7 +44,37 @@ module.exports = withAuth(async (req, res) => {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const cutoff = sevenDaysAgo.toISOString().slice(0, 10);
 
-  const users = allIds.map(uid => {
+  // Inactivity filter — hide users who haven't started a Ritual (status
+  // active/done; a 'draft' offer doesn't count) in 5+ consecutive days.
+  function daysBetween(dateStrA, dateStrB) {
+    const [ay, am, ad] = dateStrA.split('-').map(Number);
+    const [by, bm, bd] = dateStrB.split('-').map(Number);
+    return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86400000);
+  }
+  const todayDateStr = new Date().toISOString().slice(0, 10);
+  const activeIds = allIds.filter(uid => {
+    const startedDates = (sessionsByUser[uid] || [])
+      .filter(sess => sess.status === 'active' || sess.status === 'done')
+      .map(sess => sess.date);
+    if (startedDates.length === 0) return false;
+    const lastStarted = startedDates.sort().at(-1);
+    return daysBetween(todayDateStr, lastStarted) < 5;
+  });
+
+  if (activeIds.length === 0) return res.json({ users: [] });
+
+  // Resolve Clerk imageUrl + nickname fallback — only for users who'll appear
+  const clerkAdmin = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+  const clerkMap = {};
+  await Promise.all(activeIds.map(async id => {
+    const u = await clerkAdmin.users.getUser(id).catch(() => null);
+    clerkMap[id] = {
+      imageUrl: u?.imageUrl || null,
+      displayName: u?.firstName || u?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',
+    };
+  }));
+
+  const users = activeIds.map(uid => {
     const userSessions = sessionsByUser[uid] || [];
     const wallet = walletMap[uid] || {};
     const profile = profileMap[uid];
