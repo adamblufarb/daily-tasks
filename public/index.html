@@ -91,7 +91,7 @@
     .points-val.common { color: var(--common); }
     .points-val.legendary { color: var(--legendary); }
     .points-val.mythic { color: var(--mythic); }
-    .points-val.streak { color: #e59c3c; }
+    .points-val.streak { color: var(--accent); }
     .points-label { font-size: 0.68rem; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
 
     /* Task option cards (pick screen) */
@@ -409,6 +409,12 @@
     .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: flex-start; color: var(--text); position: relative; z-index: 1; }
     .craft-action-cost { display: flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 0.8rem; font-weight: 400; color: var(--subtext); white-space: nowrap; position: relative; z-index: 1; }
     .craft-hold-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0%; pointer-events: none; z-index: 0; }
+
+    /* Streak Award button */
+    .streak-award-wrap { position: relative; border-radius: var(--radius); }
+    .btn-streak-award { position: relative; overflow: hidden; background: var(--mythic-dark); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    .streak-award-label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; }
+    .streak-award-label .rarity-tag { transform: translateY(-1px); }
 
     /* Purchased screen */
     .purchased-screen { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); padding: 40px 24px; text-align: center; background: var(--mythic); }
@@ -1676,7 +1682,12 @@
       </div>
       <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:20px;background:linear-gradient(to right,var(--common) 0%,var(--common) 20%,var(--legendary) 40%,var(--legendary) 60%,var(--mythic) 80%,var(--mythic) 100%)">Craft Tokens</button>
       ${showStreakAward ? `
-      <button class="btn-primary" id="btn-streak-award" style="margin-bottom:20px;background:var(--accent)">3 Day Streak Award — 1 ${rarityTag('mythic')}</button>
+      <div class="streak-award-wrap mythic-glow" id="streak-award-wrap" data-glow-id="streak-award" style="margin-bottom:20px">
+        <button class="btn-primary btn-streak-award" id="btn-streak-award">
+          <div class="craft-hold-fill" id="fill-streak-award" style="background:var(--mythic)"></div>
+          <span class="streak-award-label">3 Day Streak Award — 1 ${rarityTag('mythic')}</span>
+        </button>
+      </div>
       ` : ''}
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
@@ -1753,6 +1764,59 @@
 
   function animateCraft(result) {
     animateTokenChip(result === 'legendary' ? 'craft-wallet-legendary' : 'craft-wallet-mythic');
+  }
+
+  // Shared 1s press-and-hold confirm mechanic (fill bar + accelerating shake)
+  // used by the Craft buttons and the Bazaar Streak Award button.
+  function attachHoldToConfirm(btn, fill, onComplete) {
+    if (!btn || !fill) return;
+    let startTime  = null;
+    let fillFrame  = null;
+    let shakeTimer = null;
+    function reset() {
+      if (fillFrame)  { cancelAnimationFrame(fillFrame); fillFrame = null; }
+      if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
+      fill.style.width = '0%';
+      btn.style.transform = '';
+      startTime = null;
+    }
+    function fillLoop() {
+      const elapsed  = Date.now() - startTime;
+      const progress = Math.min(elapsed / 1000, 1);
+      fill.style.width = (progress * 100) + '%';
+      if (progress < 1) {
+        fillFrame = requestAnimationFrame(fillLoop);
+      } else {
+        if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
+        btn.style.transform = '';
+        fill.style.width = '0%';
+        fillFrame = null;
+        startTime = null;
+        onComplete();
+      }
+    }
+    function scheduleShake() {
+      if (!startTime) return;
+      const elapsed   = Date.now() - startTime;
+      const progress  = Math.min(elapsed / 1000, 1);
+      if (progress >= 1) return;
+      const amplitude = progress * 4;
+      const interval  = Math.max(25, Math.round(120 - 95 * progress));
+      const x = (Math.random() * 2 - 1) * amplitude;
+      const y = (Math.random() * 2 - 1) * amplitude;
+      btn.style.transform = `translate(${x}px,${y}px)`;
+      shakeTimer = setTimeout(scheduleShake, interval);
+    }
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      btn.setPointerCapture(e.pointerId);
+      startTime  = Date.now();
+      fillFrame  = requestAnimationFrame(fillLoop);
+      shakeTimer = setTimeout(scheduleShake, 120);
+    });
+    btn.addEventListener('pointerup',    () => { if (startTime) reset(); });
+    btn.addEventListener('pointercancel', reset);
+    btn.addEventListener('contextmenu',   e => e.preventDefault());
   }
 
   /* ── History ── */
@@ -1832,8 +1896,8 @@
           <div class="points-label">Mythical</div>
         </div>
         <div class="points-card">
-          <div class="points-val streak">${streak > 0 ? `${streak}🔥` : '0'}</div>
-          <div class="points-label">Streak</div>
+          <div class="points-val streak">${streak}</div>
+          <div class="points-label">Streak🔥</div>
         </div>
       </div>
 
@@ -1974,23 +2038,28 @@
         document.getElementById('btn-goto-craft')?.addEventListener('click', () => {
           s.storeScreen = 'craft'; render();
         });
-        document.getElementById('btn-streak-award')?.addEventListener('click', () => {
-          const btn = document.getElementById('btn-streak-award');
-          if (!btn || btn.dataset.claiming) return;
-          btn.dataset.claiming = '1';
-          btn.style.pointerEvents = 'none';
-          s.wallet.mythic += 1;
-          s.wallet.streakAwardClaimed = s.wallet.streak;
-          const mythicChip = document.getElementById('tutorial-wallet-mythic');
-          if (mythicChip) mythicChip.innerHTML = `${s.wallet.mythic} <span class="store-wallet-label">Mythical</span>`;
-          animateTokenChip('tutorial-wallet-mythic');
-          saveWallet();
-          setTimeout(() => {
-            btn.style.transition = 'opacity 0.25s ease';
-            btn.style.opacity = '0';
-            setTimeout(() => render(), 250);
-          }, 550);
-        });
+        {
+          const streakBtn  = document.getElementById('btn-streak-award');
+          const streakFill = document.getElementById('fill-streak-award');
+          if (streakBtn && streakFill) {
+            attachHoldToConfirm(streakBtn, streakFill, () => {
+              s.wallet.mythic += 1;
+              s.wallet.streakAwardClaimed = s.wallet.streak;
+              const mythicChip = document.getElementById('tutorial-wallet-mythic');
+              if (mythicChip) mythicChip.innerHTML = `${s.wallet.mythic} <span class="store-wallet-label">Mythical</span>`;
+              animateTokenChip('tutorial-wallet-mythic');
+              saveWallet();
+              const wrap = document.getElementById('streak-award-wrap');
+              if (wrap) {
+                wrap.style.transition = 'opacity 0.25s ease';
+                wrap.style.opacity = '0';
+                setTimeout(() => render(), 250);
+              } else {
+                render();
+              }
+            });
+          }
+        }
         document.querySelectorAll('[data-store-select]').forEach(card =>
           card.addEventListener('click', () => {
             const id = card.dataset.storeSelect;
@@ -2021,57 +2090,13 @@
           const btn  = document.getElementById(btnId);
           const fill = document.getElementById(fillId);
           if (!btn || !fill || btn.disabled) return;
-          let startTime  = null;
-          let fillFrame  = null;
-          let shakeTimer = null;
-          function reset() {
-            if (fillFrame)  { cancelAnimationFrame(fillFrame); fillFrame = null; }
-            if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
-            fill.style.width = '0%';
-            btn.style.transform = '';
-            startTime = null;
-          }
-          function fillLoop() {
-            const elapsed  = Date.now() - startTime;
-            const progress = Math.min(elapsed / 1000, 1);
-            fill.style.width = (progress * 100) + '%';
-            if (progress < 1) {
-              fillFrame = requestAnimationFrame(fillLoop);
-            } else {
-              if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
-              btn.style.transform = '';
-              fill.style.width = '0%';
-              fillFrame = null;
-              startTime = null;
-              s.wallet[costKey] -= 3;
-              s.wallet[gainKey] += 1;
-              s.lastCraftResult = craftResult;
-              render();
-              saveWallet();
-            }
-          }
-          function scheduleShake() {
-            if (!startTime) return;
-            const elapsed   = Date.now() - startTime;
-            const progress  = Math.min(elapsed / 1000, 1);
-            if (progress >= 1) return;
-            const amplitude = progress * 4;
-            const interval  = Math.max(25, Math.round(120 - 95 * progress));
-            const x = (Math.random() * 2 - 1) * amplitude;
-            const y = (Math.random() * 2 - 1) * amplitude;
-            btn.style.transform = `translate(${x}px,${y}px)`;
-            shakeTimer = setTimeout(scheduleShake, interval);
-          }
-          btn.addEventListener('pointerdown', e => {
-            e.preventDefault();
-            btn.setPointerCapture(e.pointerId);
-            startTime  = Date.now();
-            fillFrame  = requestAnimationFrame(fillLoop);
-            shakeTimer = setTimeout(scheduleShake, 120);
+          attachHoldToConfirm(btn, fill, () => {
+            s.wallet[costKey] -= 3;
+            s.wallet[gainKey] += 1;
+            s.lastCraftResult = craftResult;
+            render();
+            saveWallet();
           });
-          btn.addEventListener('pointerup',    () => { if (startTime) reset(); });
-          btn.addEventListener('pointercancel', reset);
-          btn.addEventListener('contextmenu',   e => e.preventDefault());
         }
         attachCraftHold('btn-craft-legendary', 'fill-craft-legendary', 'common',    'legendary', 'legendary');
         attachCraftHold('btn-craft-mythical',  'fill-craft-mythical',  'legendary', 'mythic',    'mythical');
