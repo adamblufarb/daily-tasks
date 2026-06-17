@@ -110,6 +110,22 @@ module.exports = withAuth(async (req, res, userId) => {
     VALUES ('c13', ${userId}, 'Low Hanging Fruit', 'Smile for 30 seconds straight', 'common', false)
     ON CONFLICT (user_id, id) DO NOTHING
   `;
+  // Rarity corrections — acts that were misclassified as Common, now Legendary
+  await sql`
+    UPDATE tasks_v2
+    SET type = 'legendary'
+    WHERE user_id = ${userId}
+      AND title IN ('Sunset', 'Schedule Dinner', 'Beach Day', 'The Quiet Hour', 'Family First')
+      AND type = 'common'
+  `;
+  // Description correction — Brain Dump
+  await sql`
+    UPDATE tasks_v2
+    SET description = 'Write everything that''s on your mind'
+    WHERE user_id = ${userId}
+      AND title = 'Brain Dump'
+      AND description = 'Write everything on your mind and clear your head'
+  `;
   // Rename Heavy Phone Detox → Phone Detox (idempotent)
   await sql`
     UPDATE tasks_v2 SET title = 'Phone Detox'

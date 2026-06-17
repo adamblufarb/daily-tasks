@@ -584,46 +584,58 @@
     return res.json();
   }
 
-  const DEFAULT_TASK_IDS = new Set(['c1','c2','c3','c6','c8','c9','c10','l1','l2','l4']);
-
   /* ── Default offerings (fallback when DB is empty) ── */
   const STORE_ITEMS = [
     { id: 'o1', name: 'Guilt Free Treat', cost: 5,  rarity: 'mythic', desc: 'Indulge with a treat you wouldn\'t normally eat' },
     { id: 'o2', name: 'Purge',            cost: 15, rarity: 'mythic', desc: 'Have a day for yourself, no consequences'         },
   ];
 
-  /* Broad Act Pool — entire catalogue of every act available in the app */
+  /* Broad Act Pool — canonical master list of every act in the app */
   const BROAD_ACT_POOL = [
+    // ── Common ──
+    { type: 'common',    title: 'Long Walk',          description: 'Take a 45 minute walk outside' },
+    { type: 'common',    title: 'Hydrate',            description: 'Drink 8 glasses of water' },
+    { type: 'common',    title: 'Read',               description: 'Read for at least 15 minutes' },
+    { type: 'common',    title: 'Exercise',           description: 'Work out for 30 minutes' },
+    { type: 'common',    title: 'Early Bed',          description: 'Get in bed before 22:30' },
+    { type: 'common',    title: 'Little Chef',        description: 'Cook something' },
+    { type: 'common',    title: 'Stretch',            description: '10 minutes of stretching' },
+    { type: 'common',    title: 'Low Hanging Fruit',  description: 'Smile for 30 seconds straight' },
     { type: 'common',    title: 'Cold Plunge',        description: 'Ice bath or cold shower for 2 minutes' },
-    { type: 'common',    title: 'Brain Dump',          description: 'Write everything on your mind and clear your head' },
-    { type: 'common',    title: 'Family First',        description: 'Spend quality time with a family member' },
-    { type: 'common',    title: 'Draw Something',      description: 'Spend 15 minutes drawing anything' },
-    { type: 'common',    title: 'Dance',               description: 'Dance for at least 10 minutes, alone or not' },
-    { type: 'common',    title: 'Compliment Someone',  description: 'Say something genuinely nice to a real person' },
-    { type: 'common',    title: 'The Quiet Hour',      description: '1 hour of silence. No music, no podcasts, nothing' },
-    { type: 'common',    title: 'Journal',             description: 'Write something private just for yourself' },
-    { type: 'common',    title: 'Meditate',            description: '15 minutes of intentional breathing' },
-    { type: 'common',    title: 'No Alcohol',          description: 'Stay alcohol-free today' },
-    { type: 'common',    title: 'No Weed',             description: 'No cannabis today' },
-    { type: 'common',    title: 'No Caffeine',         description: 'No coffee, no energy drinks today' },
-    { type: 'common',    title: 'Sugar Free',          description: 'No added sugar today' },
-    { type: 'legendary', title: 'No Cigarettes',       description: 'Go the full day without smoking' },
-    { type: 'common',    title: 'Sunset',              description: 'Watch the sun set today' },
-    { type: 'legendary', title: 'Sunrise',             description: 'Watch the sun rise today' },
-    { type: 'legendary', title: 'Full Album',          description: 'Listen to one album without doing anything else' },
-    { type: 'legendary', title: 'No Gaming',           description: 'Go full day without any form of video games' },
-    { type: 'legendary', title: 'Go Offline',          description: 'No internet until noon' },
-    { type: 'common',    title: 'Schedule Dinner',      description: 'Schedule a dinner with friends' },
-    { type: 'common',    title: 'Beach Day',            description: 'Make time to go to the beach' },
-    { type: 'common',    title: 'House Reset',          description: 'Make your bed, clean the sink, and organize your desk - complete any two' },
-    { type: 'common',    title: 'Stairs Only',          description: 'Take the stairs every time today' },
-    { type: 'common',    title: 'Veg Forward',          description: 'Eat a vegetable with every meal' },
-    { type: 'common',    title: 'Barefoot',             description: 'Stand on grass or dirt barefoot for 10 minutes' },
-    { type: 'common',    title: 'Tidy Up',              description: 'Pick a single drawer or cabinet and sort it' },
-    { type: 'common',    title: 'Wake And Bake',        description: 'Wake up 10 minutes earlier and get direct sunlight' },
-    { type: 'legendary', title: 'Solo Date',            description: 'Take yourself out somewhere, by yourself' },
-    { type: 'legendary', title: 'Clear Out',            description: 'Fill one bag with stuff to throw out or donate' },
-    { type: 'common',    title: 'Low Hanging Fruit',    description: 'Smile for 30 seconds straight' },
+    { type: 'common',    title: 'Brain Dump',         description: 'Write everything that\'s on your mind' },
+    { type: 'common',    title: 'Draw Something',     description: 'Spend 15 minutes drawing anything' },
+    { type: 'common',    title: 'Dance',              description: 'Dance for at least 10 minutes, alone or not' },
+    { type: 'common',    title: 'Compliment Someone', description: 'Say something genuinely nice to a real person' },
+    { type: 'common',    title: 'Journal',            description: 'Write something private just for yourself' },
+    { type: 'common',    title: 'Meditate',           description: '15 minutes of intentional breathing' },
+    { type: 'common',    title: 'No Alcohol',         description: 'Stay alcohol-free today' },
+    { type: 'common',    title: 'No Weed',            description: 'No cannabis today' },
+    { type: 'common',    title: 'No Caffeine',        description: 'No coffee, no energy drinks today' },
+    { type: 'common',    title: 'Sugar Free',         description: 'No added sugar today' },
+    { type: 'common',    title: 'House Reset',        description: 'Make your bed, clean the sink, and organize your desk — complete any two' },
+    { type: 'common',    title: 'Stairs Only',        description: 'Take the stairs every time today' },
+    { type: 'common',    title: 'Veg Forward',        description: 'Eat a vegetable with every meal' },
+    { type: 'common',    title: 'Barefoot',           description: 'Stand on grass or dirt barefoot for 10 minutes' },
+    { type: 'common',    title: 'Tidy Up',            description: 'Pick a single drawer or cabinet and sort it' },
+    { type: 'common',    title: 'Wake And Bake',      description: 'Wake up 10 minutes earlier and get direct sunlight' },
+    { type: 'common',    title: 'Protein Load',       description: 'Hit 1.5g of protein per kilogram of body weight' },
+    { type: 'common',    title: 'No Late Snacking',   description: "Don't eat anything 3 hours before bed" },
+    // ── Legendary ──
+    { type: 'legendary', title: 'Sunset',             description: 'Watch the sun set today' },
+    { type: 'legendary', title: 'Schedule Dinner',    description: 'Schedule a dinner with friends' },
+    { type: 'legendary', title: 'Beach Day',          description: 'Make time to go to the beach' },
+    { type: 'legendary', title: 'Social Media Ban',   description: 'Avoid social media all day' },
+    { type: 'legendary', title: 'Phone Detox',        description: "Don't use your phone after 18:00" },
+    { type: 'legendary', title: 'Big Chef',           description: 'Cook something new' },
+    { type: 'legendary', title: 'Sunrise',            description: 'Watch the sun rise today' },
+    { type: 'legendary', title: 'Full Album',         description: 'Listen to one album without doing anything else' },
+    { type: 'legendary', title: 'No Gaming',          description: 'Go full day without any form of video games' },
+    { type: 'legendary', title: 'Go Offline',         description: 'No internet until noon' },
+    { type: 'legendary', title: 'Solo Date',          description: 'Take yourself out somewhere, by yourself' },
+    { type: 'legendary', title: 'Clear Out',          description: 'Fill one bag with stuff to throw out or donate' },
+    { type: 'legendary', title: 'The Quiet Hour',     description: '1 hour of silence. No music, no podcasts, nothing' },
+    { type: 'legendary', title: 'Family First',       description: 'Spend quality time with a family member' },
+    { type: 'legendary', title: 'No Cigarettes',      description: 'Go the full day without smoking' },
   ];
 
   function displayRarity(r) {
@@ -634,23 +646,6 @@
     const cls = rarity === 'mythic' ? 'mythical' : rarity;
     return `<span class="rarity-tag rarity-tag-${cls}">${displayRarity(rarity).toUpperCase()}</span>`;
   }
-
-  /* ── Default task pool (seed data) ── */
-  const DEFAULT_TASKS = [
-    { id:'c1',  type:'common',    title:'Morning Walk',      description:'Take a 20-minute walk outside' },
-    { id:'c2',  type:'common',    title:'Hydrate',           description:'Drink 8 glasses of water' },
-    { id:'c3',  type:'common',    title:'Read',              description:'Read for at least 20 minutes' },
-    { id:'c4',  type:'common',    title:'Meditate',          description:'10 minutes of mindfulness' },
-    { id:'c5',  type:'common',    title:'Journal',           description:'Write 5 minutes in your journal' },
-    { id:'c6',  type:'common',    title:'No Social Media',   description:'Avoid social media until noon' },
-    { id:'c7',  type:'common',    title:'Exercise',          description:'Work out for 30 minutes' },
-    { id:'c8',  type:'common',    title:'Healthy Breakfast', description:'Eat a nutritious breakfast' },
-    { id:'c9',  type:'common',    title:'Connect',           description:'Reach out to someone you care about' },
-    { id:'c10', type:'common',    title:'Early Bed',         description:'In bed before midnight' },
-    { id:'l1',  type:'legendary', title:'The Fast',          description:'Complete a 16-hour fast' },
-    { id:'l2',  type:'legendary', title:'Ice Bath',          description:'Take a cold shower or ice bath' },
-    { id:'l3',  type:'legendary', title:'Deep Work',         description:'3 hours of uninterrupted focused work' },
-  ];
 
   function getTask(id) { return s.tasks.find(t => t.id === id); }
   function getTaskForHistory(sess, id) {
