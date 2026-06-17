@@ -17,6 +17,7 @@ const DEFAULT_TASKS = [
   { id: 'l1',  type: 'legendary', title: 'Social Media Ban', description: 'Avoid social media all day' },
   { id: 'l2',  type: 'legendary', title: 'Phone Detox',      description: "Don't use your phone after 18:00" },
   { id: 'l4',  type: 'legendary', title: 'Big Chef',         description: 'Cook something new' },
+  { id: 'c13', type: 'common',    title: 'Low Hanging Fruit', description: 'Smile for 30 seconds straight' },
 ];
 
 module.exports = withAuth(async (req, res, userId) => {
@@ -102,6 +103,12 @@ module.exports = withAuth(async (req, res, userId) => {
     DELETE FROM tasks_v2
     WHERE user_id = ${userId}
       AND id IN ('c4','c5','c7','c11','c12','l3')
+  `;
+  // Push new acts to all existing users (idempotent)
+  await sql`
+    INSERT INTO tasks_v2 (id, user_id, title, description, type, archived)
+    VALUES ('c13', ${userId}, 'Low Hanging Fruit', 'Smile for 30 seconds straight', 'common', false)
+    ON CONFLICT (user_id, id) DO NOTHING
   `;
   // Rename Heavy Phone Detox → Phone Detox (idempotent)
   await sql`
