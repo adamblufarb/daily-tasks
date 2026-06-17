@@ -3334,6 +3334,7 @@
   document.getElementById('btn-app-reset')?.addEventListener('click', async () => {
     await Promise.all([
       api('DELETE', '/api/tasks'),
+      api('DELETE', '/api/sessions'),
       api('PATCH', '/api/settings', { has_completed_onboarding: false, onboarding_ritual_count: 0 }),
     ]);
     location.reload();
