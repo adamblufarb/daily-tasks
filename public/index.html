@@ -515,7 +515,7 @@
     .p-spinner { width: 80px; height: 80px; position: relative; animation: p-spin 1.5s linear infinite; }
     .p-spinner-dot { width: 16px; height: 16px; border-radius: 50%; position: absolute; }
     @keyframes p-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .personalize-reveal { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 20px 0; }
+    .personalize-reveal { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 0 0; }
     .personalize-reveal-title { font-size: 1.6rem; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; }
     .personalize-reveal-list { display: flex; flex-direction: column; gap: 0; }
     .personalize-reveal-footer { position: sticky; bottom: 0; padding: 12px 0 calc(28px + env(safe-area-inset-bottom)); }
@@ -3621,7 +3621,10 @@
           if (step.type === 'highlight') {
             setTimeout(() => {
               const rect = el.getBoundingClientRect();
-              window.scrollBy({ top: rect.top - window.innerHeight * 0.30, behavior: 'smooth' });
+              const targetTop = step.elId === 'tutorial-settings-section'
+                ? window.innerHeight / 2 - 40
+                : window.innerHeight * 0.30;
+              window.scrollBy({ top: rect.top - targetTop, behavior: 'smooth' });
             }, 50);
             // Auto-advance when Day Reset time is changed (tester only)
             if (isTester && step.elId === 'tutorial-settings-section') {

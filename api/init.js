@@ -169,6 +169,12 @@ module.exports = withAuth(async (req, res, userId) => {
     sql`SELECT * FROM profiles_v2 WHERE user_id = ${userId}`,
   ]);
 
+  // Seed settings row for new users (ensures reset_hour defaults to 8am)
+  if (settingsRows.length === 0) {
+    await sql`INSERT INTO settings_v2 (user_id, reset_hour) VALUES (${userId}, 8) ON CONFLICT DO NOTHING`;
+    settingsRows.push({ user_id: userId, reset_hour: 8, has_completed_onboarding: false, onboarding_ritual_count: 0, has_shown_record_tutorial: false, has_shown_bazaar_tutorial: false, has_shown_actpool_tutorial: false, has_shown_key_affix_tutorial: false });
+  }
+
   // Seed profile with random nickname for new users
   if (profileRows.length === 0) {
     const NICKNAMES = ['Templar','Arcanist','Sovereign','Paladin','Warden','Monarch','Oracle','Malice','Overlord','Paragon','Amazon','Mystic','Enchanter','Prophet','Tyrant'];
