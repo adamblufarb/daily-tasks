@@ -7,17 +7,19 @@ const DEFAULT_STORE_ITEMS = [
 ];
 
 const DEFAULT_TASKS = [
-  { id: 'c1',  type: 'common',    title: 'Long Walk',   description: 'Take a 45 minute walk outside' },
-  { id: 'c2',  type: 'common',    title: 'Hydrate',     description: 'Drink 8 glasses of water' },
-  { id: 'c3',  type: 'common',    title: 'Read',        description: 'Read for at least 15 minutes' },
-  { id: 'c6',  type: 'common',    title: 'Exercise',    description: 'Work out for 30 minutes' },
-  { id: 'c8',  type: 'common',    title: 'Early Bed',   description: 'Get in bed before 22:30' },
-  { id: 'c9',  type: 'common',    title: 'Little Chef', description: 'Cook something' },
-  { id: 'c10', type: 'common',    title: 'Stretch',     description: '10 minutes of stretching' },
+  { id: 'c1',  type: 'common',    title: 'Long Walk',        description: 'Take a 45 minute walk outside' },
+  { id: 'c2',  type: 'common',    title: 'Hydrate',          description: 'Drink 8 glasses of water' },
+  { id: 'c3',  type: 'common',    title: 'Read',             description: 'Read for at least 15 minutes' },
+  { id: 'c6',  type: 'common',    title: 'Exercise',         description: 'Work out for 30 minutes' },
+  { id: 'c8',  type: 'common',    title: 'Early Bed',        description: 'Get in bed before 22:30' },
+  { id: 'c9',  type: 'common',    title: 'Little Chef',      description: 'Cook something' },
+  { id: 'c10', type: 'common',    title: 'Stretch',          description: '10 minutes of stretching' },
   { id: 'l1',  type: 'legendary', title: 'Social Media Ban', description: 'Avoid social media all day' },
   { id: 'l2',  type: 'legendary', title: 'Phone Detox',      description: "Don't use your phone after 18:00" },
   { id: 'l4',  type: 'legendary', title: 'Big Chef',         description: 'Cook something new' },
   { id: 'c13', type: 'common',    title: 'Low Hanging Fruit', description: 'Smile for 30 seconds straight' },
+  { id: 'c14', type: 'common',    title: 'Search For None',  description: 'No random Google or AI searches' },
+  { id: 'c15', type: 'common',    title: 'Family First',     description: 'Call up a family member' },
 ];
 
 module.exports = withAuth(async (req, res, userId) => {
@@ -97,6 +99,7 @@ module.exports = withAuth(async (req, res, userId) => {
       hide_from_leaderboard boolean NOT NULL DEFAULT false
     )
   `;
+  await sql`ALTER TABLE profiles_v2 ADD COLUMN IF NOT EXISTS act_ftue_complete boolean NOT NULL DEFAULT false`;
 
   // Remove retired acts (idempotent)
   await sql`
@@ -115,8 +118,24 @@ module.exports = withAuth(async (req, res, userId) => {
     UPDATE tasks_v2
     SET type = 'legendary'
     WHERE user_id = ${userId}
-      AND title IN ('Sunset', 'Schedule Dinner', 'Beach Day', 'The Quiet Hour', 'Family First')
+      AND title IN ('Sunset', 'Schedule Dinner', 'Beach Day', 'The Quiet Hour')
       AND type = 'common'
+  `;
+  // Family First: now Common with updated description
+  await sql`
+    UPDATE tasks_v2 SET type = 'common', description = 'Call up a family member'
+    WHERE user_id = ${userId} AND title = 'Family First'
+  `;
+  // Push new acts to all existing users (idempotent)
+  await sql`
+    INSERT INTO tasks_v2 (id, user_id, title, description, type, archived)
+    VALUES ('c14', ${userId}, 'Search For None', 'No random Google or AI searches', 'common', false)
+    ON CONFLICT (user_id, id) DO NOTHING
+  `;
+  await sql`
+    INSERT INTO tasks_v2 (id, user_id, title, description, type, archived)
+    VALUES ('c15', ${userId}, 'Family First', 'Call up a family member', 'common', false)
+    ON CONFLICT (user_id, id) DO NOTHING
   `;
   // Description correction — Brain Dump
   await sql`
