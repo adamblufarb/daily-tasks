@@ -482,6 +482,24 @@
     /* Tester reset button */
     .app-reset-btn { position: fixed; bottom: 12px; left: 12px; z-index: 999; background: var(--danger); color: #fff; border: none; border-radius: 20px; padding: 8px 14px; font-family: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.25); -webkit-tap-highlight-color: transparent; }
 
+    /* Personalize FTUE — blue question screens */
+    body { transition: background-color 0.25s ease; }
+    .personalize-screen { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom)); margin-left: -20px; margin-right: -20px; }
+    .personalize-progress { font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.1em; text-align: center; margin-bottom: 32px; }
+    .personalize-title { font-size: 1.45rem; font-weight: 700; color: #fff; text-align: center; line-height: 1.3; margin-bottom: 28px; }
+    .personalize-options { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .personalize-option { background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25); border-radius: var(--radius); padding: 16px 18px; font-family: inherit; font-size: 0.97rem; font-weight: 600; color: #fff; text-align: left; cursor: pointer; transition: background 0.12s, border-color 0.12s, transform 0.1s; -webkit-tap-highlight-color: transparent; }
+    .personalize-option:active { transform: scale(0.98); }
+    .personalize-option.selected { background: rgba(255,255,255,0.95); color: var(--accent); border-color: #fff; }
+    .personalize-cta { margin-top: 20px; background: #fff; color: var(--accent); }
+    .personalize-cta:active { background: rgba(255,255,255,0.9); }
+    /* Reveal screen */
+    .personalize-reveal { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
+    .personalize-reveal-title { font-size: 1.6rem; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; }
+    .personalize-reveal-list { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    @keyframes card-reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    .reveal-card { opacity: 0; animation: card-reveal 0.4s ease forwards; }
+
     /* Profile avatar + nickname */
     .profile-identity { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 0 4px; }
     .profile-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); background: var(--common-light); display: block; }
@@ -620,6 +638,8 @@
     { type: 'common',    title: 'Wake And Bake',      description: 'Wake up 10 minutes earlier and get direct sunlight' },
     { type: 'common',    title: 'Protein Load',       description: 'Hit 1.5g of protein per kilogram of body weight' },
     { type: 'common',    title: 'No Late Snacking',   description: "Don't eat anything 3 hours before bed" },
+    { type: 'common',    title: 'Search For None',    description: 'No random Google or AI searches' },
+    { type: 'common',    title: 'Family First',       description: 'Call up a family member' },
     // ── Legendary ──
     { type: 'legendary', title: 'Sunset',             description: 'Watch the sun set today' },
     { type: 'legendary', title: 'Schedule Dinner',    description: 'Schedule a dinner with friends' },
@@ -634,7 +654,6 @@
     { type: 'legendary', title: 'Solo Date',          description: 'Take yourself out somewhere, by yourself' },
     { type: 'legendary', title: 'Clear Out',          description: 'Fill one bag with stuff to throw out or donate' },
     { type: 'legendary', title: 'The Quiet Hour',     description: '1 hour of silence. No music, no podcasts, nothing' },
-    { type: 'legendary', title: 'Family First',       description: 'Spend quality time with a family member' },
     { type: 'legendary', title: 'No Cigarettes',      description: 'Go the full day without smoking' },
   ];
 
@@ -720,6 +739,12 @@
       onboardingRitualCount: 0,
       ftueScreen: null,
       ftueSlide: 0,
+      actFtueComplete: false,
+      ftuePersonalizeStep: 1,
+      ftuePersonalizeQ1: [],
+      ftuePersonalizeQ2: [],
+      ftuePersonalizeQ3: null,
+      ftuePersonalizePool: null,
       hasShownRecordTutorial: false,
       hasShownBazaarTutorial: false,
       hasShownActPoolTutorial: false,
@@ -943,6 +968,9 @@
     // Hide tab bar during FTUE
     const tabBar = document.getElementById('tab-bar');
     if (tabBar) tabBar.style.display = s.ftueScreen ? 'none' : '';
+    // Blue background during personalize question screens
+    document.body.style.backgroundColor = screen === 'personalize-q' ? 'var(--accent)' : '';
+    document.querySelector('.content')?.style.setProperty('background', screen === 'personalize-q' ? 'transparent' : '');
     // Sync per-task glow phases via CSS custom property (used by ::before)
     document.querySelectorAll('[data-glow-id]').forEach(el => {
       const id = el.dataset.glowId;
@@ -976,8 +1004,11 @@
 
   function buildHtml(screen) {
     if (screen === 'loading')     return `<div class="loading">Loading…</div>`;
-    if (screen === 'splash')      return htmlSplash();
-    if (screen === 'slides')      return htmlSlides();
+    if (screen === 'splash')              return htmlSplash();
+    if (screen === 'slides')              return htmlSlides();
+    if (screen === 'personalize-q')       return htmlPersonalizeQ();
+    if (screen === 'personalize-reveal')  return htmlPersonalizeReveal();
+    if (screen === 'personalize-bridge')  return htmlPersonalizeBridge();
     if (screen === 'leaderboard') return htmlLeaderboard();
     if (screen === 'history')     return htmlHistory();
     if (screen === 'store')     return s.storeScreen === 'craft' ? htmlCraft() : htmlStore();
@@ -990,6 +1021,85 @@
   }
 
   /* ── FTUE Splash ── */
+  /* ── FTUE Personalization (gated to ablufarb@gmail.com) ── */
+  const ACT_FTUE_EMAIL = 'ablufarb@gmail.com';
+  function isActFtueTester() {
+    return clerk?.user?.primaryEmailAddress?.emailAddress === ACT_FTUE_EMAIL;
+  }
+
+  const PERSONALIZE_Q1_MAP = {
+    body:       ['Stretch', 'Sunset'],
+    mind:       ['The Quiet Hour', 'Meditate'],
+    discipline: ['Social Media Ban', 'Early Bed'],
+    self:       ['Big Chef', 'Cold Plunge'],
+    social:     ['Compliment Someone', 'Schedule Dinner'],
+    creativity: ['Full Album', 'Draw Something'],
+    fun:        ['Solo Date', 'Low Hanging Fruit'],
+  };
+  const PERSONALIZE_Q2_MAP = {
+    alcohol:      'No Alcohol',
+    weed:         'No Weed',
+    caffeine:     'No Caffeine',
+    heavy_phone:  null,
+    social_media: 'Social Media Ban',
+    gaming:       'No Gaming',
+    none:         null,
+  };
+  const PERSONALIZE_Q3_MAP = {
+    strong:   'Stairs Only',
+    clear:    'Search For None',
+    resisted: 'Go Offline',
+    someone:  'Family First',
+    created:  'Dance',
+  };
+  const PERSONALIZE_MANDATORY   = ['Long Walk', 'Hydrate', 'Read', 'Exercise', 'Phone Detox'];
+  const PERSONALIZE_COMMON_FILL = ['Little Chef', 'Stretch', 'Low Hanging Fruit', 'Cold Plunge', 'Journal', 'Sugar Free', 'Barefoot', 'Dance', 'No Late Snacking', 'Family First', 'Search For None', 'Stairs Only', 'Compliment Someone', 'Draw Something'];
+  const PERSONALIZE_LEGENDARY_FILL = ['Schedule Dinner', 'Sunset', 'Solo Date', 'Social Media Ban', 'Full Album'];
+
+  function buildPersonalizePool(q1Picks, q2Picks, q3Pick) {
+    function findAct(title) {
+      return BROAD_ACT_POOL.find(a => a.title.toLowerCase() === title.toLowerCase());
+    }
+    const assigned = new Set();
+    const pool = [];
+    function tryAdd(title) {
+      if (!title) return;
+      const key = title.toLowerCase();
+      if (assigned.has(key)) return;
+      const act = findAct(title);
+      if (!act) return;
+      const cCount = pool.filter(a => a.type === 'common').length;
+      const lCount = pool.filter(a => a.type === 'legendary').length;
+      if (act.type === 'common' && cCount >= 10) return;
+      if (act.type === 'legendary' && lCount >= 3) return;
+      assigned.add(key);
+      pool.push({ ...act });
+    }
+    PERSONALIZE_MANDATORY.forEach(tryAdd);
+    q1Picks.forEach(code => (PERSONALIZE_Q1_MAP[code] || []).forEach(tryAdd));
+    const q2Candidates = q2Picks.map(c => PERSONALIZE_Q2_MAP[c]).filter(Boolean);
+    if (q2Candidates.length) tryAdd(q2Candidates[Math.floor(Math.random() * q2Candidates.length)]);
+    if (q3Pick) tryAdd(PERSONALIZE_Q3_MAP[q3Pick]);
+    const needC = 10 - pool.filter(a => a.type === 'common').length;
+    const needL = 3  - pool.filter(a => a.type === 'legendary').length;
+    let addedC = 0, addedL = 0;
+    for (const t of shuffle([...PERSONALIZE_COMMON_FILL])) {
+      if (addedC >= needC) break;
+      const key = t.toLowerCase();
+      if (assigned.has(key)) continue;
+      const act = findAct(t); if (!act) continue;
+      assigned.add(key); pool.push({ ...act }); addedC++;
+    }
+    for (const t of shuffle([...PERSONALIZE_LEGENDARY_FILL])) {
+      if (addedL >= needL) break;
+      const key = t.toLowerCase();
+      if (assigned.has(key)) continue;
+      const act = findAct(t); if (!act) continue;
+      assigned.add(key); pool.push({ ...act }); addedL++;
+    }
+    return pool;
+  }
+
   const FTUE_SLIDES = [
     { emoji: '🧿', text: 'Honor your Ritual by completing all daily Acts' },
     { emoji: '🕌', text: 'Build your Record, earn Tokens and splurge at the Bazaar' },
@@ -1014,9 +1124,16 @@
       </div>`;
   }
 
+  function ftueLastSlide() {
+    return isActFtueTester() && !s.actFtueComplete
+      ? { emoji: '🏗️', text: "Let's personalize your Acts", cta: 'Personalize Acts →' }
+      : { ...FTUE_SLIDES[FTUE_SLIDES.length - 1], cta: 'Roll Acts →' };
+  }
+
   function htmlSlides() {
-    const slide  = FTUE_SLIDES[s.ftueSlide];
     const isLast = s.ftueSlide === FTUE_SLIDES.length - 1;
+    const last   = ftueLastSlide();
+    const slide  = isLast ? last : FTUE_SLIDES[s.ftueSlide];
     return `
       <div class="ftue-slides">
         <div class="ftue-slides-body">
@@ -1029,9 +1146,132 @@
           </div>
         </div>
         <div class="ftue-footer">
-          <button class="btn-primary" id="ftue-cta">${isLast ? 'Roll Acts →' : 'Next'}</button>
+          <button class="btn-primary" id="ftue-cta">${isLast ? last.cta : 'Next'}</button>
         </div>
       </div>`;
+  }
+
+  /* ── Personalize FTUE screens ── */
+  const PERSONALIZE_QUESTIONS = [
+    { step: 1, title: 'What do you want to work on?', multi: true, max: 2,
+      options: [
+        { code: 'body',       label: 'Body & energy' },
+        { code: 'mind',       label: 'Mind & focus' },
+        { code: 'discipline', label: 'Discipline & habits' },
+        { code: 'self',       label: 'Self improvement' },
+        { code: 'social',     label: 'Social connection' },
+        { code: 'creativity', label: 'Creativity' },
+        { code: 'fun',        label: 'I just want to have fun' },
+      ] },
+    { step: 2, title: 'Which of these are part of your life?', multi: true, max: null,
+      options: [
+        { code: 'alcohol',      label: 'Alcohol' },
+        { code: 'weed',         label: 'Weed' },
+        { code: 'caffeine',     label: 'Caffeine' },
+        { code: 'heavy_phone',  label: 'Heavy phone use' },
+        { code: 'social_media', label: 'Social media use' },
+        { code: 'gaming',       label: 'Gaming' },
+        { code: 'none',         label: 'None of the above' },
+      ] },
+    { step: 3, title: 'At the end of a great day, what made it great?', multi: false, max: 1,
+      options: [
+        { code: 'strong',   label: 'I felt strong and physically alive' },
+        { code: 'clear',    label: 'My head was clear and I was focused' },
+        { code: 'resisted', label: 'I resisted something I usually give in to' },
+        { code: 'someone',  label: 'I was there for someone, or they were there for me' },
+        { code: 'created',  label: 'I made or created something' },
+      ] },
+  ];
+
+  function htmlPersonalizeQ() {
+    const q = PERSONALIZE_QUESTIONS[s.ftuePersonalizeStep - 1];
+    const answer = s.ftuePersonalizeStep === 1 ? s.ftuePersonalizeQ1
+                 : s.ftuePersonalizeStep === 2 ? s.ftuePersonalizeQ2
+                 : s.ftuePersonalizeQ3 ? [s.ftuePersonalizeQ3] : [];
+    const isSelected = code => answer.includes(code);
+    const isQ3 = s.ftuePersonalizeStep === 3;
+    return `
+      <div class="personalize-screen">
+        <div class="personalize-progress">${s.ftuePersonalizeStep} of 3</div>
+        <div class="personalize-title">${q.title}</div>
+        <div class="personalize-options">
+          ${q.options.map(o => `<button class="personalize-option${isSelected(o.code) ? ' selected' : ''}" data-p-opt="${o.code}">${o.label}</button>`).join('')}
+        </div>
+        <button class="btn-primary personalize-cta" id="personalize-cta">${isQ3 ? 'Create Act Pool' : 'Continue'}</button>
+      </div>`;
+  }
+
+  function htmlPersonalizeReveal() {
+    const pool = s.ftuePersonalizePool || [];
+    const ordered = [...pool.filter(a => a.type === 'common'), ...pool.filter(a => a.type === 'legendary')];
+    return `
+      <div class="personalize-reveal">
+        <div class="personalize-reveal-title">Your Acts</div>
+        <div class="personalize-reveal-list">
+          ${ordered.map((act, i) => `
+            <div class="pool-task-card card-${act.type}${act.type === 'legendary' ? ' legendary-glow' : ''} reveal-card" style="animation-delay:${i * 80}ms"${act.type === 'legendary' ? ` data-glow-id="prev-${i}"` : ''}>
+              <div class="pool-task-row">
+                <div class="pool-task-info">
+                  <div class="pool-task-title">${act.title}</div>
+                  <div class="pool-task-desc">${act.description}</div>
+                </div>
+                ${rarityTag(act.type)}
+              </div>
+            </div>`).join('')}
+        </div>
+        <button class="btn-primary" id="personalize-continue" style="margin-top:20px">Continue</button>
+      </div>`;
+  }
+
+  function htmlPersonalizeBridge() {
+    const last = FTUE_SLIDES[FTUE_SLIDES.length - 1];
+    return `
+      <div class="ftue-slides">
+        <div class="ftue-slides-body">
+          <div class="ftue-emoji">${last.emoji}</div>
+          <div class="ftue-text-area">
+            <div class="ftue-text">Let's forge your first Ritual!</div>
+          </div>
+          <div class="ftue-dots">
+            ${FTUE_SLIDES.map(() => `<div class="ftue-dot active"></div>`).join('')}
+          </div>
+        </div>
+        <div class="ftue-footer">
+          <button class="btn-primary" id="personalize-begin">Roll Acts →</button>
+        </div>
+      </div>`;
+  }
+
+  async function commitPersonalizePool() {
+    const pool = s.ftuePersonalizePool || [];
+    const tasks = pool.map((act, i) => ({
+      id: `p-${Date.now()}-${i}`,
+      title: act.title,
+      description: act.description,
+      type: act.type,
+    }));
+    s.tasks = tasks;
+    s.actFtueComplete = true;
+    s.ftueScreen = 'personalize-reveal';
+    render();
+    await api('DELETE', '/api/tasks');
+    await Promise.all([
+      ...tasks.map(t => api('POST', '/api/tasks', t)),
+      api('PATCH', '/api/profile', { act_ftue_complete: true }),
+    ]);
+  }
+
+  async function beginFirstRitual() {
+    s.ftueScreen = null;
+    s.offered = rollOffered();
+    s.picked = [];
+    s.planBuildState = 'revealing';
+    render();
+    revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
+    await api('POST', '/api/sessions', {
+      type: 'draft', id: `draft-${s.today}`, date: s.today,
+      offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
+    });
   }
 
   /* ── Pick ── */
@@ -1967,8 +2207,9 @@
 
     setTimeout(() => {
       s.ftueSlide = newIndex;
-      const slide  = FTUE_SLIDES[newIndex];
       const isLast = newIndex === FTUE_SLIDES.length - 1;
+      const last   = ftueLastSlide();
+      const slide  = isLast ? last : FTUE_SLIDES[newIndex];
 
       // Emoji: instant swap (no animation)
       if (emojiEl) emojiEl.textContent = slide.emoji;
@@ -1983,7 +2224,7 @@
       if (dotsEl) dotsEl.querySelectorAll('.ftue-dot').forEach((d, i) => d.classList.toggle('active', i === newIndex));
 
       // CTA: update label (handler reads s.ftueSlide so no re-bind needed)
-      if (ctaBtn) ctaBtn.textContent = isLast ? 'Roll Acts →' : 'Next';
+      if (ctaBtn) ctaBtn.textContent = isLast ? last.cta : 'Next';
 
       // Phase 2: animate text in (double rAF ensures browser has painted new position)
       requestAnimationFrame(() => {
@@ -2020,23 +2261,71 @@
         }
       }, { passive: true });
 
-      // Single CTA button handles both Next and Roll Acts
+      // Single CTA button handles both Next and Roll Acts / Personalize Acts
       document.getElementById('ftue-cta')?.addEventListener('click', async () => {
         if (s.ftueSlide < FTUE_SLIDES.length - 1) {
           ftueSlideTransition(1);
-        } else {
-          s.ftueScreen = null;
-          s.offered = rollOffered();
-          s.picked = [];
-          s.planBuildState = 'revealing';
+        } else if (isActFtueTester() && !s.actFtueComplete) {
+          s.ftuePersonalizeStep = 1;
+          s.ftuePersonalizeQ1 = []; s.ftuePersonalizeQ2 = []; s.ftuePersonalizeQ3 = null;
+          s.ftueScreen = 'personalize-q';
           render();
-          revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
-          await api('POST', '/api/sessions', {
-            type: 'draft', id: `draft-${s.today}`, date: s.today,
-            offered_ids: s.offered, picked_ids: [], completed_ids: [], status: 'draft',
-          });
+        } else {
+          await beginFirstRitual();
         }
       });
+    }
+
+    if (screen === 'personalize-q') {
+      const step = s.ftuePersonalizeStep;
+      const q = PERSONALIZE_QUESTIONS[step - 1];
+      document.querySelectorAll('[data-p-opt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.dataset.pOpt;
+          if (!q.multi) {
+            s.ftuePersonalizeQ3 = code;
+            render();
+          } else {
+            const arr = step === 1 ? s.ftuePersonalizeQ1 : s.ftuePersonalizeQ2;
+            if (code === 'none' && step === 2) {
+              // "None of the above" clears all other selections
+              s.ftuePersonalizeQ2 = arr.includes('none') ? [] : ['none'];
+            } else {
+              // Remove 'none' if selecting something real (Q2 only)
+              const filtered = step === 2 ? arr.filter(c => c !== 'none') : arr;
+              const idx = filtered.indexOf(code);
+              if (idx !== -1) {
+                filtered.splice(idx, 1);
+              } else if (!q.max || filtered.length < q.max) {
+                filtered.push(code);
+              }
+              if (step === 1) s.ftuePersonalizeQ1 = filtered;
+              else s.ftuePersonalizeQ2 = filtered;
+            }
+            render();
+          }
+        });
+      });
+      document.getElementById('personalize-cta')?.addEventListener('click', () => {
+        if (step < 3) {
+          s.ftuePersonalizeStep++;
+          render();
+        } else {
+          s.ftuePersonalizePool = buildPersonalizePool(s.ftuePersonalizeQ1, s.ftuePersonalizeQ2, s.ftuePersonalizeQ3);
+          commitPersonalizePool();
+        }
+      });
+    }
+
+    if (screen === 'personalize-reveal') {
+      document.getElementById('personalize-continue')?.addEventListener('click', () => {
+        s.ftueScreen = 'personalize-bridge';
+        render();
+      });
+    }
+
+    if (screen === 'personalize-bridge') {
+      document.getElementById('personalize-begin')?.addEventListener('click', () => beginFirstRitual());
     }
 
     if (screen === 'store') {
@@ -3284,6 +3573,8 @@
           ));
         }
       }
+
+      s.actFtueComplete = data.profile?.act_ftue_complete ?? false;
 
       // Trigger FTUE splash for brand-new users (no non-draft sessions)
       if (!s.hasCompletedOnboarding && s.onboardingRitualCount === 0) {

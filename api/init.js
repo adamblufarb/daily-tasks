@@ -18,6 +18,7 @@ const DEFAULT_TASKS = [
   { id: 'l2',  type: 'legendary', title: 'Phone Detox',      description: "Don't use your phone after 18:00" },
   { id: 'l4',  type: 'legendary', title: 'Big Chef',         description: 'Cook something new' },
   { id: 'c13', type: 'common',    title: 'Low Hanging Fruit', description: 'Smile for 30 seconds straight' },
+  { id: 'c14', type: 'common',    title: 'Search For None',   description: 'No random Google or AI searches' },
 ];
 
 module.exports = withAuth(async (req, res, userId) => {
@@ -97,6 +98,7 @@ module.exports = withAuth(async (req, res, userId) => {
       hide_from_leaderboard boolean NOT NULL DEFAULT false
     )
   `;
+  await sql`ALTER TABLE profiles_v2 ADD COLUMN IF NOT EXISTS act_ftue_complete boolean NOT NULL DEFAULT false`;
 
   // Remove retired acts (idempotent)
   await sql`
@@ -115,8 +117,19 @@ module.exports = withAuth(async (req, res, userId) => {
     UPDATE tasks_v2
     SET type = 'legendary'
     WHERE user_id = ${userId}
-      AND title IN ('Sunset', 'Schedule Dinner', 'Beach Day', 'The Quiet Hour', 'Family First')
+      AND title IN ('Sunset', 'Schedule Dinner', 'Beach Day', 'The Quiet Hour')
       AND type = 'common'
+  `;
+  // Family First is Common (rarity changed back); fix any rows set to Legendary by earlier migration
+  await sql`
+    UPDATE tasks_v2 SET type = 'common'
+    WHERE user_id = ${userId} AND title = 'Family First' AND type = 'legendary'
+  `;
+  // Add Search For None to all existing users
+  await sql`
+    INSERT INTO tasks_v2 (id, user_id, title, description, type, archived)
+    VALUES ('c14', ${userId}, 'Search For None', 'No random Google or AI searches', 'common', false)
+    ON CONFLICT (user_id, id) DO NOTHING
   `;
   // Description correction — Brain Dump
   await sql`

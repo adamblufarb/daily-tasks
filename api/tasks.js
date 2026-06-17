@@ -38,10 +38,14 @@ module.exports = withAuth(async (req, res, userId) => {
     return res.json({ ok: true });
   }
 
-  // DELETE — ?id=xxx
+  // DELETE — ?id=xxx deletes one; no id deletes all for user
   if (req.method === 'DELETE') {
     const { id } = req.query;
-    await sql`DELETE FROM tasks_v2 WHERE id = ${id} AND user_id = ${userId}`;
+    if (id) {
+      await sql`DELETE FROM tasks_v2 WHERE id = ${id} AND user_id = ${userId}`;
+    } else {
+      await sql`DELETE FROM tasks_v2 WHERE user_id = ${userId}`;
+    }
     return res.json({ ok: true });
   }
 
