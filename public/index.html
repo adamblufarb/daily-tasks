@@ -404,6 +404,16 @@
     .btn-restore { width: 100%; padding: 14px; background: none; color: var(--subtext); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 2px; }
     .btn-reroll { width: 100%; padding: 14px; background: none; color: var(--common-dark); font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; font-family: inherit; margin-top: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn-reroll:disabled { opacity: 0.35; pointer-events: none; }
+    /* Pool hold-to-confirm action cards */
+    .pool-hold-card { position:relative; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; cursor:pointer; }
+    .pool-hold-card .store-card-top { position:relative; z-index:1; }
+    /* Add-Act roll/pick screen */
+    .add-act-roll-cta { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; gap:12px; }
+    .add-act-card { background:var(--card); border:1.5px solid var(--border); border-radius:var(--radius); padding:14px 16px; cursor:pointer; transition:border-color 0.12s,box-shadow 0.12s,opacity 0.35s; margin-bottom:8px; }
+    .add-act-card.selected.common-sel  { border-color:var(--common);    box-shadow:0 0 0 2px var(--common); }
+    .add-act-card.selected.legendary-sel { border-color:var(--legendary); box-shadow:0 0 0 2px var(--legendary); }
+    .add-act-card:active { transform:scale(0.98); }
+    .add-act-sticky-cta { position:sticky; bottom:calc(88px + env(safe-area-inset-bottom)); padding:12px 0 4px; }
 .btn-craft-action { display: grid; grid-template-columns: 1fr auto; align-items: center; background: #fff; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: flex-start; color: var(--text); position: relative; z-index: 1; }
     .craft-action-cost { display: flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 0.8rem; font-weight: 400; color: var(--subtext); white-space: nowrap; position: relative; z-index: 1; }
@@ -708,7 +718,9 @@
   }
 
   /* ── Feature flags ── */
-  const KEY_AFFIX_ENABLED = false;
+  const KEY_AFFIX_ENABLED         = false;
+  const BAZAAR_OFFERINGS_ENABLED  = false; // hide Profile → Bazaar Offerings button
+  const DELETE_ACT_ENABLED        = false; // hide Act Pool → Delete an Act card
 
   /* ── State ── */
   function initialState() {
@@ -730,6 +742,8 @@
       profileScreen: 'menu',
       poolEditMode: false,
       poolAddMode: null,
+      addActOffered: [],
+      addActSelected: null,
       showResetConfirm: false,
       storeItems: [],
       editingStoreItem: null,
@@ -1559,7 +1573,8 @@
     const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
     const hours = Array.from({length: 6}, (_, i) => i + 6);
     const bazaarUnlocked = s.onboardingRitualCount >= 2;
-    const isAdmin = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
+    const isAdmin  = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
+    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const showTesting = isAdmin && localStorage.getItem('showTestingTools') === 'true';
     const avatarUrl = clerk.user?.imageUrl;
     const avatarHtml = avatarUrl
@@ -1586,10 +1601,11 @@
           <span class="profile-menu-label">Act Pool</span>
           <span class="profile-menu-arrow">›</span>
         </button>
+        ${(!isTester || BAZAAR_OFFERINGS_ENABLED) ? `
         <button class="profile-menu-item" id="btn-profile-storemanage"${bazaarUnlocked ? '' : ' disabled'}${bazaarUnlocked ? ' style="background:var(--mythic);color:#fff;border-color:transparent"' : ''}>
           <span class="profile-menu-label">Bazaar Offerings</span>
           <span class="profile-menu-arrow">›</span>
-        </button>
+        </button>` : ''}
       </div>
       <div class="settings-section" style="margin-top:16px">
         <div class="settings-row">
@@ -1609,6 +1625,9 @@
         </div>
         <div class="settings-sub">Grace period until ${fmtHour(graceEnd >= 24 ? graceEnd - 24 : graceEnd)} to enter previous day's results</div>
       </div>
+      ${isTester ? `
+      <div style="height:16px"></div>
+      <button class="btn-primary" id="btn-grant-tokens" style="font-size:0.82rem;padding:13px;background:var(--mythic)">Grant 50 Each (Tester)</button>` : ''}
       <div style="height:16px"></div>
       <button class="profile-menu-item" id="btn-sign-out" style="color:var(--subtext)">
         <span class="profile-menu-label">Sign Out</span>
@@ -1808,17 +1827,72 @@
 
   /* ── Add New Act full page ── */
   function htmlAddAct() {
+    const isTester     = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const showPickList = s.poolAddMode === 'pick-list';
     const showCustom   = s.poolAddMode === 'custom';
     const showPickEdit = s.poolAddMode === 'pick-edit';
+    const showRandom   = isTester && s.poolAddMode === 'random-roll';
+    const showSpecific = isTester && s.poolAddMode === 'specific-list';
     // Default to choice if none of the sub-screens are active
-    const showChoice   = !showPickList && !showCustom && !showPickEdit;
+    const showChoice   = !showPickList && !showCustom && !showPickEdit && !showRandom && !showSpecific;
 
     const userActPool = s.tasks.filter(t => !t.archived);
     const userActPoolTitles = new Set(userActPool.map(t => t.title.toLowerCase()));
     const remainingActPool = BROAD_ACT_POOL.filter(d => !userActPoolTitles.has(d.title.toLowerCase()));
 
-    const backLabel = (showPickList || showCustom || showPickEdit) ? '‹ Back' : '‹ Act Pool';
+    const backLabel = (showPickList || showCustom || showPickEdit || showRandom || showSpecific) ? '‹ Back' : '‹ Act Pool';
+
+    if (showRandom) {
+      const offered = s.addActOffered || [];
+      const sel     = s.addActSelected;
+      const canReroll = s.wallet.legendary >= 1;
+      const hasOffer  = offered.length > 0;
+      const canConfirm = !!sel;
+      const actCard = (a, i) => `
+        <div class="add-act-card${sel?.title === a.title ? ` selected ${a.type}-sel` : ''}${sel?.title === a.title ? ' task-card-reveal' : (hasOffer ? ' task-card-reveal' : '')}" data-add-act-pick="${i}" style="${hasOffer ? `animation-delay:${i * 120}ms` : ''}">
+          <div class="pool-task-title">${a.title}</div>
+          <div class="pool-task-desc">${a.description}</div>
+          <div style="margin-top:6px">${rarityTag(a.type)}</div>
+        </div>`;
+      return `
+        <div class="section-header" style="padding-bottom:8px">
+          <button class="btn-back" id="btn-back-addact">‹ Act Pool</button>
+          <div class="section-title">Add a new Act</div>
+        </div>
+        ${!hasOffer ? `
+          <div class="add-act-roll-cta">
+            <button class="btn-primary" id="btn-roll-acts" style="width:auto;padding:16px 32px">Roll New Acts →</button>
+          </div>` : `
+          ${offered.map(actCard).join('')}
+          <button class="btn-reroll" id="btn-reroll-acts"${canReroll ? '' : ' disabled'}>
+            ↺ Re-Roll Acts <span style="display:inline-flex;align-items:center;gap:3px"><span style="font-weight:400;font-size:0.8rem">x1</span>${rarityTag('legendary')}</span>
+          </button>
+          <div class="add-act-sticky-cta">
+            <button class="btn-primary" id="btn-add-to-pool"${canConfirm ? '' : ' disabled'}>Add To Act Pool →</button>
+          </div>`}`;
+    }
+
+    if (showSpecific) {
+      const sel = s.addActSelected;
+      const canConfirm = !!sel;
+      const actCard = (a, i) => `
+        <div class="add-act-card${sel?.title === a.title ? ` selected ${a.type}-sel` : ''}" data-add-act-pick="${i}">
+          <div class="pool-task-title">${a.title}</div>
+          <div class="pool-task-desc">${a.description}</div>
+          <div style="margin-top:6px">${rarityTag(a.type)}</div>
+        </div>`;
+      return `
+        <div class="section-header" style="padding-bottom:8px">
+          <button class="btn-back" id="btn-back-addact">‹ Act Pool</button>
+          <div class="section-title">Add a new Act</div>
+        </div>
+        ${remainingActPool.length === 0
+          ? `<div class="pick-empty">You already have all available acts in your pool.</div>`
+          : remainingActPool.map(actCard).join('')}
+        <div class="add-act-sticky-cta">
+          <button class="btn-primary" id="btn-add-to-pool"${canConfirm ? '' : ' disabled'}>Add To Act Pool →</button>
+        </div>`;
+    }
 
     return `
       <div class="section-header" style="padding-bottom:8px">
@@ -1871,12 +1945,15 @@
 
   /* ── Task Pool tab ── */
   function htmlTaskPool() {
+    const isTester  = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const userActPool = s.tasks.filter(t => !t.archived);
     const common    = userActPool.filter(t => t.type === 'common');
     const legendary = userActPool.filter(t => t.type === 'legendary');
     const deleting  = s.poolEditMode;
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
+    const canAddRandom   = isTester && s.wallet.mythic >= 1;
+    const canAddSpecific = isTester && s.wallet.mythic >= 3;
     // Compute per-task stats from session history
     const stats = {};
     for (const sess of s.sessions) {
@@ -1902,7 +1979,7 @@
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
             </div>
-            ${deleting ? `
+            ${deleting && (!isTester || DELETE_ACT_ENABLED) ? `
             <div class="pool-task-actions">
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete"${!canDelete ? ' disabled style="opacity:0.35;pointer-events:none"' : ''}>🗑️</button>
             </div>` : `
@@ -1933,18 +2010,40 @@
           : `<div class="section-sub">${userActPool.length} act${userActPool.length !== 1 ? 's' : ''} · ${common.length} common · ${legendary.length} legendary</div>`}
       </div>
       ${!deleting ? `
+      ${isTester ? `
+      <div class="store-card pool-hold-card${!canAddRandom ? ' disabled' : ''}" id="btn-add-random-act" style="${!canAddRandom ? 'opacity:0.5;pointer-events:none' : ''}">
+        <div class="craft-hold-fill" id="fill-add-random-act" style="background:var(--mythic)"></div>
+        <div class="store-card-top">
+          <div>
+            <div class="store-card-name">Add Random Act</div>
+            <div class="store-card-desc">Add a new random act to your act pool</div>
+          </div>
+          <div class="store-card-price">x1 ${rarityTag('mythic')}</div>
+        </div>
+      </div>
+      <div class="store-card pool-hold-card${!canAddSpecific ? ' disabled' : ''}" id="btn-add-specific-act" style="${!canAddSpecific ? 'opacity:0.5;pointer-events:none' : ''}">
+        <div class="craft-hold-fill" id="fill-add-specific-act" style="background:var(--mythic)"></div>
+        <div class="store-card-top">
+          <div>
+            <div class="store-card-name">Add Specific Act</div>
+            <div class="store-card-desc">Add a new specific act to your act pool</div>
+          </div>
+          <div class="store-card-price">x3 ${rarityTag('mythic')}</div>
+        </div>
+      </div>` : `
       <div class="store-card${!canAdd ? '' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
         <div class="store-card-top">
           <div class="store-card-name">Add New Act</div>
           <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
       </div>
+      ${(!isTester && DELETE_ACT_ENABLED) ? `
       <div class="store-card" id="btn-enter-edit-mode"${!canDelete ? ' style="opacity:0.5;pointer-events:none"' : ''}>
         <div class="store-card-top">
           <div class="store-card-name">Delete An Act</div>
           <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
-      </div>` : ''}
+      </div>` : ''}`}` : ''}
       <div class="pool-section-label label-common">Common</div>
       ${common.map(taskRow).join('')}
       <div class="pool-section-label label-legendary">Legendary</div>
@@ -1955,6 +2054,7 @@
 
   /* ── Store ── */
   function htmlStore() {
+    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const w = s.wallet;
     const alreadyBoughtToday = s.lastPurchaseDate === s.today;
 
@@ -1971,12 +2071,19 @@
 
     // On store list: if already bought today, auto-highlight purchased item
     const activeItems = s.storeItems.length ? s.storeItems : STORE_ITEMS;
+    const sysItems = isTester ? [
+      { id: 'sys-random',   name: 'Add Random Act',   desc: 'Roll 5 acts — pick one to add to your pool', cost: 1, rarity: 'mythic' },
+      { id: 'sys-specific', name: 'Add Specific Act',  desc: 'Browse and pick any act to add',             cost: 3, rarity: 'mythic' },
+    ] : [];
+    const allItems = [...sysItems, ...activeItems];
     const purchasedItemId = alreadyBoughtToday && s.lastPurchasedItem
       ? activeItems.find(x => x.name === s.lastPurchasedItem.name)?.id
       : null;
     const sel = alreadyBoughtToday ? purchasedItemId : s.selectedStoreItem;
-    const selItem = activeItems.find(x => x.id === sel);
-    const canPurchase = selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday;
+    const selItem = allItems.find(x => x.id === sel);
+    const isSysItem = sel?.startsWith('sys-');
+    const canPurchaseSys = isSysItem && selItem && (w[selItem.rarity] || 0) >= selItem.cost;
+    const canPurchase = (isSysItem ? canPurchaseSys : (selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday));
     const showStreakAward = w.streak > 0 && w.streak % 3 === 0 && w.streak !== (w.streakAwardClaimed || 0);
     return `
       <div class="section-header" style="padding-bottom:8px">
@@ -1997,6 +2104,23 @@
         </button>
       </div>
       ` : ''}
+      ${sysItems.map(item => {
+        const isSelected = sel === item.id;
+        const canAfford  = (w[item.rarity] || 0) >= item.cost;
+        const selClass   = isSelected ? ` selected-${item.rarity}` : '';
+        const affordOpacity = !canAfford && !isSelected ? ' style="opacity:0.5"' : '';
+        return `
+        <div class="store-card${selClass}" data-store-select="${item.id}"${affordOpacity}>
+          <div class="store-card-top">
+            <div>
+              <div class="store-card-name">${item.name}</div>
+              <div class="store-card-desc">${item.desc}</div>
+            </div>
+            <div class="store-card-price">x${item.cost} ${rarityTag(item.rarity)}</div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${sysItems.length ? `<div style="height:4px"></div><div class="pool-section-label" style="margin-bottom:12px">Offerings</div>` : ''}
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const isPurchased = alreadyBoughtToday && isSelected;
@@ -2016,7 +2140,7 @@
       }).join('')}
       <div class="store-purchase-cta">
         <button class="btn-purchase${canPurchase ? ` ready-${selItem.rarity}` : ''}"${canPurchase ? '' : ' disabled'} id="btn-purchase">
-          ${alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select An Offering'}
+          ${!isSysItem && alreadyBoughtToday ? 'See you next time' : selItem ? 'Purchase' : 'Select An Offering'}
         </button>
       </div>
       ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-restore" id="btn-restore-purchase">Restore Purchase</button>` : ''}`;
@@ -2435,7 +2559,33 @@
             render();
           }));
         document.getElementById('btn-purchase')?.addEventListener('click', () => {
-          if (s.selectedStoreItem) purchaseItem(s.selectedStoreItem);
+          const sel = s.selectedStoreItem;
+          if (!sel) return;
+          if (sel === 'sys-random') {
+            if (s.wallet.mythic < 1) return;
+            s.wallet.mythic = Math.max(0, s.wallet.mythic - 1);
+            s.addActOffered  = rollAddActOffers();
+            s.addActSelected = null;
+            s.tab = 'tasks';
+            s.profileScreen  = 'addact';
+            s.poolAddMode    = 'random-roll';
+            s.selectedStoreItem = null;
+            render();
+            saveWallet();
+          } else if (sel === 'sys-specific') {
+            if (s.wallet.mythic < 3) return;
+            s.wallet.mythic = Math.max(0, s.wallet.mythic - 3);
+            s.addActOffered  = [];
+            s.addActSelected = null;
+            s.tab = 'tasks';
+            s.profileScreen  = 'addact';
+            s.poolAddMode    = 'specific-list';
+            s.selectedStoreItem = null;
+            render();
+            saveWallet();
+          } else {
+            purchaseItem(sel);
+          }
         });
         document.getElementById('btn-back-store')?.addEventListener('click', () => {
           s.showPurchasedScreen = false;
@@ -2831,11 +2981,20 @@
         if (!name) return;
         saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity: 'mythic' });
       });
-      // Add New Act → open full page
+      // Grant 50 of each token (tester only)
+      document.getElementById('btn-grant-tokens')?.addEventListener('click', async () => {
+        s.wallet.common    += 50;
+        s.wallet.legendary += 50;
+        s.wallet.mythic    += 50;
+        render();
+        await saveWallet();
+      });
+
+      // Add New Act → open full page (legacy non-tester path)
       document.getElementById('btn-add-task')?.addEventListener('click', () => {
         s.profileScreen = 'addact'; s.poolAddMode = null; s.editingTask = null; render();
       });
-      // Enter delete mode
+      // Enter delete mode (legacy non-tester / DELETE_ACT_ENABLED)
       document.getElementById('btn-enter-edit-mode')?.addEventListener('click', () => {
         s.poolEditMode = true; render();
       });
@@ -2851,9 +3010,102 @@
       if (confirmDelBtn) confirmDelBtn.addEventListener('click', () => {
         deletePoolTask(confirmDelBtn.dataset.confirmDelete);
       });
+
+      // Add Random Act — hold-to-confirm (1 Mythic)
+      (() => {
+        const btn  = document.getElementById('btn-add-random-act');
+        const fill = document.getElementById('fill-add-random-act');
+        if (btn && fill) {
+          attachHoldToConfirm(btn, fill, () => {
+            s.wallet.mythic = Math.max(0, s.wallet.mythic - 1);
+            s.addActOffered  = rollAddActOffers();
+            s.addActSelected = null;
+            s.profileScreen  = 'addact';
+            s.poolAddMode    = 'random-roll';
+            render();
+            saveWallet();
+          });
+        }
+      })();
+
+      // Add Specific Act — hold-to-confirm (3 Mythic)
+      (() => {
+        const btn  = document.getElementById('btn-add-specific-act');
+        const fill = document.getElementById('fill-add-specific-act');
+        if (btn && fill) {
+          attachHoldToConfirm(btn, fill, () => {
+            s.wallet.mythic = Math.max(0, s.wallet.mythic - 3);
+            s.addActOffered  = [];
+            s.addActSelected = null;
+            s.profileScreen  = 'addact';
+            s.poolAddMode    = 'specific-list';
+            render();
+            saveWallet();
+          });
+        }
+      })();
+
+      // Add-Act screens — act selection
+      document.querySelectorAll('[data-add-act-pick]').forEach(el => {
+        el.addEventListener('click', () => {
+          const pool = s.poolAddMode === 'random-roll' ? s.addActOffered : (() => {
+            const userTitles = new Set(s.tasks.filter(t => !t.archived).map(t => t.title.toLowerCase()));
+            return BROAD_ACT_POOL.filter(a => !userTitles.has(a.title.toLowerCase()));
+          })();
+          const act = pool[parseInt(el.dataset.addActPick, 10)];
+          if (!act) return;
+          s.addActSelected = act;
+          render();
+        });
+      });
+
+      // Roll New Acts button (initial state of random-roll mode)
+      document.getElementById('btn-roll-acts')?.addEventListener('click', () => {
+        s.addActOffered  = rollAddActOffers();
+        s.addActSelected = null;
+        render();
+      });
+
+      // Re-Roll Acts (1 Legendary)
+      document.getElementById('btn-reroll-acts')?.addEventListener('click', () => {
+        if (s.wallet.legendary < 1) return;
+        s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
+        s.addActOffered  = rollAddActOffers();
+        s.addActSelected = null;
+        render();
+        saveWallet();
+      });
+
+      // Add To Act Pool → confirm selection animation then commit
+      document.getElementById('btn-add-to-pool')?.addEventListener('click', () => {
+        const act = s.addActSelected;
+        if (!act) return;
+
+        // Fade out non-selected cards
+        document.querySelectorAll('.add-act-card:not(.selected)').forEach(el => {
+          el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, fill: 'forwards' });
+        });
+
+        // Slide selected card up to ~1/3 from top
+        const selEl = document.querySelector('.add-act-card.selected');
+        if (selEl) {
+          const rect    = selEl.getBoundingClientRect();
+          const targetY = window.innerHeight / 3 - rect.top;
+          selEl.animate(
+            [{ transform: 'translateY(0)' }, { transform: `translateY(${targetY}px)` }],
+            { duration: 480, delay: 80, easing: 'ease-out', fill: 'forwards' }
+          );
+        }
+
+        setTimeout(() => addActToPool(act), 1000);
+      });
+
       // Add New Act page — back button (context-aware)
       document.getElementById('btn-back-addact')?.addEventListener('click', () => {
-        if (s.poolAddMode === 'pick-list') {
+        if (s.poolAddMode === 'random-roll' || s.poolAddMode === 'specific-list') {
+          s.addActOffered = []; s.addActSelected = null;
+          s.poolAddMode = null; s.profileScreen = 'taskpool'; render();
+        } else if (s.poolAddMode === 'pick-list') {
           s.poolAddMode = null; render();
         } else if (s.poolAddMode === 'pick-edit') {
           s.poolAddMode = 'pick-list'; s.editingTask = null; render();
@@ -3478,6 +3730,30 @@
       nickname: s.profile.nickname,
       hide_from_leaderboard: s.profile.hideFromLeaderboard,
     });
+  }
+
+  function rollAddActOffers() {
+    const userTitles = new Set(s.tasks.filter(t => !t.archived).map(t => t.title.toLowerCase()));
+    const remaining  = BROAD_ACT_POOL.filter(a => !userTitles.has(a.title.toLowerCase()));
+    return shuffle([...remaining]).slice(0, Math.min(5, remaining.length));
+  }
+
+  async function addActToPool(act) {
+    const task = { id: `add-${Date.now()}`, title: act.title, description: act.description, type: act.type };
+    s.tasks.push(task);
+    s.addActOffered  = [];
+    s.addActSelected = null;
+    s.poolAddMode    = null;
+    s.profileScreen  = 'taskpool';
+    render();
+    setTimeout(() => {
+      const cardEl = document.querySelector(`[data-pool-task-id="${task.id}"]`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => shineNewActCard(cardEl, task.type === 'legendary'), 350);
+      }
+    }, 50);
+    await api('POST', '/api/tasks', task);
   }
 
   async function purchaseItem(itemId) {
