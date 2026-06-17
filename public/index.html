@@ -3593,6 +3593,7 @@
       api('DELETE', '/api/tasks'),
       api('DELETE', '/api/sessions'),
       api('PATCH', '/api/settings', { has_completed_onboarding: false, onboarding_ritual_count: 0 }),
+      api('PATCH', '/api/profile', { act_ftue_complete: false }),
     ]);
     location.reload();
   });
