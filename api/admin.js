@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
   const email = requestingUser?.emailAddresses?.[0]?.emailAddress;
   if (email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Forbidden' });
 
-  const [sessions, wallets, settings, editedActRows] = await Promise.all([
+  const [sessions, wallets, settings, editedActRows, profiles] = await Promise.all([
     sql`SELECT * FROM daily_sessions_v2 ORDER BY user_id, date ASC`,
     sql`SELECT * FROM wallet_v2`,
     sql`SELECT * FROM settings_v2`,
@@ -34,6 +34,7 @@ module.exports = async (req, res) => {
       GROUP BY id, title, type
       ORDER BY total_edits DESC
     `,
+    sql`SELECT user_id, ftue_answers FROM profiles_v2`,
   ]);
 
   const allUserIds = [...new Set([
@@ -48,8 +49,9 @@ module.exports = async (req, res) => {
     clerkUserMap[id] = u?.emailAddresses?.[0]?.emailAddress || id;
   }));
 
-  const walletMap = Object.fromEntries(wallets.map(w => [w.user_id, w]));
-  const settingsMap = Object.fromEntries(settings.map(s => [s.user_id, s]));
+  const walletMap   = Object.fromEntries(wallets.map(w  => [w.user_id,  w]));
+  const settingsMap = Object.fromEntries(settings.map(s  => [s.user_id,  s]));
+  const profileMap  = Object.fromEntries(profiles.map(p  => [p.user_id,  p]));
 
   const sessionsByUser = {};
   for (const sess of sessions) {
@@ -59,8 +61,9 @@ module.exports = async (req, res) => {
 
   const users = allUserIds.map(uid => {
     const userSessions = sessionsByUser[uid] || [];
-    const wallet = walletMap[uid] || {};
+    const wallet  = walletMap[uid]  || {};
     const setting = settingsMap[uid] || {};
+    const profile = profileMap[uid]  || {};
 
     const total = userSessions.filter(s => s.status === 'done').length;
     const honored = userSessions.filter(s =>
@@ -129,6 +132,7 @@ module.exports = async (req, res) => {
         mythic: Math.max(0, earnedMythic - (wallet.mythic || 0)),
       },
       onboardingStage,
+      ftueAnswers: profile.ftue_answers || null,
     };
   });
 

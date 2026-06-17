@@ -100,6 +100,7 @@ module.exports = withAuth(async (req, res, userId) => {
     )
   `;
   await sql`ALTER TABLE profiles_v2 ADD COLUMN IF NOT EXISTS act_ftue_complete boolean NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE profiles_v2 ADD COLUMN IF NOT EXISTS ftue_answers jsonb`;
 
   // Remove retired acts (idempotent)
   await sql`

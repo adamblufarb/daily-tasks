@@ -1303,7 +1303,10 @@
       await api('DELETE', '/api/tasks');
       await Promise.all([
         ...tasks.map(t => api('POST', '/api/tasks', t)),
-        api('PATCH', '/api/profile', { act_ftue_complete: true }),
+        api('PATCH', '/api/profile', {
+          act_ftue_complete: true,
+          ftue_answers: { q1: s.ftuePersonalizeQ1, q2: s.ftuePersonalizeQ2, q3: s.ftuePersonalizeQ3 },
+        }),
       ]);
     })();
     // Fade out at 1.7s, then switch screen once both timer and APIs are done

@@ -232,6 +232,12 @@
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    .ftue-answers { display: flex; flex-direction: column; gap: 6px; }
+    .ftue-row { display: flex; align-items: baseline; gap: 8px; font-size: 0.8rem; }
+    .ftue-q { color: #475569; min-width: 22px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+    .ftue-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .ftue-tag { background: #1e2535; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; }
   </style>
   <script
     data-clerk-publishable-key="pk_test_d29ya2FibGUtcGVsaWNhbi0xOC5jbGVyay5hY2NvdW50cy5kZXYk"
@@ -316,6 +322,29 @@
       </tr>`;
     }
 
+    const Q1_LABELS = { body:'Body & energy', mind:'Mind & focus', discipline:'Discipline & habits', self:'Self improvement', social:'Social connection', creativity:'Creativity', fun:'Just have fun' };
+    const Q2_LABELS = { alcohol:'Alcohol', weed:'Weed', caffeine:'Caffeine', heavy_phone:'Heavy phone use', social_media:'Social media', gaming:'Gaming', none:'None' };
+    const Q3_LABELS = { strong:'Feeling strong and alive', clear:'Clear head and focus', resisted:'Resisting urges', someone:'Connection with others', created:'Creating something' };
+
+    function renderFtueAnswers(ans) {
+      if (!ans) return '';
+      const tags = (codes, map) => (Array.isArray(codes) ? codes : codes ? [codes] : [])
+        .map(c => `<span class="ftue-tag">${map[c] || c}</span>`).join('');
+      const q1 = tags(ans.q1, Q1_LABELS);
+      const q2 = tags(ans.q2, Q2_LABELS);
+      const q3 = tags(ans.q3, Q3_LABELS);
+      if (!q1 && !q2 && !q3) return '';
+      return `
+        <div>
+          <div class="section-label">FTUE Answers</div>
+          <div class="ftue-answers">
+            ${q1 ? `<div class="ftue-row"><span class="ftue-q">Q1</span><div class="ftue-tags">${q1}</div></div>` : ''}
+            ${q2 ? `<div class="ftue-row"><span class="ftue-q">Q2</span><div class="ftue-tags">${q2}</div></div>` : ''}
+            ${q3 ? `<div class="ftue-row"><span class="ftue-q">Q3</span><div class="ftue-tags">${q3}</div></div>` : ''}
+          </div>
+        </div>`;
+    }
+
     function renderUser(u) {
       const actRows = u.actStats.map(a => {
         const pct = a.assigned > 0 ? Math.round((a.completed / a.assigned) * 100) : 0;
@@ -389,6 +418,8 @@
               </table>
             </div>
             ` : ''}
+
+            ${renderFtueAnswers(u.ftueAnswers)}
 
             ${u.actStats.length > 0 ? `
             <div>
