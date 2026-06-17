@@ -3231,6 +3231,7 @@
     cleanupTutorial();
 
     if (!s.tutorialFlow) return;
+    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const steps = s.tutorialFlow === 'record'   ? RECORD_TUTORIAL
                 : s.tutorialFlow === 'bazaar'   ? BAZAAR_TUTORIAL
                 : s.tutorialFlow === 'actpool'  ? ACT_POOL_TUTORIAL
@@ -3384,15 +3385,27 @@
               const rect = el.getBoundingClientRect();
               window.scrollBy({ top: rect.top - window.innerHeight * 0.30, behavior: 'smooth' });
             }, 50);
+            // Auto-advance when Day Reset time is changed (tester only)
+            if (isTester && step.elId === 'tutorial-settings-section') {
+              document.getElementById('select-reset-hour')?.addEventListener('change', () => {
+                s.tutorialStep++;
+                renderTutorial();
+              }, { once: true });
+            }
           }
           if (step.finish) {
-            el.addEventListener('click', () => completeTutorial(), { once: true });
+            // capture:true ensures completeTutorial() runs before bind handlers call render()
+            el.addEventListener('click', () => completeTutorial(), { once: true, capture: isTester });
           }
         }
       }
+      // Tester copy override for Record info slide
+      const stepTitle = (isTester && s.tutorialFlow === 'record' && step.title === 'Eternal record of your Ritual glory')
+        ? 'Record keeps your Ritual journey'
+        : step.title;
       const box = document.createElement('div');
       box.className = 'tutorial-box';
-      box.innerHTML = `<div class="tutorial-title">${step.title}</div><button id="btn-tutorial-cta" class="btn-primary">${step.finish ? 'Finish' : 'Next'}</button>`;
+      box.innerHTML = `<div class="tutorial-title">${stepTitle}</div><button id="btn-tutorial-cta" class="btn-primary">${step.finish ? 'Finish' : 'Next'}</button>`;
       overlay.appendChild(box);
       document.getElementById('btn-tutorial-cta')?.addEventListener('click', () => {
         if (step.finish) { completeTutorial(); return; }
