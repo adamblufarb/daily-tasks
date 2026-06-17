@@ -3646,6 +3646,7 @@
         : step.title;
       const box = document.createElement('div');
       box.className = 'tutorial-box';
+      if (step.elId === 'tutorial-settings-section') box.style.bottom = 'calc(70px + env(safe-area-inset-bottom))';
       box.innerHTML = `<div class="tutorial-title">${stepTitle}</div><button id="btn-tutorial-cta" class="btn-primary">${step.finish ? 'Finish' : 'Next'}</button>`;
       overlay.appendChild(box);
       document.getElementById('btn-tutorial-cta')?.addEventListener('click', () => {
