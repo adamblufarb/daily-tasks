@@ -492,7 +492,6 @@
     .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
 
     /* Tester reset button */
-    .app-reset-btn { position: fixed; bottom: 12px; left: 12px; z-index: 999; background: var(--danger); color: #fff; border: none; border-radius: 20px; padding: 8px 14px; font-family: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.25); -webkit-tap-highlight-color: transparent; }
 
     /* Personalize FTUE screens */
     body { transition: background-color 0.25s ease; }
@@ -585,7 +584,6 @@
     <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Ritual</span></button>
     <button class="tab-btn" id="tab-store" data-tab="store"><span class="tab-icon">🕌</span><span>Bazaar</span></button>
   </div>
-  <button class="app-reset-btn" id="btn-app-reset" style="display:none">↺ Reset App</button>
 </div>
 <script>
   try {
@@ -700,18 +698,14 @@
   /* ── Day reset helpers (must be before state init) ── */
   let RESET_HOUR = 8;
   const GRACE_HOURS = 3;
-  let DATE_OFFSET = parseInt(localStorage.getItem('date_offset') || '0');
-
   function localDateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
   function todayStr() {
     const now = new Date();
-    // Before reset hour, it's still "yesterday"
     const base = now.getHours() < RESET_HOUR
       ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
       : new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (DATE_OFFSET) base.setDate(base.getDate() + DATE_OFFSET);
     return localDateStr(base);
   }
   function isInGracePeriod() {
@@ -995,9 +989,6 @@
     // Tab locking during onboarding
     document.getElementById('tab-history')?.classList.toggle('tab-locked', s.onboardingRitualCount < 1);
     document.getElementById('tab-store')?.classList.toggle('tab-locked', s.onboardingRitualCount < 2);
-    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
-    const resetBtn = document.getElementById('btn-app-reset');
-    if (resetBtn) resetBtn.style.display = isTester ? '' : 'none';
     // Hide tab bar during FTUE (and for tester on generate screen so CTA anchor stays consistent)
     const tabBar = document.getElementById('tab-bar');
     const hideTabBar = s.ftueScreen || (isTester && s.planBuildState === 'generate' && !s.hasCompletedOnboarding);
@@ -1437,7 +1428,7 @@
           </div>`;
         }).join('')}
         ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>` : ''}
-        ${isHonoredToday && clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com' ? `<button class="btn-primary" id="btn-next-day" style="margin-top:12px">Move to next day →</button>` : ''}`;
+`;
     }
 
     // ── Active plan ──
@@ -1628,9 +1619,6 @@
         </div>
         <div class="settings-sub">Grace period until ${fmtHour(graceEnd >= 24 ? graceEnd - 24 : graceEnd)} to enter previous day's results</div>
       </div>
-      ${isTester ? `
-      <div style="height:16px"></div>
-      <button class="btn-primary" id="btn-grant-tokens" style="font-size:0.82rem;padding:13px;background:var(--mythic)">Grant 50 Each (Tester)</button>` : ''}
       <div style="height:16px"></div>
       <button class="profile-menu-item" id="btn-sign-out" style="color:var(--subtext)">
         <span class="profile-menu-label">Sign Out</span>
@@ -2861,12 +2849,6 @@
         }));
       document.getElementById('btn-submit-results')?.addEventListener('click', submitResults);
       document.getElementById('btn-restart')?.addEventListener('click', restartDay);
-      document.getElementById('btn-next-day')?.addEventListener('click', () => {
-        DATE_OFFSET++;
-        localStorage.setItem('date_offset', DATE_OFFSET);
-        s.today = todayStr();
-        load();
-      });
     }
 
     if (screen === 'tasks') {
@@ -2987,14 +2969,6 @@
         const cost = parseInt(document.getElementById('si-cost')?.value) || 1;
         if (!name) return;
         saveStoreItem({ ...s.editingStoreItem, name, desc, cost, rarity: 'mythic' });
-      });
-      // Grant 50 of each token (tester only)
-      document.getElementById('btn-grant-tokens')?.addEventListener('click', async () => {
-        s.wallet.common    += 50;
-        s.wallet.legendary += 50;
-        s.wallet.mythic    += 50;
-        render();
-        await saveWallet();
       });
 
       // Add New Act → open full page (legacy non-tester path)
@@ -3998,26 +3972,6 @@
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; s.storeScreen = 'store'; s.leaderboardOpen = false; render(); }));
 
-  // Tester reset button — wipes tasks + onboarding state so the app looks brand-new
-  document.getElementById('btn-app-reset')?.addEventListener('click', async () => {
-    await Promise.all([
-      api('DELETE', '/api/tasks'),
-      api('DELETE', '/api/sessions'),
-      api('PATCH', '/api/settings', {
-        has_completed_onboarding: false, onboarding_ritual_count: 0,
-        has_shown_record_tutorial: false, has_shown_bazaar_tutorial: false,
-        has_shown_actpool_tutorial: false, has_shown_key_affix_tutorial: false,
-      }),
-      api('PATCH', '/api/profile', { act_ftue_complete: false }),
-      api('PATCH', '/api/wallet', {
-        common: 0, legendary: 0, mythic: 0, streak: 0, streak_award_claimed: 0,
-        last_purchase_date: null, last_purchase_item_name: null, last_purchase_item_rarity: null,
-      }),
-    ]);
-    DATE_OFFSET = 0;
-    localStorage.removeItem('date_offset');
-    location.reload();
-  });
 
   // ── Clerk auth flow ──
   // With data-clerk-publishable-key, window.Clerk is a pre-configured singleton
