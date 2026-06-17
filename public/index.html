@@ -1043,12 +1043,16 @@
     heavy_phone: null, social_media: 'Social Media Ban', gaming: 'No Gaming', none: null,
   };
   const PERSONALIZE_Q3_MAP = {
-    strong: 'Stairs Only', clear: 'Search For None', resisted: 'Go Offline',
+    strong: 'Stairs Only', clear: 'Search For None', resisted: 'Sugar Free',
     someone: 'Family First', created: 'Dance',
   };
   const PERSONALIZE_MANDATORY   = ['Long Walk', 'Hydrate', 'Read', 'Exercise', 'Phone Detox'];
-  const PERSONALIZE_COMMON_FILL = ['Little Chef', 'Stretch', 'Low Hanging Fruit', 'Cold Plunge', 'Journal', 'Sugar Free', 'Barefoot', 'Dance', 'No Late Snacking', 'Family First', 'Search For None', 'Stairs Only', 'Compliment Someone', 'Draw Something'];
+  const PERSONALIZE_COMMON_FILL = ['Little Chef', 'Stretch', 'Low Hanging Fruit', 'Cold Plunge', 'Journal', 'Sugar Free', 'Barefoot', 'Dance', 'No Late Snacking', 'Family First', 'Draw Something'];
   const PERSONALIZE_LEGENDARY_FILL = ['Schedule Dinner', 'Sunset', 'Solo Date', 'Social Media Ban', 'Full Album'];
+  const LEGENDARY_PRIORITY = [
+    'Phone Detox', 'Social Media Ban', 'Schedule Dinner', 'Solo Date',
+    'Big Chef', 'Sunset', 'No Gaming', 'Full Album', 'The Quiet Hour',
+  ];
 
   function buildPersonalizePool(q1Picks, q2Picks, q3Pick) {
     function findAct(title) {
@@ -1062,18 +1066,37 @@
       if (assigned.has(key)) return;
       const act = findAct(title);
       if (!act) return;
-      const cCount = pool.filter(a => a.type === 'common').length;
-      const lCount = pool.filter(a => a.type === 'legendary').length;
-      if (act.type === 'common'    && cCount >= 10) return;
-      if (act.type === 'legendary' && lCount >= 3)  return;
       assigned.add(key);
       pool.push({ ...act });
     }
+
+    // Phase 1: assign mandatory + question answers (no cap during assignment)
     PERSONALIZE_MANDATORY.forEach(tryAdd);
     q1Picks.forEach(code => (PERSONALIZE_Q1_MAP[code] || []).forEach(tryAdd));
     const q2Candidates = q2Picks.map(c => PERSONALIZE_Q2_MAP[c]).filter(Boolean);
     if (q2Candidates.length) tryAdd(q2Candidates[Math.floor(Math.random() * q2Candidates.length)]);
     if (q3Pick) tryAdd(PERSONALIZE_Q3_MAP[q3Pick]);
+
+    // Phase 2: legendary cap — if >3, keep top 3 by priority, drop the rest
+    const legendaries = pool.filter(a => a.type === 'legendary');
+    if (legendaries.length > 3) {
+      const priorityIdx = t => {
+        const i = LEGENDARY_PRIORITY.findIndex(p => p.toLowerCase() === t.toLowerCase());
+        return i === -1 ? 999 : i;
+      };
+      const keep = new Set(
+        legendaries.slice().sort((a, b) => priorityIdx(a.title) - priorityIdx(b.title))
+          .slice(0, 3).map(a => a.title.toLowerCase())
+      );
+      for (let i = pool.length - 1; i >= 0; i--) {
+        if (pool[i].type === 'legendary' && !keep.has(pool[i].title.toLowerCase())) {
+          assigned.delete(pool[i].title.toLowerCase());
+          pool.splice(i, 1);
+        }
+      }
+    }
+
+    // Phase 3: fill to 10C / 3L
     const needC = 10 - pool.filter(a => a.type === 'common').length;
     const needL =  3 - pool.filter(a => a.type === 'legendary').length;
     let addedC = 0, addedL = 0;
