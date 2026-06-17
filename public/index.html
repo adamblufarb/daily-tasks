@@ -498,6 +498,12 @@
     .personalize-cta { background: #fff; color: var(--accent); transition: opacity 0.2s ease; }
     .personalize-cta:active { background: rgba(255,255,255,0.9); }
     .personalize-cta:disabled { opacity: 0.4; pointer-events: none; }
+    .p-loading-screen { height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; transition: opacity 0.3s ease; }
+    .p-loading-screen.p-loading-out { opacity: 0; }
+    .p-loading-text { font-size: 1.1rem; font-weight: 700; color: #fff; text-align: center; letter-spacing: 0.01em; }
+    .p-spinner { width: 80px; height: 80px; position: relative; animation: p-spin 1.5s linear infinite; }
+    .p-spinner-dot { width: 16px; height: 16px; border-radius: 50%; position: absolute; }
+    @keyframes p-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .personalize-reveal { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 20px 0; }
     .personalize-reveal-title { font-size: 1.6rem; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; }
     .personalize-reveal-list { display: flex; flex-direction: column; gap: 0; }
@@ -700,6 +706,9 @@
     const h = new Date().getHours();
     return h >= RESET_HOUR && h < RESET_HOUR + GRACE_HOURS;
   }
+
+  /* ── Feature flags ── */
+  const KEY_AFFIX_ENABLED = false;
 
   /* ── State ── */
   function initialState() {
@@ -976,9 +985,10 @@
     const tabBar = document.getElementById('tab-bar');
     const hideTabBar = s.ftueScreen || (isTester && s.planBuildState === 'generate' && !s.hasCompletedOnboarding);
     if (tabBar) tabBar.style.display = hideTabBar ? 'none' : '';
-    // Blue background during personalize question screens
-    document.body.style.backgroundColor = screen === 'personalize-q' ? 'var(--accent)' : '';
-    document.querySelector('.content')?.style.setProperty('background', screen === 'personalize-q' ? 'transparent' : '');
+    // Blue background during personalize question and loading screens
+    const blueScreen = screen === 'personalize-q' || screen === 'personalize-loading';
+    document.body.style.backgroundColor = blueScreen ? 'var(--accent)' : '';
+    document.querySelector('.content')?.style.setProperty('background', blueScreen ? 'transparent' : '');
     // Sync per-task glow phases via CSS custom property (used by ::before)
     document.querySelectorAll('[data-glow-id]').forEach(el => {
       const id = el.dataset.glowId;
@@ -1014,8 +1024,9 @@
     if (screen === 'loading')           return `<div class="loading">Loading…</div>`;
     if (screen === 'splash')            return htmlSplash();
     if (screen === 'slides')            return htmlSlides();
-    if (screen === 'personalize-q')     return htmlPersonalizeQ();
-    if (screen === 'personalize-reveal') return htmlPersonalizeReveal();
+    if (screen === 'personalize-q')       return htmlPersonalizeQ();
+    if (screen === 'personalize-loading') return htmlPersonalizeLoading();
+    if (screen === 'personalize-reveal')  return htmlPersonalizeReveal();
     if (screen === 'personalize-bridge') return htmlPersonalizeBridge();
     if (screen === 'leaderboard') return htmlLeaderboard();
     if (screen === 'history')     return htmlHistory();
@@ -1215,6 +1226,18 @@
       </div>`;
   }
 
+  function htmlPersonalizeLoading() {
+    return `
+      <div class="p-loading-screen" id="p-loading-screen">
+        <div class="p-loading-text">Creating your act pool…</div>
+        <div class="p-spinner">
+          <div class="p-spinner-dot" style="background:var(--legendary);left:32px;top:2px"></div>
+          <div class="p-spinner-dot" style="background:var(--mythic);left:58px;top:47px"></div>
+          <div class="p-spinner-dot" style="background:var(--common);left:6px;top:47px"></div>
+        </div>
+      </div>`;
+  }
+
   function htmlPersonalizeReveal() {
     const pool = s.ftuePersonalizePool || [];
     const common    = pool.filter(a => a.type === 'common');
@@ -1266,13 +1289,22 @@
     }));
     s.tasks = tasks;
     s.actFtueComplete = true;
+    s.ftueScreen = 'personalize-loading';
+    render();
+    // Fire API calls immediately; hold the loading screen for at least 2s
+    const apiDone = (async () => {
+      await api('DELETE', '/api/tasks');
+      await Promise.all([
+        ...tasks.map(t => api('POST', '/api/tasks', t)),
+        api('PATCH', '/api/profile', { act_ftue_complete: true }),
+      ]);
+    })();
+    // Fade out at 1.7s, then switch screen once both timer and APIs are done
+    setTimeout(() => document.getElementById('p-loading-screen')?.classList.add('p-loading-out'), 1700);
+    await new Promise(r => setTimeout(r, 2000));
+    await apiDone;
     s.ftueScreen = 'personalize-reveal';
     render();
-    await api('DELETE', '/api/tasks');
-    await Promise.all([
-      ...tasks.map(t => api('POST', '/api/tasks', t)),
-      api('PATCH', '/api/profile', { act_ftue_complete: true }),
-    ]);
   }
 
   async function beginFirstRitual() {
@@ -1614,9 +1646,10 @@
           <button class="btn-primary" id="btn-test-record" style="flex:1;font-size:0.85rem;padding:13px">Unlock Record</button>
           <button class="btn-primary" id="btn-test-bazaar" style="flex:1;font-size:0.85rem;padding:13px">Unlock Bazaar</button>
         </div>
+        ${KEY_AFFIX_ENABLED ? `
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn-primary" id="btn-test-keyaffix" style="flex:1;font-size:0.85rem;padding:13px">Unlock Key Affix Tutorial</button>
-        </div>
+        </div>` : ''}
         <div class="testing-group-label danger">Danger Zone</div>
         ${s.showResetConfirm ? `
         <div class="reset-confirm-box" style="margin-top:0">
@@ -1861,7 +1894,7 @@
     function taskRow(t) {
       const isConfirmingDelete = s.deletingTask === t.id;
       const st = stats[t.id] || { chosen: 0, completed: 0 };
-      const tappable = !deleting && !isConfirmingDelete;
+      const tappable = !deleting && !isConfirmingDelete && KEY_AFFIX_ENABLED;
       return `
         <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}${tappable?' pool-pickable':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} data-pool-task-id="${t.id}"${tappable?' data-view-task="'+t.id+'"':''}>
           <div class="pool-task-row">
@@ -2874,87 +2907,89 @@
         savePoolTask({ ...s.editingTask, title, description });
       });
 
-      // View act (Key Affix editing) — admin only
-      document.querySelectorAll('[data-view-task]').forEach(el => {
-        el.addEventListener('click', () => {
-          s.viewingTaskId = el.dataset.viewTask;
-          s.profileScreen = 'viewact';
-          render();
+      // View act (Key Affix editing)
+      if (KEY_AFFIX_ENABLED) {
+        document.querySelectorAll('[data-view-task]').forEach(el => {
+          el.addEventListener('click', () => {
+            s.viewingTaskId = el.dataset.viewTask;
+            s.profileScreen = 'viewact';
+            render();
+          });
         });
-      });
-      document.getElementById('btn-back-viewact')?.addEventListener('click', () => {
-        s.viewingTaskId = null; s.profileScreen = 'taskpool'; render();
-      });
-      document.getElementById('btn-cancel-viewact')?.addEventListener('click', () => {
-        s.viewingTaskId = null; s.profileScreen = 'taskpool'; render();
-      });
-      const affixTask = s.tasks.find(t => t.id === s.viewingTaskId);
-      const affix = affixTask ? parseKeyAffix(affixTask.description) : null;
-      if (affix?.type === 'time') {
-        const hourInput = document.getElementById('affix-hour');
-        const minInput  = document.getElementById('affix-minute');
-        const onTimeInput = () => {
-          const h = parseInt(hourInput?.value, 10);
-          const m = parseInt(minInput?.value, 10);
-          const saveBtn = document.getElementById('btn-save-affix');
-          if (!saveBtn) return;
-          if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
-            saveBtn.classList.remove('save-accent');
-            return;
-          }
-          const newDesc = updateDescWithAffix(affixTask.description, affix, { hour: h, minute: m });
-          const descEl = document.getElementById('viewact-desc');
-          if (descEl) descEl.textContent = newDesc;
-          if (h !== affix.hour || m !== affix.minute) {
-            saveBtn.classList.add('save-accent');
+        document.getElementById('btn-back-viewact')?.addEventListener('click', () => {
+          s.viewingTaskId = null; s.profileScreen = 'taskpool'; render();
+        });
+        document.getElementById('btn-cancel-viewact')?.addEventListener('click', () => {
+          s.viewingTaskId = null; s.profileScreen = 'taskpool'; render();
+        });
+        const affixTask = s.tasks.find(t => t.id === s.viewingTaskId);
+        const affix = affixTask ? parseKeyAffix(affixTask.description) : null;
+        if (affix?.type === 'time') {
+          const hourInput = document.getElementById('affix-hour');
+          const minInput  = document.getElementById('affix-minute');
+          const onTimeInput = () => {
+            const h = parseInt(hourInput?.value, 10);
+            const m = parseInt(minInput?.value, 10);
+            const saveBtn = document.getElementById('btn-save-affix');
+            if (!saveBtn) return;
+            if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+              saveBtn.classList.remove('save-accent');
+              return;
+            }
+            const newDesc = updateDescWithAffix(affixTask.description, affix, { hour: h, minute: m });
+            const descEl = document.getElementById('viewact-desc');
+            if (descEl) descEl.textContent = newDesc;
+            if (h !== affix.hour || m !== affix.minute) {
+              saveBtn.classList.add('save-accent');
+            } else {
+              saveBtn.classList.remove('save-accent');
+            }
+          };
+          hourInput?.addEventListener('input', onTimeInput);
+          minInput?.addEventListener('input', onTimeInput);
+        } else if (affix) {
+          document.getElementById('affix-input')?.addEventListener('input', e => {
+            const newVal = parseInt(e.target.value, 10);
+            const saveBtn = document.getElementById('btn-save-affix');
+            if (!saveBtn) return;
+            if (isNaN(newVal) || newVal < 1) {
+              saveBtn.classList.remove('save-accent');
+              return;
+            }
+            const newDesc = updateDescWithAffix(affixTask.description, affix, newVal);
+            const descEl = document.getElementById('viewact-desc');
+            if (descEl) descEl.textContent = newDesc;
+            if (newVal !== affix.value) {
+              saveBtn.classList.add('save-accent');
+            } else {
+              saveBtn.classList.remove('save-accent');
+            }
+          });
+        }
+        document.getElementById('btn-save-affix')?.addEventListener('click', async () => {
+          const task = s.tasks.find(t => t.id === s.viewingTaskId);
+          if (!task) return;
+          const affix = parseKeyAffix(task.description);
+          if (!affix) return;
+          let newDesc;
+          if (affix.type === 'time') {
+            const h = parseInt(document.getElementById('affix-hour')?.value, 10);
+            const m = parseInt(document.getElementById('affix-minute')?.value, 10);
+            if (isNaN(h) || isNaN(m) || (h === affix.hour && m === affix.minute)) return;
+            newDesc = updateDescWithAffix(task.description, affix, { hour: h, minute: m });
           } else {
-            saveBtn.classList.remove('save-accent');
+            const newVal = parseInt(document.getElementById('affix-input')?.value, 10);
+            if (isNaN(newVal) || newVal === affix.value) return;
+            newDesc = updateDescWithAffix(task.description, affix, newVal);
           }
-        };
-        hourInput?.addEventListener('input', onTimeInput);
-        minInput?.addEventListener('input', onTimeInput);
-      } else if (affix) {
-        document.getElementById('affix-input')?.addEventListener('input', e => {
-          const newVal = parseInt(e.target.value, 10);
-          const saveBtn = document.getElementById('btn-save-affix');
-          if (!saveBtn) return;
-          if (isNaN(newVal) || newVal < 1) {
-            saveBtn.classList.remove('save-accent');
-            return;
-          }
-          const newDesc = updateDescWithAffix(affixTask.description, affix, newVal);
-          const descEl = document.getElementById('viewact-desc');
-          if (descEl) descEl.textContent = newDesc;
-          if (newVal !== affix.value) {
-            saveBtn.classList.add('save-accent');
-          } else {
-            saveBtn.classList.remove('save-accent');
-          }
+          const updatedTask = { ...task, description: newDesc };
+          s.tasks = s.tasks.map(t => t.id === task.id ? updatedTask : t);
+          s.viewingTaskId = null;
+          s.profileScreen = 'taskpool';
+          render();
+          await api('POST', '/api/tasks', { ...updatedTask, is_affix_edit: true });
         });
       }
-      document.getElementById('btn-save-affix')?.addEventListener('click', async () => {
-        const task = s.tasks.find(t => t.id === s.viewingTaskId);
-        if (!task) return;
-        const affix = parseKeyAffix(task.description);
-        if (!affix) return;
-        let newDesc;
-        if (affix.type === 'time') {
-          const h = parseInt(document.getElementById('affix-hour')?.value, 10);
-          const m = parseInt(document.getElementById('affix-minute')?.value, 10);
-          if (isNaN(h) || isNaN(m) || (h === affix.hour && m === affix.minute)) return;
-          newDesc = updateDescWithAffix(task.description, affix, { hour: h, minute: m });
-        } else {
-          const newVal = parseInt(document.getElementById('affix-input')?.value, 10);
-          if (isNaN(newVal) || newVal === affix.value) return;
-          newDesc = updateDescWithAffix(task.description, affix, newVal);
-        }
-        const updatedTask = { ...task, description: newDesc };
-        s.tasks = s.tasks.map(t => t.id === task.id ? updatedTask : t);
-        s.viewingTaskId = null;
-        s.profileScreen = 'taskpool';
-        render();
-        await api('POST', '/api/tasks', { ...updatedTask, is_affix_edit: true });
-      });
 
       // Testing Tools toggle
       document.getElementById('toggle-testing')?.addEventListener('change', e => {
@@ -2981,7 +3016,8 @@
       // Tutorial replay
       document.getElementById('btn-test-record')?.addEventListener('click', () => startTutorial('record'));
       document.getElementById('btn-test-bazaar')?.addEventListener('click', () => startTutorial('bazaar'));
-      document.getElementById('btn-test-keyaffix')?.addEventListener('click', () => startTutorial('keyaffix'));
+      if (KEY_AFFIX_ENABLED)
+        document.getElementById('btn-test-keyaffix')?.addEventListener('click', () => startTutorial('keyaffix'));
     }
   }
 
@@ -3186,7 +3222,7 @@
     document.getElementById('tutorial-overlay')?.remove();
     cleanupTutorial();
     saveSettings();
-    if (wasRecord && !s.hasShownKeyAffixTutorial)
+    if (KEY_AFFIX_ENABLED && wasRecord && !s.hasShownKeyAffixTutorial)
       setTimeout(() => startTutorial('keyaffix'), 800);
   }
 
@@ -3646,7 +3682,7 @@
       if (!s.ftueScreen) {
         if (s.onboardingRitualCount >= 1 && !s.hasShownRecordTutorial)
           setTimeout(() => startTutorial('record'), 800);
-        else if (s.onboardingRitualCount >= 1 && s.hasShownRecordTutorial && !s.hasShownKeyAffixTutorial)
+        else if (KEY_AFFIX_ENABLED && s.onboardingRitualCount >= 1 && s.hasShownRecordTutorial && !s.hasShownKeyAffixTutorial)
           setTimeout(() => startTutorial('keyaffix'), 800);
         else if (s.onboardingRitualCount >= 2 && !s.hasShownBazaarTutorial)
           setTimeout(() => startTutorial('bazaar'), 800);
