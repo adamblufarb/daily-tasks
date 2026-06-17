@@ -383,9 +383,9 @@
     .store-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
     .store-card-price { flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; font-weight: 400; color: var(--subtext); }
 .store-card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
-    .store-card.selected-common    { border-color: var(--common);    box-shadow: 0 0 0 2px var(--common); }
-    .store-card.selected-legendary { border-color: var(--legendary); box-shadow: 0 0 0 2px var(--legendary); }
-    .store-card.selected-mythic    { border-color: var(--mythic);    box-shadow: var(--shadow); background: color-mix(in srgb, var(--mythic) 15%, var(--card)); }
+    .store-card.selected-common    { border: 2px solid var(--common);    margin: -1px; box-shadow: var(--shadow); }
+    .store-card.selected-legendary { border: 2px solid var(--legendary); margin: -1px; box-shadow: var(--shadow); }
+    .store-card.selected-mythic    { border: 2px solid var(--mythic);    margin: -1px; box-shadow: var(--shadow); background: color-mix(in srgb, var(--mythic) 15%, var(--card)); }
     .store-card.selected-common    .store-card-name { color: var(--common-dark); }
     .store-card.selected-legendary .store-card-name { color: var(--legendary-dark); }
     .store-card.selected-mythic    .store-card-name { color: var(--mythic); }
@@ -1853,9 +1853,11 @@
       const canConfirm = !!sel;
       const actCard = (a, i) => `
         <div class="add-act-card${a.type === 'legendary' ? ' legendary-card' : ''}${sel?.title === a.title ? ` selected ${a.type}-sel` : ''}${s.addActRevealing ? ' task-card-reveal' : ''}" data-add-act-pick="${i}" style="${s.addActRevealing ? `animation-delay:${i * 120}ms` : ''}">
-          <div class="task-title">${a.title}</div>
+          <div class="task-card-top">
+            <div class="task-title">${a.title}</div>
+            ${rarityTag(a.type)}
+          </div>
           <div class="task-desc">${a.description}</div>
-          <div style="margin-top:8px">${rarityTag(a.type)}</div>
         </div>`;
       return `
         <div class="section-header" style="padding-bottom:8px">
@@ -1880,9 +1882,11 @@
       const canConfirm = !!sel;
       const actCard = (a, i) => `
         <div class="add-act-card${a.type === 'legendary' ? ' legendary-card' : ''}${sel?.title === a.title ? ` selected ${a.type}-sel` : ''}" data-add-act-pick="${i}">
-          <div class="task-title">${a.title}</div>
+          <div class="task-card-top">
+            <div class="task-title">${a.title}</div>
+            ${rarityTag(a.type)}
+          </div>
           <div class="task-desc">${a.description}</div>
-          <div style="margin-top:8px">${rarityTag(a.type)}</div>
         </div>`;
       return `
         <div class="section-header" style="padding-bottom:8px">
@@ -2107,6 +2111,7 @@
         </button>
       </div>
       ` : ''}
+      ${sysItems.length ? `<div class="pool-section-label" style="margin-bottom:12px">Act Pool</div>` : ''}
       ${sysItems.map(item => {
         const isSelected = sel === item.id;
         const canAfford  = (w[item.rarity] || 0) >= item.cost;
@@ -2123,7 +2128,7 @@
           </div>
         </div>`;
       }).join('')}
-      ${sysItems.length ? `<div style="height:4px"></div><div class="pool-section-label" style="margin-bottom:12px">Offerings</div>` : ''}
+      <div class="pool-section-label" style="margin-bottom:12px${sysItems.length ? ';margin-top:4px' : ''}">Offerings</div>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const isPurchased = alreadyBoughtToday && isSelected;
