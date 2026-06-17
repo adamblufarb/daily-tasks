@@ -989,9 +989,9 @@
     // Tab locking during onboarding
     document.getElementById('tab-history')?.classList.toggle('tab-locked', s.onboardingRitualCount < 1);
     document.getElementById('tab-store')?.classList.toggle('tab-locked', s.onboardingRitualCount < 2);
-    // Hide tab bar during FTUE (and for tester on generate screen so CTA anchor stays consistent)
+    // Hide tab bar during FTUE
     const tabBar = document.getElementById('tab-bar');
-    const hideTabBar = s.ftueScreen || (isTester && s.planBuildState === 'generate' && !s.hasCompletedOnboarding);
+    const hideTabBar = !!s.ftueScreen;
     if (tabBar) tabBar.style.display = hideTabBar ? 'none' : '';
     // Blue background during personalize question and loading screens
     const blueScreen = screen === 'personalize-q' || screen === 'personalize-loading';
