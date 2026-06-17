@@ -495,12 +495,12 @@
     .personalize-option { background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25); border-radius: var(--radius); padding: 16px 18px; font-family: inherit; font-size: 0.97rem; font-weight: 600; color: #fff; text-align: left; cursor: pointer; transition: background 0.12s, border-color 0.12s, transform 0.1s; -webkit-tap-highlight-color: transparent; }
     .personalize-option:active { transform: scale(0.98); }
     .personalize-option.selected { background: rgba(255,255,255,0.95); color: var(--accent); border-color: #fff; }
-    .personalize-cta { background: #fff; color: var(--accent); }
+    .personalize-cta { background: #fff; color: var(--accent); transition: opacity 0.2s ease; }
     .personalize-cta:active { background: rgba(255,255,255,0.9); }
     .personalize-cta:disabled { opacity: 0.4; pointer-events: none; }
     .personalize-reveal { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 20px 0; }
     .personalize-reveal-title { font-size: 1.6rem; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; }
-    .personalize-reveal-list { display: flex; flex-direction: column; gap: 10px; }
+    .personalize-reveal-list { display: flex; flex-direction: column; gap: 0; }
     .personalize-reveal-footer { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0 calc(28px + env(safe-area-inset-bottom)); }
     .reveal-card { opacity: 0; animation: card-reveal 0.4s ease forwards; }
 
@@ -1183,7 +1183,7 @@
           <div class="personalize-progress">${s.ftuePersonalizeStep} of 3</div>
           <div class="personalize-title${anim ? ' p-title-animate' : ''}">${q.title}</div>
           <div class="personalize-options">
-            ${q.options.map((o, i) => `<button class="personalize-option${isSelected(o.code) ? ' selected' : ''}${anim ? ' p-opt-animate' : ''}" data-p-opt="${o.code}"${anim ? ` style="animation-delay:${i * 0.2}s"` : ''}>${o.label}</button>`).join('')}
+            ${q.options.map((o, i) => `<button class="personalize-option${isSelected(o.code) ? ' selected' : ''}${anim ? ' p-opt-animate' : ''}" data-p-opt="${o.code}"${anim ? ` style="animation-delay:${i * 0.1}s"` : ''}>${o.label}</button>`).join('')}
           </div>
         </div>
         <div class="ftue-footer">
