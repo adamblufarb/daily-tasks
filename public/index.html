@@ -385,7 +385,7 @@
 .store-card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
     .store-card.selected-common    { border-color: var(--common);    box-shadow: 0 0 0 2px var(--common); }
     .store-card.selected-legendary { border-color: var(--legendary); box-shadow: 0 0 0 2px var(--legendary); }
-    .store-card.selected-mythic    { border-color: var(--mythic);    box-shadow: 0 0 0 2px var(--mythic); }
+    .store-card.selected-mythic    { border-color: var(--mythic);    box-shadow: var(--shadow); background: color-mix(in srgb, var(--mythic) 15%, var(--card)); }
     .store-card.selected-common    .store-card-name { color: var(--common-dark); }
     .store-card.selected-legendary .store-card-name { color: var(--legendary-dark); }
     .store-card.selected-mythic    .store-card-name { color: var(--mythic); }
@@ -394,7 +394,7 @@
     .store-card.purchased .store-card-desc { color: rgba(255,255,255,0.75); }
     .store-card.purchased .store-card-price { color: rgba(255,255,255,0.85); }
     .store-card.purchased .rarity-tag-mythical { background: var(--mythic-dark); color: var(--mythic-bg); }
-    .store-purchase-cta { position: sticky; bottom: calc(88px + env(safe-area-inset-bottom)); width: 100%; margin-top: 8px; }
+    .store-purchase-cta { position: sticky; bottom: calc(88px + env(safe-area-inset-bottom)); width: 100%; margin-top: 20px; }
     .btn-purchase { width: 100%; padding: 17px; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; border: none; border-radius: var(--radius); cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(0,0,0,0.12); transition: background 0.15s, transform 0.1s; }
     .btn-purchase:active { transform: scale(0.98); }
     .btn-purchase:disabled { opacity: 0.35; pointer-events: none; }
@@ -409,11 +409,13 @@
     .pool-hold-card .store-card-top { position:relative; z-index:1; }
     /* Add-Act roll/pick screen */
     .add-act-roll-cta { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; gap:12px; }
-    .add-act-card { background:var(--card); border:1.5px solid var(--border); border-radius:var(--radius); padding:14px 16px; cursor:pointer; transition:border-color 0.12s,box-shadow 0.12s,opacity 0.35s; margin-bottom:8px; }
-    .add-act-card.selected.common-sel  { border-color:var(--common);    box-shadow:0 0 0 2px var(--common); }
-    .add-act-card.selected.legendary-sel { border-color:var(--legendary); box-shadow:0 0 0 2px var(--legendary); }
+    .add-act-card { background:var(--card); border:2px solid #d1d5db; border-radius:var(--radius); padding:16px 18px; cursor:pointer; transition:border-color 0.15s,box-shadow 0.15s,transform 0.1s,opacity 0.35s; margin-bottom:10px; box-shadow:var(--shadow); position:relative; }
+    .add-act-card.legendary-card { border:2px solid color-mix(in srgb, var(--legendary) 35%, transparent); }
+    .add-act-card.selected.common-sel { border-color:var(--common); background:var(--common-light); box-shadow:var(--shadow); }
+    .add-act-card.selected.legendary-sel { border-color:color-mix(in srgb, var(--legendary) 80%, transparent); background:var(--legendary-bg); box-shadow:var(--shadow); }
     .add-act-card:active { transform:scale(0.98); }
-    .add-act-sticky-cta { position:sticky; bottom:calc(88px + env(safe-area-inset-bottom)); padding:12px 0 4px; }
+    .add-act-sticky-cta { position:sticky; bottom:calc(88px + env(safe-area-inset-bottom)); padding:12px 0 8px; }
+    #btn-add-to-pool:disabled { opacity:1; background:#c4c8d0; pointer-events:none; }
 .btn-craft-action { display: grid; grid-template-columns: 1fr auto; align-items: center; background: #fff; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .craft-action-label { display: flex; align-items: center; gap: 7px; justify-content: flex-start; color: var(--text); position: relative; z-index: 1; }
     .craft-action-cost { display: flex; align-items: center; gap: 5px; justify-content: flex-end; font-size: 0.8rem; font-weight: 400; color: var(--subtext); white-space: nowrap; position: relative; z-index: 1; }
@@ -744,6 +746,7 @@
       poolAddMode: null,
       addActOffered: [],
       addActSelected: null,
+      addActRevealing: false,
       showResetConfirm: false,
       storeItems: [],
       editingStoreItem: null,
@@ -1849,26 +1852,26 @@
       const hasOffer  = offered.length > 0;
       const canConfirm = !!sel;
       const actCard = (a, i) => `
-        <div class="add-act-card${sel?.title === a.title ? ` selected ${a.type}-sel` : ''}${sel?.title === a.title ? ' task-card-reveal' : (hasOffer ? ' task-card-reveal' : '')}" data-add-act-pick="${i}" style="${hasOffer ? `animation-delay:${i * 120}ms` : ''}">
-          <div class="pool-task-title">${a.title}</div>
-          <div class="pool-task-desc">${a.description}</div>
-          <div style="margin-top:6px">${rarityTag(a.type)}</div>
+        <div class="add-act-card${a.type === 'legendary' ? ' legendary-card' : ''}${sel?.title === a.title ? ` selected ${a.type}-sel` : ''}${s.addActRevealing ? ' task-card-reveal' : ''}" data-add-act-pick="${i}" style="${s.addActRevealing ? `animation-delay:${i * 120}ms` : ''}">
+          <div class="task-title">${a.title}</div>
+          <div class="task-desc">${a.description}</div>
+          <div style="margin-top:8px">${rarityTag(a.type)}</div>
         </div>`;
       return `
         <div class="section-header" style="padding-bottom:8px">
           <button class="btn-back" id="btn-back-addact">‹ Act Pool</button>
-          <div class="section-title">Add a new Act</div>
+          <div class="section-title">Add A New Act</div>
         </div>
         ${!hasOffer ? `
           <div class="add-act-roll-cta">
             <button class="btn-primary" id="btn-roll-acts" style="width:auto;padding:16px 32px">Roll New Acts →</button>
           </div>` : `
           ${offered.map(actCard).join('')}
-          <button class="btn-reroll" id="btn-reroll-acts"${canReroll ? '' : ' disabled'}>
-            ↺ Re-Roll Acts <span style="display:inline-flex;align-items:center;gap:3px"><span style="font-weight:400;font-size:0.8rem">x1</span>${rarityTag('legendary')}</span>
-          </button>
           <div class="add-act-sticky-cta">
             <button class="btn-primary" id="btn-add-to-pool"${canConfirm ? '' : ' disabled'}>Add To Act Pool →</button>
+            <button class="btn-reroll" id="btn-reroll-acts"${canReroll ? '' : ' disabled'}>
+              ↺ Re-Roll Acts <span style="display:inline-flex;align-items:center;gap:3px"><span style="font-weight:400;font-size:0.8rem">x1</span>${rarityTag('legendary')}</span>
+            </button>
           </div>`}`;
     }
 
@@ -1876,15 +1879,15 @@
       const sel = s.addActSelected;
       const canConfirm = !!sel;
       const actCard = (a, i) => `
-        <div class="add-act-card${sel?.title === a.title ? ` selected ${a.type}-sel` : ''}" data-add-act-pick="${i}">
-          <div class="pool-task-title">${a.title}</div>
-          <div class="pool-task-desc">${a.description}</div>
-          <div style="margin-top:6px">${rarityTag(a.type)}</div>
+        <div class="add-act-card${a.type === 'legendary' ? ' legendary-card' : ''}${sel?.title === a.title ? ` selected ${a.type}-sel` : ''}" data-add-act-pick="${i}">
+          <div class="task-title">${a.title}</div>
+          <div class="task-desc">${a.description}</div>
+          <div style="margin-top:8px">${rarityTag(a.type)}</div>
         </div>`;
       return `
         <div class="section-header" style="padding-bottom:8px">
           <button class="btn-back" id="btn-back-addact">‹ Act Pool</button>
-          <div class="section-title">Add a new Act</div>
+          <div class="section-title">Add A New Act</div>
         </div>
         ${remainingActPool.length === 0
           ? `<div class="pick-empty">You already have all available acts in your pool.</div>`
@@ -2564,8 +2567,9 @@
           if (sel === 'sys-random') {
             if (s.wallet.mythic < 1) return;
             s.wallet.mythic = Math.max(0, s.wallet.mythic - 1);
-            s.addActOffered  = rollAddActOffers();
+            s.addActOffered  = [];
             s.addActSelected = null;
+            s.addActRevealing = false;
             s.tab = 'tasks';
             s.profileScreen  = 'addact';
             s.poolAddMode    = 'random-roll';
@@ -2871,7 +2875,7 @@
       // Profile menu navigation
       document.getElementById('btn-profile-taskpool')?.addEventListener('click', () => {
         s.profileScreen = 'taskpool'; s.poolEditMode = false; s.poolAddMode = null; render();
-        if (!s.hasShownActPoolTutorial) setTimeout(() => startTutorial('actpool'), 150);
+        if (!s.hasShownActPoolTutorial && KEY_AFFIX_ENABLED) setTimeout(() => startTutorial('actpool'), 150);
       });
       document.getElementById('btn-profile-storemanage')?.addEventListener('click', () => {
         s.profileScreen = 'storemanage'; s.editingStoreItem = null; s.storeEditMode = false; render();
@@ -3018,8 +3022,9 @@
         if (btn && fill) {
           attachHoldToConfirm(btn, fill, () => {
             s.wallet.mythic = Math.max(0, s.wallet.mythic - 1);
-            s.addActOffered  = rollAddActOffers();
+            s.addActOffered  = [];
             s.addActSelected = null;
+            s.addActRevealing = false;
             s.profileScreen  = 'addact';
             s.poolAddMode    = 'random-roll';
             render();
@@ -3054,7 +3059,7 @@
           })();
           const act = pool[parseInt(el.dataset.addActPick, 10)];
           if (!act) return;
-          s.addActSelected = act;
+          s.addActSelected = s.addActSelected?.title === act.title ? null : act;
           render();
         });
       });
@@ -3063,7 +3068,9 @@
       document.getElementById('btn-roll-acts')?.addEventListener('click', () => {
         s.addActOffered  = rollAddActOffers();
         s.addActSelected = null;
+        s.addActRevealing = true;
         render();
+        setTimeout(() => { s.addActRevealing = false; }, s.addActOffered.length * 120 + 450);
       });
 
       // Re-Roll Acts (1 Legendary)
@@ -3072,8 +3079,10 @@
         s.wallet.legendary = Math.max(0, s.wallet.legendary - 1);
         s.addActOffered  = rollAddActOffers();
         s.addActSelected = null;
+        s.addActRevealing = true;
         render();
         saveWallet();
+        setTimeout(() => { s.addActRevealing = false; }, s.addActOffered.length * 120 + 450);
       });
 
       // Add To Act Pool → confirm selection animation then commit
@@ -3103,7 +3112,7 @@
       // Add New Act page — back button (context-aware)
       document.getElementById('btn-back-addact')?.addEventListener('click', () => {
         if (s.poolAddMode === 'random-roll' || s.poolAddMode === 'specific-list') {
-          s.addActOffered = []; s.addActSelected = null;
+          s.addActOffered = []; s.addActSelected = null; s.addActRevealing = false;
           s.poolAddMode = null; s.profileScreen = 'taskpool'; render();
         } else if (s.poolAddMode === 'pick-list') {
           s.poolAddMode = null; render();
@@ -3428,14 +3437,14 @@
 
   const ACT_POOL_TUTORIAL = [
     { type: 'info', title: 'Every Ritual is forged from the Acts in your Act Pool' },
-    { type: 'info', title: `Spend ${rarityTag('legendary')} Tokens to grow your Act Pool`, finish: true },
+    { type: 'info', title: `Spend ${rarityTag('legendary')} Tokens when expanding your Act Pool`, finish: true },
   ];
 
   const BAZAAR_TUTORIAL = [
     { type: 'tap-tab',   tabId: 'tab-store',                label: 'Bazaar' },
     { type: 'info',      title: 'Browse and spend your earned Tokens' },
     { type: 'highlight', elId: 'tutorial-wallet-common',    title: `Spend ${rarityTag('common')} Tokens to re-roll Acts when forging your Ritual` },
-    { type: 'highlight', elId: 'tutorial-wallet-legendary', title: `Spend ${rarityTag('legendary')} Tokens to expand your Act Pool` },
+    { type: 'highlight', elId: 'tutorial-wallet-legendary', title: `Spend ${rarityTag('legendary')} Tokens when expanding your Act Pool` },
     { type: 'highlight', elId: 'tutorial-wallet-mythic',    title: `Spend ${rarityTag('mythic')} Tokens on exclusive Offerings`, finish: true },
   ];
 
@@ -3653,7 +3662,7 @@
       }
       // Tester copy override for Record info slide
       const stepTitle = (isTester && s.tutorialFlow === 'record' && step.title === 'Eternal record of your Ritual glory')
-        ? 'Record keeps your Ritual journey'
+        ? 'Record remembers your Ritual journey.'
         : step.title;
       const box = document.createElement('div');
       box.className = 'tutorial-box';
