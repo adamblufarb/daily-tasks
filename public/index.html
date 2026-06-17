@@ -676,6 +676,7 @@
   /* ── Day reset helpers (must be before state init) ── */
   let RESET_HOUR = 8;
   const GRACE_HOURS = 3;
+  let DATE_OFFSET = parseInt(localStorage.getItem('date_offset') || '0');
 
   function localDateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -683,10 +684,11 @@
   function todayStr() {
     const now = new Date();
     // Before reset hour, it's still "yesterday"
-    if (now.getHours() < RESET_HOUR) {
-      return localDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
-    }
-    return localDateStr(now);
+    const base = now.getHours() < RESET_HOUR
+      ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+      : new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (DATE_OFFSET) base.setDate(base.getDate() + DATE_OFFSET);
+    return localDateStr(base);
   }
   function isInGracePeriod() {
     const h = new Date().getHours();
@@ -1328,7 +1330,8 @@
             </div>
           </div>`;
         }).join('')}
-        ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>` : ''}`;
+        ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>` : ''}
+        ${isHonoredToday && clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com' ? `<button class="btn-primary" id="btn-next-day" style="margin-top:12px">Move to next day →</button>` : ''}`;
     }
 
     // ── Active plan ──
@@ -2603,6 +2606,12 @@
         }));
       document.getElementById('btn-submit-results')?.addEventListener('click', submitResults);
       document.getElementById('btn-restart')?.addEventListener('click', restartDay);
+      document.getElementById('btn-next-day')?.addEventListener('click', () => {
+        DATE_OFFSET++;
+        localStorage.setItem('date_offset', DATE_OFFSET);
+        s.today = todayStr();
+        load();
+      });
     }
 
     if (screen === 'tasks') {
@@ -3592,9 +3601,19 @@
     await Promise.all([
       api('DELETE', '/api/tasks'),
       api('DELETE', '/api/sessions'),
-      api('PATCH', '/api/settings', { has_completed_onboarding: false, onboarding_ritual_count: 0 }),
+      api('PATCH', '/api/settings', {
+        has_completed_onboarding: false, onboarding_ritual_count: 0,
+        has_shown_record_tutorial: false, has_shown_bazaar_tutorial: false,
+        has_shown_actpool_tutorial: false, has_shown_key_affix_tutorial: false,
+      }),
       api('PATCH', '/api/profile', { act_ftue_complete: false }),
+      api('PATCH', '/api/wallet', {
+        common: 0, legendary: 0, mythic: 0, streak: 0, streak_award_claimed: 0,
+        last_purchase_date: null, last_purchase_item_name: null, last_purchase_item_rarity: null,
+      }),
     ]);
+    DATE_OFFSET = 0;
+    localStorage.removeItem('date_offset');
     location.reload();
   });
 
