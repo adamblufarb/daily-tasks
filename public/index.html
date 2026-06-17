@@ -484,18 +484,24 @@
 
     /* Personalize FTUE screens */
     body { transition: background-color 0.25s ease; }
-    .personalize-screen { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom)); margin-left: -20px; margin-right: -20px; }
+    @keyframes p-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .p-opt-animate   { opacity: 0; animation: p-enter 0.2s ease forwards; }
+    .p-title-animate { opacity: 0; animation: fade-in 0.5s ease forwards; }
+    .personalize-screen { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; margin-left: -20px; margin-right: -20px; }
+    .personalize-top { flex: 1; overflow-y: auto; overflow-x: hidden; padding: calc(28px + env(safe-area-inset-top)) 24px 12px; display: flex; flex-direction: column; min-height: 0; }
     .personalize-progress { font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.1em; text-align: center; margin-bottom: 32px; }
     .personalize-title { font-size: 1.45rem; font-weight: 700; color: #fff; text-align: center; line-height: 1.3; margin-bottom: 28px; }
-    .personalize-options { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .personalize-options { display: flex; flex-direction: column; gap: 10px; }
     .personalize-option { background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25); border-radius: var(--radius); padding: 16px 18px; font-family: inherit; font-size: 0.97rem; font-weight: 600; color: #fff; text-align: left; cursor: pointer; transition: background 0.12s, border-color 0.12s, transform 0.1s; -webkit-tap-highlight-color: transparent; }
     .personalize-option:active { transform: scale(0.98); }
     .personalize-option.selected { background: rgba(255,255,255,0.95); color: var(--accent); border-color: #fff; }
-    .personalize-cta { margin-top: 20px; background: #fff; color: var(--accent); }
+    .personalize-cta { background: #fff; color: var(--accent); }
     .personalize-cta:active { background: rgba(255,255,255,0.9); }
-    .personalize-reveal { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
+    .personalize-cta:disabled { opacity: 0.4; pointer-events: none; }
+    .personalize-reveal { min-height: 100dvh; display: flex; flex-direction: column; padding: calc(28px + env(safe-area-inset-top)) 20px 0; }
     .personalize-reveal-title { font-size: 1.6rem; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; }
-    .personalize-reveal-list { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .personalize-reveal-list { display: flex; flex-direction: column; gap: 10px; }
+    .personalize-reveal-footer { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0 calc(28px + env(safe-area-inset-bottom)); }
     .reveal-card { opacity: 0; animation: card-reveal 0.4s ease forwards; }
 
     /* Profile avatar + nickname */
@@ -745,6 +751,7 @@
       ftuePersonalizeQ2: [],
       ftuePersonalizeQ3: null,
       ftuePersonalizePool: null,
+      ftuePersonalizeAnimDone: false,
       hasShownRecordTutorial: false,
       hasShownBazaarTutorial: false,
       hasShownActPoolTutorial: false,
@@ -965,9 +972,10 @@
     const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const resetBtn = document.getElementById('btn-app-reset');
     if (resetBtn) resetBtn.style.display = isTester ? '' : 'none';
-    // Hide tab bar during FTUE
+    // Hide tab bar during FTUE (and for tester on generate screen so CTA anchor stays consistent)
     const tabBar = document.getElementById('tab-bar');
-    if (tabBar) tabBar.style.display = s.ftueScreen ? 'none' : '';
+    const hideTabBar = s.ftueScreen || (isTester && s.planBuildState === 'generate' && !s.hasCompletedOnboarding);
+    if (tabBar) tabBar.style.display = hideTabBar ? 'none' : '';
     // Blue background during personalize question screens
     document.body.style.backgroundColor = screen === 'personalize-q' ? 'var(--accent)' : '';
     document.querySelector('.content')?.style.setProperty('background', screen === 'personalize-q' ? 'transparent' : '');
@@ -1160,20 +1168,27 @@
   }
 
   function htmlPersonalizeQ() {
+    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const q = PERSONALIZE_QUESTIONS[s.ftuePersonalizeStep - 1];
     const isQ3 = s.ftuePersonalizeStep === 3;
     const answer = s.ftuePersonalizeStep === 1 ? s.ftuePersonalizeQ1
                  : s.ftuePersonalizeStep === 2 ? s.ftuePersonalizeQ2
                  : s.ftuePersonalizeQ3 ? [s.ftuePersonalizeQ3] : [];
     const isSelected = code => answer.includes(code);
+    const hasAnswer = answer.length > 0;
+    const anim = isTester && !s.ftuePersonalizeAnimDone;
     return `
       <div class="personalize-screen">
-        <div class="personalize-progress">${s.ftuePersonalizeStep} of 3</div>
-        <div class="personalize-title">${q.title}</div>
-        <div class="personalize-options">
-          ${q.options.map(o => `<button class="personalize-option${isSelected(o.code) ? ' selected' : ''}" data-p-opt="${o.code}">${o.label}</button>`).join('')}
+        <div class="personalize-top">
+          <div class="personalize-progress">${s.ftuePersonalizeStep} of 3</div>
+          <div class="personalize-title${anim ? ' p-title-animate' : ''}">${q.title}</div>
+          <div class="personalize-options">
+            ${q.options.map((o, i) => `<button class="personalize-option${isSelected(o.code) ? ' selected' : ''}${anim ? ' p-opt-animate' : ''}" data-p-opt="${o.code}"${anim ? ` style="animation-delay:${i * 0.2}s"` : ''}>${o.label}</button>`).join('')}
+          </div>
         </div>
-        <button class="btn-primary personalize-cta" id="personalize-cta">${isQ3 ? 'Create Act Pool' : 'Continue'}</button>
+        <div class="ftue-footer">
+          <button class="btn-primary personalize-cta" id="personalize-cta"${isTester && !hasAnswer ? ' disabled' : ''}>${isQ3 ? 'Create Act Pool →' : 'Continue'}</button>
+        </div>
       </div>`;
   }
 
@@ -1196,7 +1211,9 @@
       <div class="personalize-reveal">
         <div class="personalize-reveal-title">Your Acts</div>
         <div class="personalize-reveal-list">${cards}</div>
-        <button class="btn-primary" id="personalize-continue" style="margin-top:20px">Continue</button>
+        <div class="personalize-reveal-footer">
+          <button class="btn-primary" id="personalize-continue">Continue</button>
+        </div>
       </div>`;
   }
 
@@ -1256,6 +1273,23 @@
     const minPicks = maxPicks; // onboarding: exactly min; normal: min 3 but max 5
 
     if (s.planBuildState === 'generate') {
+      const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
+      if (isTester && !s.hasCompletedOnboarding) {
+        return `
+          <div class="ftue-slides">
+            <div class="ftue-slides-body">
+              <div class="ftue-emoji">🎲</div>
+              <div class="ftue-text-area">
+                <div class="ftue-text">Forge Ritual</div>
+                <div class="generate-sub" style="margin-top:8px">${fmtDate(s.today)}</div>
+              </div>
+              <div class="ftue-dots" style="height:20px"></div>
+            </div>
+            <div class="ftue-footer">
+              <button class="btn-primary" id="btn-generate">Roll Acts →</button>
+            </div>
+          </div>`;
+      }
       return `
         <div class="generate-screen">
           <div class="generate-emoji">🎲</div>
@@ -2242,6 +2276,7 @@
         } else {
           s.ftuePersonalizeStep = 1;
           s.ftuePersonalizeQ1 = []; s.ftuePersonalizeQ2 = []; s.ftuePersonalizeQ3 = null;
+          s.ftuePersonalizeAnimDone = false;
           s.ftueScreen = 'personalize-q';
           render();
         }
@@ -2251,28 +2286,34 @@
     if (screen === 'personalize-q') {
       const step = s.ftuePersonalizeStep;
       const q = PERSONALIZE_QUESTIONS[step - 1];
+      const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
+
       document.querySelectorAll('[data-p-opt]').forEach(btn => {
         btn.addEventListener('click', () => {
+          // Stop animations from replaying on next render
+          s.ftuePersonalizeAnimDone = true;
           const code = btn.dataset.pOpt;
           if (step === 3) {
-            // Single-select
             s.ftuePersonalizeQ3 = code;
             render();
           } else {
             const arr = step === 1 ? s.ftuePersonalizeQ1 : s.ftuePersonalizeQ2;
             if (step === 2 && code === 'none') {
-              // "None of the above" clears other selections
               const isNoneOn = arr.includes('none');
-              step === 2 ? (s.ftuePersonalizeQ2 = isNoneOn ? [] : ['none']) : null;
+              s.ftuePersonalizeQ2 = isNoneOn ? [] : ['none'];
             } else {
               const filtered = arr.filter(c => c !== 'none');
               if (filtered.includes(code)) {
                 const next = filtered.filter(c => c !== code);
                 if (step === 1) s.ftuePersonalizeQ1 = next; else s.ftuePersonalizeQ2 = next;
               } else {
-                if (step === 1 && q.max && filtered.length >= q.max) return;
-                const next = [...filtered, code];
-                if (step === 1) s.ftuePersonalizeQ1 = next; else s.ftuePersonalizeQ2 = next;
+                if (step === 1 && q.max && filtered.length >= q.max) {
+                  // FIFO rolling: drop oldest, add new
+                  s.ftuePersonalizeQ1 = [...filtered.slice(1), code];
+                } else {
+                  const next = [...filtered, code];
+                  if (step === 1) s.ftuePersonalizeQ1 = next; else s.ftuePersonalizeQ2 = next;
+                }
               }
             }
             render();
@@ -2283,6 +2324,7 @@
       document.getElementById('personalize-cta')?.addEventListener('click', () => {
         if (step < 3) {
           s.ftuePersonalizeStep++;
+          s.ftuePersonalizeAnimDone = false; // play animations for new question
           render();
         } else {
           s.ftuePersonalizePool = buildPersonalizePool(s.ftuePersonalizeQ1, s.ftuePersonalizeQ2, s.ftuePersonalizeQ3);
