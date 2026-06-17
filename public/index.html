@@ -479,6 +479,9 @@
     /* Tab locking */
     .tab-btn.tab-locked { opacity: 0.3; pointer-events: none; }
 
+    /* Tester reset button */
+    .app-reset-btn { position: fixed; bottom: 12px; left: 12px; z-index: 999; background: var(--danger); color: #fff; border: none; border-radius: 20px; padding: 8px 14px; font-family: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.25); -webkit-tap-highlight-color: transparent; }
+
     /* Profile avatar + nickname */
     .profile-identity { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 0 4px; }
     .profile-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); background: var(--common-light); display: block; }
@@ -542,6 +545,7 @@
     <button class="tab-btn" data-tab="today"><span class="tab-icon">🎲</span><span id="tab-today-label">Ritual</span></button>
     <button class="tab-btn" id="tab-store" data-tab="store"><span class="tab-icon">🕌</span><span>Bazaar</span></button>
   </div>
+  <button class="app-reset-btn" id="btn-app-reset" style="display:none">↺ Reset App</button>
 </div>
 <script>
   try {
@@ -937,6 +941,9 @@
     // Tab locking during onboarding
     document.getElementById('tab-history')?.classList.toggle('tab-locked', s.onboardingRitualCount < 1);
     document.getElementById('tab-store')?.classList.toggle('tab-locked', s.onboardingRitualCount < 2);
+    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
+    const resetBtn = document.getElementById('btn-app-reset');
+    if (resetBtn) resetBtn.style.display = isTester ? '' : 'none';
     // Hide tab bar during FTUE
     const tabBar = document.getElementById('tab-bar');
     if (tabBar) tabBar.style.display = s.ftueScreen ? 'none' : '';
@@ -3322,6 +3329,15 @@
   // Tab listeners — attached once; tab-bar is inside #app-wrap so always in DOM
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.addEventListener('click', () => { s.tab = b.dataset.tab; s.profileScreen = 'menu'; s.selectedStoreItem = null; s.storeScreen = 'store'; s.leaderboardOpen = false; render(); }));
+
+  // Tester reset button — wipes tasks + onboarding state so the app looks brand-new
+  document.getElementById('btn-app-reset')?.addEventListener('click', async () => {
+    await Promise.all([
+      api('DELETE', '/api/tasks'),
+      api('PATCH', '/api/settings', { has_completed_onboarding: false, onboarding_ritual_count: 0 }),
+    ]);
+    location.reload();
+  });
 
   // ── Clerk auth flow ──
   // With data-clerk-publishable-key, window.Clerk is a pre-configured singleton
