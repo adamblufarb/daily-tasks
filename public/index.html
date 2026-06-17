@@ -1861,7 +1861,6 @@
         </div>`;
       return `
         <div class="section-header" style="padding-bottom:8px">
-          <button class="btn-back" id="btn-back-addact">‹ Act Pool</button>
           <div class="section-title">Add A New Act</div>
         </div>
         ${!hasOffer ? `
@@ -1890,7 +1889,6 @@
         </div>`;
       return `
         <div class="section-header" style="padding-bottom:8px">
-          <button class="btn-back" id="btn-back-addact">‹ Act Pool</button>
           <div class="section-title">Add A New Act</div>
         </div>
         ${remainingActPool.length === 0
@@ -2111,7 +2109,7 @@
         </button>
       </div>
       ` : ''}
-      ${sysItems.length ? `<div class="pool-section-label" style="margin-bottom:12px">Act Pool</div>` : ''}
+      ${sysItems.length ? `<div class="pool-section-label" style="margin-top:0;margin-bottom:12px">Act Pool</div>` : ''}
       ${sysItems.map(item => {
         const isSelected = sel === item.id;
         const canAfford  = (w[item.rarity] || 0) >= item.cost;
@@ -2128,7 +2126,7 @@
           </div>
         </div>`;
       }).join('')}
-      <div class="pool-section-label" style="margin-bottom:12px${sysItems.length ? ';margin-top:4px' : ''}">Offerings</div>
+      <div class="pool-section-label" style="margin-top:20px;margin-bottom:12px">Offerings</div>
       ${activeItems.map(item => {
         const isSelected = sel === item.id;
         const isPurchased = alreadyBoughtToday && isSelected;
