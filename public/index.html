@@ -1210,7 +1210,6 @@
   }
 
   function htmlPersonalizeQ() {
-    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const q = PERSONALIZE_QUESTIONS[s.ftuePersonalizeStep - 1];
     const isQ3 = s.ftuePersonalizeStep === 3;
     const answer = s.ftuePersonalizeStep === 1 ? s.ftuePersonalizeQ1
@@ -1218,7 +1217,7 @@
                  : s.ftuePersonalizeQ3 ? [s.ftuePersonalizeQ3] : [];
     const isSelected = code => answer.includes(code);
     const hasAnswer = answer.length > 0;
-    const anim = isTester && !s.ftuePersonalizeAnimDone;
+    const anim = !s.ftuePersonalizeAnimDone;
     return `
       <div class="personalize-screen">
         <div class="personalize-top">
@@ -1229,7 +1228,7 @@
           </div>
         </div>
         <div class="ftue-footer">
-          <button class="btn-primary personalize-cta" id="personalize-cta"${isTester && !hasAnswer ? ' disabled' : ''}>${isQ3 ? 'Create Act Pool →' : 'Continue'}</button>
+          <button class="btn-primary personalize-cta" id="personalize-cta"${!hasAnswer ? ' disabled' : ''}>${isQ3 ? 'Create Act Pool →' : 'Continue'}</button>
         </div>
       </div>`;
   }
@@ -1336,8 +1335,7 @@
     const minPicks = maxPicks; // onboarding: exactly min; normal: min 3 but max 5
 
     if (s.planBuildState === 'generate') {
-      const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
-      if (isTester && !s.hasCompletedOnboarding) {
+      if (!s.hasCompletedOnboarding) {
         return `
           <div class="ftue-slides">
             <div class="ftue-slides-body">
@@ -1568,7 +1566,6 @@
     const hours = Array.from({length: 6}, (_, i) => i + 6);
     const bazaarUnlocked = s.onboardingRitualCount >= 2;
     const isAdmin  = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
-    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const showTesting = isAdmin && localStorage.getItem('showTestingTools') === 'true';
     const avatarUrl = clerk.user?.imageUrl;
     const avatarHtml = avatarUrl
@@ -1595,7 +1592,7 @@
           <span class="profile-menu-label">Act Pool</span>
           <span class="profile-menu-arrow">›</span>
         </button>
-        ${(!isTester || BAZAAR_OFFERINGS_ENABLED) ? `
+        ${BAZAAR_OFFERINGS_ENABLED ? `
         <button class="profile-menu-item" id="btn-profile-storemanage"${bazaarUnlocked ? '' : ' disabled'}${bazaarUnlocked ? ' style="background:var(--mythic);color:#fff;border-color:transparent"' : ''}>
           <span class="profile-menu-label">Bazaar Offerings</span>
           <span class="profile-menu-arrow">›</span>
@@ -1818,12 +1815,11 @@
 
   /* ── Add New Act full page ── */
   function htmlAddAct() {
-    const isTester     = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const showPickList = s.poolAddMode === 'pick-list';
     const showCustom   = s.poolAddMode === 'custom';
     const showPickEdit = s.poolAddMode === 'pick-edit';
-    const showRandom   = isTester && s.poolAddMode === 'random-roll';
-    const showSpecific = isTester && s.poolAddMode === 'specific-list';
+    const showRandom   = s.poolAddMode === 'random-roll';
+    const showSpecific = s.poolAddMode === 'specific-list';
     // Default to choice if none of the sub-screens are active
     const showChoice   = !showPickList && !showCustom && !showPickEdit && !showRandom && !showSpecific;
 
@@ -1938,15 +1934,14 @@
 
   /* ── Task Pool tab ── */
   function htmlTaskPool() {
-    const isTester  = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const userActPool = s.tasks.filter(t => !t.archived);
     const common    = userActPool.filter(t => t.type === 'common');
     const legendary = userActPool.filter(t => t.type === 'legendary');
     const deleting  = s.poolEditMode;
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
-    const canAddRandom   = isTester && s.wallet.mythic >= 1;
-    const canAddSpecific = isTester && s.wallet.mythic >= 3;
+    const canAddRandom   = s.wallet.mythic >= 1;
+    const canAddSpecific = s.wallet.mythic >= 3;
     // Compute per-task stats from session history
     const stats = {};
     for (const sess of s.sessions) {
@@ -1972,7 +1967,7 @@
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
             </div>
-            ${deleting && (!isTester || DELETE_ACT_ENABLED) ? `
+            ${deleting && DELETE_ACT_ENABLED ? `
             <div class="pool-task-actions">
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete"${!canDelete ? ' disabled style="opacity:0.35;pointer-events:none"' : ''}>🗑️</button>
             </div>` : `
@@ -2003,7 +1998,6 @@
           : `<div class="section-sub">${userActPool.length} act${userActPool.length !== 1 ? 's' : ''} · ${common.length} common · ${legendary.length} legendary</div>`}
       </div>
       ${!deleting ? `
-      ${isTester ? `
       <div class="store-card pool-hold-card${!canAddRandom ? ' disabled' : ''}" id="btn-add-random-act" style="${!canAddRandom ? 'opacity:0.5;pointer-events:none' : ''}">
         <div class="craft-hold-fill" id="fill-add-random-act" style="background:var(--mythic)"></div>
         <div class="store-card-top">
@@ -2023,20 +2017,14 @@
           </div>
           <div class="store-card-price">x3 ${rarityTag('mythic')}</div>
         </div>
-      </div>` : `
-      <div class="store-card${!canAdd ? '' : ''}" id="btn-add-task"${!canAdd ? ' style="opacity:0.5;pointer-events:none"' : ''}>
-        <div class="store-card-top">
-          <div class="store-card-name">Add New Act</div>
-          <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
-        </div>
       </div>
-      ${(!isTester && DELETE_ACT_ENABLED) ? `
+      ${DELETE_ACT_ENABLED ? `
       <div class="store-card" id="btn-enter-edit-mode"${!canDelete ? ' style="opacity:0.5;pointer-events:none"' : ''}>
         <div class="store-card-top">
           <div class="store-card-name">Delete An Act</div>
           <div class="store-card-price">x1 ${rarityTag('legendary')}</div>
         </div>
-      </div>` : ''}`}` : ''}
+      </div>` : ''}` : ''}
       <div class="pool-section-label label-common">Common</div>
       ${common.map(taskRow).join('')}
       <div class="pool-section-label label-legendary">Legendary</div>
@@ -2047,7 +2035,6 @@
 
   /* ── Store ── */
   function htmlStore() {
-    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const w = s.wallet;
     const alreadyBoughtToday = s.lastPurchaseDate === s.today;
 
@@ -2064,10 +2051,10 @@
 
     // On store list: if already bought today, auto-highlight purchased item
     const activeItems = s.storeItems.length ? s.storeItems : STORE_ITEMS;
-    const sysItems = isTester ? [
+    const sysItems = [
       { id: 'sys-random',   name: 'Add Random Act',   desc: 'Roll 5 acts — pick one to add to your pool', cost: 1, rarity: 'mythic' },
       { id: 'sys-specific', name: 'Add Specific Act',  desc: 'Browse and pick any act to add',             cost: 3, rarity: 'mythic' },
-    ] : [];
+    ];
     const allItems = [...sysItems, ...activeItems];
     const purchasedItemId = alreadyBoughtToday && s.lastPurchasedItem
       ? activeItems.find(x => x.name === s.lastPurchasedItem.name)?.id
@@ -2460,7 +2447,6 @@
     if (screen === 'personalize-q') {
       const step = s.ftuePersonalizeStep;
       const q = PERSONALIZE_QUESTIONS[step - 1];
-      const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
 
       document.querySelectorAll('[data-p-opt]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -3469,7 +3455,6 @@
     cleanupTutorial();
 
     if (!s.tutorialFlow) return;
-    const isTester = clerk?.user?.primaryEmailAddress?.emailAddress === 'ablufarb@gmail.com';
     const steps = s.tutorialFlow === 'record'   ? RECORD_TUTORIAL
                 : s.tutorialFlow === 'bazaar'   ? BAZAAR_TUTORIAL
                 : s.tutorialFlow === 'actpool'  ? ACT_POOL_TUTORIAL
@@ -3627,7 +3612,7 @@
               window.scrollBy({ top: rect.top - targetTop, behavior: 'smooth' });
             }, 50);
             // Auto-advance when Day Reset time is changed (tester only)
-            if (isTester && step.elId === 'tutorial-settings-section') {
+            if (step.elId === 'tutorial-settings-section') {
               document.getElementById('select-reset-hour')?.addEventListener('change', () => {
                 s.tutorialStep++;
                 renderTutorial();
@@ -3636,12 +3621,12 @@
           }
           if (step.finish) {
             // capture:true ensures completeTutorial() runs before bind handlers call render()
-            el.addEventListener('click', () => completeTutorial(), { once: true, capture: isTester });
+            el.addEventListener('click', () => completeTutorial(), { once: true, capture: true });
           }
         }
       }
       // Tester copy override for Record info slide
-      const stepTitle = (isTester && s.tutorialFlow === 'record' && step.title === 'Eternal record of your Ritual glory')
+      const stepTitle = (s.tutorialFlow === 'record' && step.title === 'Eternal record of your Ritual glory')
         ? 'Record remembers your Ritual journey.'
         : step.title;
       const box = document.createElement('div');
