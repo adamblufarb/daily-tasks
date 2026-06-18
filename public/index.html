@@ -383,9 +383,9 @@
     .store-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
     .store-card-price { flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; font-weight: 400; color: var(--subtext); }
 .store-card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
-    .store-card.selected-common    { border: 2px solid var(--common);    margin: -1px; box-shadow: var(--shadow); }
-    .store-card.selected-legendary { border: 2px solid var(--legendary); margin: -1px; box-shadow: var(--shadow); }
-    .store-card.selected-mythic    { border: 2px solid var(--mythic);    margin: -1px; box-shadow: var(--shadow); background: color-mix(in srgb, var(--mythic) 15%, var(--card)); }
+    .store-card.selected-common    { border: 2px solid var(--common);    box-shadow: var(--shadow); }
+    .store-card.selected-legendary { border: 2px solid var(--legendary); box-shadow: var(--shadow); }
+    .store-card.selected-mythic    { border: 2px solid var(--mythic);    box-shadow: var(--shadow); background: color-mix(in srgb, var(--mythic) 15%, var(--card)); }
     .store-card.selected-common    .store-card-name { color: var(--common-dark); }
     .store-card.selected-legendary .store-card-name { color: var(--legendary-dark); }
     .store-card.selected-mythic    .store-card-name { color: var(--mythic); }
@@ -2062,7 +2062,7 @@
     const purchasedItemId = alreadyBoughtToday && s.lastPurchasedItem
       ? activeItems.find(x => x.name === s.lastPurchasedItem.name)?.id
       : null;
-    const sel = alreadyBoughtToday ? purchasedItemId : s.selectedStoreItem;
+    const sel = alreadyBoughtToday ? (s.selectedStoreItem ?? purchasedItemId) : s.selectedStoreItem;
     const selItem = allItems.find(x => x.id === sel);
     const isSysItem = sel?.startsWith('sys-');
     const canPurchaseSys = isSysItem && selItem && (w[selItem.rarity] || 0) >= selItem.cost;
@@ -2112,7 +2112,7 @@
         const selClass = isPurchased ? ' purchased' : isSelected ? ` selected-${item.rarity}` : '';
         const affordOpacity = !canAfford && !isSelected ? ' style="opacity:0.5"' : '';
         return `
-        <div class="store-card${selClass}"${!alreadyBoughtToday ? ` data-store-select="${item.id}"` : ''}${affordOpacity}>
+        <div class="store-card${selClass}" data-store-select="${item.id}"${affordOpacity}>
           <div class="store-card-top">
             <div>
               <div class="store-card-name">${item.name}</div>
