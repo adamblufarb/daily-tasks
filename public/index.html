@@ -2062,7 +2062,7 @@
     const purchasedItemId = alreadyBoughtToday && s.lastPurchasedItem
       ? activeItems.find(x => x.name === s.lastPurchasedItem.name)?.id
       : null;
-    const sel = alreadyBoughtToday ? (s.selectedStoreItem ?? purchasedItemId) : s.selectedStoreItem;
+    const sel = alreadyBoughtToday ? purchasedItemId : s.selectedStoreItem;
     const selItem = allItems.find(x => x.id === sel);
     const isSysItem = sel?.startsWith('sys-');
     const canPurchaseSys = isSysItem && selItem && (w[selItem.rarity] || 0) >= selItem.cost;
@@ -2092,9 +2092,9 @@
         const isSelected = sel === item.id;
         const canAfford  = (w[item.rarity] || 0) >= item.cost;
         const selClass   = isSelected ? ` selected-${item.rarity}` : '';
-        const affordOpacity = !canAfford && !isSelected ? ' style="opacity:0.5"' : '';
+        const affordOpacity = !canAfford ? ' style="opacity:0.5"' : '';
         return `
-        <div class="store-card${selClass}" data-store-select="${item.id}"${affordOpacity}>
+        <div class="store-card${selClass}"${canAfford ? ` data-store-select="${item.id}"` : ''}${affordOpacity}>
           <div class="store-card-top">
             <div>
               <div class="store-card-name">${item.name}</div>
@@ -2110,9 +2110,10 @@
         const isPurchased = alreadyBoughtToday && isSelected;
         const canAfford = (w[item.rarity] || 0) >= item.cost;
         const selClass = isPurchased ? ' purchased' : isSelected ? ` selected-${item.rarity}` : '';
-        const affordOpacity = !canAfford && !isSelected ? ' style="opacity:0.5"' : '';
+        const canSelect = canAfford && !alreadyBoughtToday;
+        const affordOpacity = !canAfford ? ' style="opacity:0.5"' : '';
         return `
-        <div class="store-card${selClass}" data-store-select="${item.id}"${affordOpacity}>
+        <div class="store-card${selClass}"${canSelect ? ` data-store-select="${item.id}"` : ''}${affordOpacity}>
           <div class="store-card-top">
             <div>
               <div class="store-card-name">${item.name}</div>
