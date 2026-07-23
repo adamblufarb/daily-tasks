@@ -1993,6 +1993,8 @@
     const deleting  = s.poolEditMode;
     // Blessed & Cursed Acts — soft-launched to adam.blufarb@gmail.com only
     const blessedCursedEnabled = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
+    // Testing only: lower the eligibility threshold from the real 5 to 3 for the test account
+    const markThreshold = blessedCursedEnabled ? 3 : 5;
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
     const canAddRandom   = s.wallet.mythic >= 1;
@@ -2016,7 +2018,7 @@
       const st = stats[t.id] || { chosen: 0, completed: 0 };
       const tappable = !deleting && !isConfirmingDelete && KEY_AFFIX_ENABLED;
       const mark = t.mark || null; // 'blessed' | 'cursed' | null (normal)
-      const eligibleForMark = blessedCursedEnabled && st.completed >= 5;
+      const eligibleForMark = blessedCursedEnabled && st.completed >= markThreshold;
       return `
         <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}${tappable?' pool-pickable':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} data-pool-task-id="${t.id}"${tappable?' data-view-task="'+t.id+'"':''}>
           <div class="pool-task-row">
