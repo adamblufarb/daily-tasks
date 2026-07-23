@@ -234,10 +234,11 @@
     .pool-task-mark-note { font-size: 0.72rem; font-weight: 600; margin-top: 4px; }
     .pool-task-mark-note.note-blessed { color: var(--blessed); }
     .pool-task-mark-note.note-cursed  { color: var(--cursed); }
-    .pool-mark-controls { display: flex; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .pool-mark-controls { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .pool-mark-prompt { font-size: 0.72rem; font-weight: 600; color: var(--subtext); margin-bottom: 8px; }
+    .pool-mark-buttons { display: flex; gap: 6px; }
     .pool-mark-btn { flex: 1; padding: 7px 4px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--card); color: var(--subtext); font-size: 0.72rem; font-weight: 700; font-family: inherit; cursor: pointer; }
     .pool-mark-btn.active { color: #fff; border-color: transparent; }
-    .pool-mark-btn.mark-normal.active  { background: var(--common-dark); }
     .pool-mark-btn.mark-blessed.active { background: var(--blessed); }
     .pool-mark-btn.mark-cursed.active  { background: var(--cursed); }
     .btn-icon { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px; border-radius: 8px; color: var(--subtext); transition: background 0.15s, color 0.15s; }
@@ -2039,9 +2040,11 @@
           </div>
           ${eligibleForMark && !deleting ? `
           <div class="pool-mark-controls">
-            <button class="pool-mark-btn mark-normal${mark===null?' active':''}" data-set-mark="${t.id}" data-mark-value="">Normal</button>
-            <button class="pool-mark-btn mark-blessed${mark==='blessed'?' active':''}" data-set-mark="${t.id}" data-mark-value="blessed">✨ Blessed</button>
-            <button class="pool-mark-btn mark-cursed${mark==='cursed'?' active':''}" data-set-mark="${t.id}" data-mark-value="cursed">💀 Cursed</button>
+            ${mark === null ? `<div class="pool-mark-prompt">You can now Bless or Curse this act</div>` : ''}
+            <div class="pool-mark-buttons">
+              <button class="pool-mark-btn mark-blessed${mark==='blessed'?' active':''}" data-set-mark="${t.id}" data-mark-value="blessed">✨ Bless</button>
+              <button class="pool-mark-btn mark-cursed${mark==='cursed'?' active':''}" data-set-mark="${t.id}" data-mark-value="cursed">💀 Curse</button>
+            </div>
           </div>` : ''}
           ${isConfirmingDelete ? `
             <div class="task-edit-form" style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
@@ -3048,10 +3051,13 @@
         deletePoolTask(confirmDelBtn.dataset.confirmDelete);
       });
 
-      // Blessed / Cursed mark toggle
+      // Blessed / Cursed mark toggle — tapping the already-active mark clears it
       document.querySelectorAll('[data-set-mark]').forEach(el =>
         el.addEventListener('click', () => {
-          setActMark(el.dataset.setMark, el.dataset.markValue);
+          const id = el.dataset.setMark;
+          const value = el.dataset.markValue;
+          const current = s.tasks.find(t => t.id === id);
+          setActMark(id, current?.mark === value ? null : value);
         }));
 
       // Add Random Act — hold-to-confirm (1 Mythic)
