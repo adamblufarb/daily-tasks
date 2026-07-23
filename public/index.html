@@ -235,7 +235,6 @@
     .pool-task-mark-note.note-blessed { color: var(--blessed); }
     .pool-task-mark-note.note-cursed  { color: var(--cursed); }
     .pool-mark-controls { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-    .pool-mark-prompt { font-size: 0.72rem; font-weight: 600; color: var(--subtext); margin-bottom: 8px; }
     .pool-mark-buttons { display: flex; gap: 6px; }
     .pool-mark-btn { flex: 1; padding: 7px 4px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--card); color: var(--subtext); font-size: 0.72rem; font-weight: 700; font-family: inherit; cursor: pointer; }
     .pool-mark-btn.active { color: #fff; border-color: transparent; }
@@ -2028,6 +2027,7 @@
               <div class="pool-task-desc">${t.description}</div>
               ${mark === 'blessed' ? `<div class="pool-task-mark-note note-blessed">Blessed acts has higher chances to roll</div>` : ''}
               ${mark === 'cursed'  ? `<div class="pool-task-mark-note note-cursed">Cursed acts has smaller chances to roll</div>`  : ''}
+              ${mark === null && eligibleForMark ? `<div class="pool-task-mark-note">You can now Bless or Curse this act</div>` : ''}
             </div>
             ${deleting && DELETE_ACT_ENABLED ? `
             <div class="pool-task-actions">
@@ -2040,7 +2040,6 @@
           </div>
           ${eligibleForMark && !deleting ? `
           <div class="pool-mark-controls">
-            ${mark === null ? `<div class="pool-mark-prompt">You can now Bless or Curse this act</div>` : ''}
             <div class="pool-mark-buttons">
               <button class="pool-mark-btn mark-blessed${mark==='blessed'?' active':''}" data-set-mark="${t.id}" data-mark-value="blessed">✨ Bless</button>
               <button class="pool-mark-btn mark-cursed${mark==='cursed'?' active':''}" data-set-mark="${t.id}" data-mark-value="cursed">💀 Curse</button>
