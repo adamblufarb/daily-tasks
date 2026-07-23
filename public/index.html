@@ -2025,8 +2025,8 @@
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
-              ${mark === 'blessed' ? `<div class="pool-task-mark-note note-blessed">Blessed acts has higher chances to roll</div>` : ''}
-              ${mark === 'cursed'  ? `<div class="pool-task-mark-note note-cursed">Cursed acts has smaller chances to roll</div>`  : ''}
+              ${mark === 'blessed' ? `<div class="pool-task-mark-note note-blessed">Blessed acts has <strong>higher</strong> chances to roll</div>` : ''}
+              ${mark === 'cursed'  ? `<div class="pool-task-mark-note note-cursed">Cursed acts has <strong>smaller</strong> chances to roll</div>`  : ''}
               ${mark === null && eligibleForMark ? `<div class="pool-task-mark-note">You can now Bless or Curse this act</div>` : ''}
             </div>
             ${deleting && DELETE_ACT_ENABLED ? `
