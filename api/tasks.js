@@ -28,13 +28,20 @@ module.exports = withAuth(async (req, res, userId) => {
     return res.json({ ok: true });
   }
 
-  // PATCH — update archived flag
+  // PATCH — update archived flag, or blessed/cursed mark
   if (req.method === 'PATCH') {
-    const { id, archived } = req.body;
-    await sql`
-      UPDATE tasks_v2 SET archived = ${archived}
-      WHERE id = ${id} AND user_id = ${userId}
-    `;
+    const { id, archived, mark } = req.body;
+    if (mark !== undefined) {
+      await sql`
+        UPDATE tasks_v2 SET mark = ${mark || null}
+        WHERE id = ${id} AND user_id = ${userId}
+      `;
+    } else {
+      await sql`
+        UPDATE tasks_v2 SET archived = ${archived}
+        WHERE id = ${id} AND user_id = ${userId}
+      `;
+    }
     return res.json({ ok: true });
   }
 

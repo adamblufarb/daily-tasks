@@ -38,6 +38,10 @@
       --success: #22c55e;
       --danger: #ef4444;
       --warning-bg: #fef3c7;
+      --blessed: #c99a2e;
+      --blessed-bg: #fbf1d9;
+      --cursed: #7a3466;
+      --cursed-bg: #f3e4ee;
       --radius: 20px;
       --shadow: 0 2px 12px rgba(79,70,229,0.08);
     }
@@ -227,6 +231,15 @@
     .pool-task-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
     .pool-stat { font-size: 0.7rem; font-weight: 600; color: var(--subtext); white-space: nowrap; }
     .pool-stat span { color: var(--text); }
+    .pool-task-mark-note { font-size: 0.72rem; font-weight: 600; margin-top: 4px; }
+    .pool-task-mark-note.note-blessed { color: var(--blessed); }
+    .pool-task-mark-note.note-cursed  { color: var(--cursed); }
+    .pool-mark-controls { display: flex; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .pool-mark-btn { flex: 1; padding: 7px 4px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--card); color: var(--subtext); font-size: 0.72rem; font-weight: 700; font-family: inherit; cursor: pointer; }
+    .pool-mark-btn.active { color: #fff; border-color: transparent; }
+    .pool-mark-btn.mark-normal.active  { background: var(--common-dark); }
+    .pool-mark-btn.mark-blessed.active { background: var(--blessed); }
+    .pool-mark-btn.mark-cursed.active  { background: var(--cursed); }
     .btn-icon { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px; border-radius: 8px; color: var(--subtext); transition: background 0.15s, color 0.15s; }
     .btn-icon:hover { background: var(--bg); }
     .btn-icon.del:hover { color: var(--danger); }
@@ -923,6 +936,31 @@
     return a;
   }
 
+  // Blessed acts roll 1.35x as often, Cursed acts 0.65x, Normal acts 1x.
+  function actWeight(t) {
+    return t.mark === 'blessed' ? 1.35 : t.mark === 'cursed' ? 0.65 : 1;
+  }
+
+  // Weighted random sample without replacement — each remaining act's
+  // chance to be picked next is its weight / sum of all remaining weights.
+  function weightedSample(pool, n) {
+    const remaining = pool.slice();
+    const picked = [];
+    const count = Math.min(n, remaining.length);
+    for (let i = 0; i < count; i++) {
+      const total = remaining.reduce((sum, t) => sum + actWeight(t), 0);
+      let r = Math.random() * total;
+      let idx = remaining.length - 1;
+      for (let j = 0; j < remaining.length; j++) {
+        r -= actWeight(remaining[j]);
+        if (r <= 0) { idx = j; break; }
+      }
+      picked.push(remaining[idx]);
+      remaining.splice(idx, 1);
+    }
+    return picked;
+  }
+
   function fmtDate(str) {
     if (!str) return '';
     return new Date(str + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
@@ -953,18 +991,18 @@
     if (isOnboarding && s.onboardingRitualCount === 0) {
       // Ritual 1: 5 random common only
       const common = userActPool.filter(t => t.type === 'common');
-      return shuffle(common).slice(0, Math.min(5, common.length)).map(t => t.id);
+      return weightedSample(common, 5).map(t => t.id);
     } else if (isOnboarding && s.onboardingRitualCount === 1) {
       // Ritual 2: 4 random common + 1 random legendary
       const common = userActPool.filter(t => t.type === 'common');
       const legendary = userActPool.filter(t => t.type === 'legendary');
       const candidates = [
-        ...shuffle(common).slice(0, Math.min(4, common.length)),
-        ...shuffle(legendary).slice(0, Math.min(1, legendary.length)),
+        ...weightedSample(common, 4),
+        ...weightedSample(legendary, 1),
       ];
       return shuffle(candidates).map(t => t.id);
     }
-    return shuffle(userActPool).slice(0, Math.min(5, userActPool.length)).map(t => t.id);
+    return weightedSample(userActPool, 5).map(t => t.id);
   }
 
   /* ── Render ── */
@@ -1953,6 +1991,8 @@
     const common    = userActPool.filter(t => t.type === 'common');
     const legendary = userActPool.filter(t => t.type === 'legendary');
     const deleting  = s.poolEditMode;
+    // Blessed & Cursed Acts — soft-launched to adam.blufarb@gmail.com only
+    const blessedCursedEnabled = clerk.user?.primaryEmailAddress?.emailAddress === 'adam.blufarb@gmail.com';
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
     const canAddRandom   = s.wallet.mythic >= 1;
@@ -1975,12 +2015,16 @@
       const isConfirmingDelete = s.deletingTask === t.id;
       const st = stats[t.id] || { chosen: 0, completed: 0 };
       const tappable = !deleting && !isConfirmingDelete && KEY_AFFIX_ENABLED;
+      const mark = t.mark || null; // 'blessed' | 'cursed' | null (normal)
+      const eligibleForMark = blessedCursedEnabled && st.completed >= 5;
       return `
         <div class="pool-task-card card-${t.type}${t.type==='legendary'?' legendary-glow':''}${tappable?' pool-pickable':''}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} data-pool-task-id="${t.id}"${tappable?' data-view-task="'+t.id+'"':''}>
           <div class="pool-task-row">
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
+              ${mark === 'blessed' ? `<div class="pool-task-mark-note note-blessed">Blessed acts has higher chances to roll</div>` : ''}
+              ${mark === 'cursed'  ? `<div class="pool-task-mark-note note-cursed">Cursed acts has smaller chances to roll</div>`  : ''}
             </div>
             ${deleting && DELETE_ACT_ENABLED ? `
             <div class="pool-task-actions">
@@ -1991,6 +2035,12 @@
               <div class="pool-stat">Completed <span>${st.completed}</span></div>
             </div>`}
           </div>
+          ${eligibleForMark && !deleting ? `
+          <div class="pool-mark-controls">
+            <button class="pool-mark-btn mark-normal${mark===null?' active':''}" data-set-mark="${t.id}" data-mark-value="">Normal</button>
+            <button class="pool-mark-btn mark-blessed${mark==='blessed'?' active':''}" data-set-mark="${t.id}" data-mark-value="blessed">✨ Blessed</button>
+            <button class="pool-mark-btn mark-cursed${mark==='cursed'?' active':''}" data-set-mark="${t.id}" data-mark-value="cursed">💀 Cursed</button>
+          </div>` : ''}
           ${isConfirmingDelete ? `
             <div class="task-edit-form" style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
               <div style="font-size:0.88rem;color:var(--text);font-weight:700;margin-bottom:6px">Delete <strong>${t.title}</strong>?</div>
@@ -2996,6 +3046,12 @@
         deletePoolTask(confirmDelBtn.dataset.confirmDelete);
       });
 
+      // Blessed / Cursed mark toggle
+      document.querySelectorAll('[data-set-mark]').forEach(el =>
+        el.addEventListener('click', () => {
+          setActMark(el.dataset.setMark, el.dataset.markValue);
+        }));
+
       // Add Random Act — hold-to-confirm (1 Mythic)
       (() => {
         const btn  = document.getElementById('btn-add-random-act');
@@ -3884,6 +3940,12 @@
         { duration: 300, easing: 'ease-in', fill: 'forwards' }
       ).onfinish = commit;
     };
+  }
+
+  async function setActMark(id, mark) {
+    s.tasks = s.tasks.map(t => t.id === id ? { ...t, mark: mark || null } : t);
+    render();
+    await api('PATCH', '/api/tasks', { id, mark: mark || null });
   }
 
   /* ── Load ── */
