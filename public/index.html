@@ -231,7 +231,7 @@
     .pool-task-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
     .pool-stat { font-size: 0.7rem; font-weight: 600; color: var(--subtext); white-space: nowrap; }
     .pool-stat span { color: var(--text); }
-    .pool-task-mark-note { font-size: 0.72rem; font-weight: 600; margin-top: 4px; }
+    .pool-task-mark-note { font-size: 0.72rem; font-weight: 600; margin-bottom: 8px; }
     .pool-task-mark-note.note-blessed { color: var(--blessed); }
     .pool-task-mark-note.note-cursed  { color: var(--cursed); }
     .pool-mark-controls { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -2025,9 +2025,6 @@
             <div class="pool-task-info">
               <div class="pool-task-title">${t.title}</div>
               <div class="pool-task-desc">${t.description}</div>
-              ${mark === 'blessed' ? `<div class="pool-task-mark-note note-blessed">Blessed acts has <strong>higher</strong> chances to roll</div>` : ''}
-              ${mark === 'cursed'  ? `<div class="pool-task-mark-note note-cursed">Cursed acts has <strong>smaller</strong> chances to roll</div>`  : ''}
-              ${mark === null && eligibleForMark ? `<div class="pool-task-mark-note">You can now Bless or Curse this act</div>` : ''}
             </div>
             ${deleting && DELETE_ACT_ENABLED ? `
             <div class="pool-task-actions">
@@ -2038,12 +2035,16 @@
               <div class="pool-stat">Completed <span>${st.completed}</span></div>
             </div>`}
           </div>
-          ${eligibleForMark && !deleting ? `
+          ${!deleting && (eligibleForMark || mark !== null) ? `
           <div class="pool-mark-controls">
+            ${mark === 'blessed' ? `<div class="pool-task-mark-note note-blessed">Blessed acts has <strong>higher</strong> chances to roll</div>` : ''}
+            ${mark === 'cursed'  ? `<div class="pool-task-mark-note note-cursed">Cursed acts has <strong>smaller</strong> chances to roll</div>`  : ''}
+            ${mark === null && eligibleForMark ? `<div class="pool-task-mark-note">You can now Bless or Curse this act</div>` : ''}
+            ${eligibleForMark ? `
             <div class="pool-mark-buttons">
               <button class="pool-mark-btn mark-blessed${mark==='blessed'?' active':''}" data-set-mark="${t.id}" data-mark-value="blessed">✨ Bless</button>
               <button class="pool-mark-btn mark-cursed${mark==='cursed'?' active':''}" data-set-mark="${t.id}" data-mark-value="cursed">💀 Curse</button>
-            </div>
+            </div>` : ''}
           </div>` : ''}
           ${isConfirmingDelete ? `
             <div class="task-edit-form" style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
