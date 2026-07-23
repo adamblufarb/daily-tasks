@@ -660,6 +660,7 @@
     { type: 'common',    title: 'No Late Snacking',   description: "Don't eat anything 3 hours before bed" },
     { type: 'common',    title: 'Search For None',    description: 'No random Google or AI searches' },
     { type: 'common',    title: 'Family First',       description: 'Call up a family member' },
+    { type: 'common',    title: 'Play Time',          description: 'Play an instrument for 15 minutes' },
     // ── Legendary ──
     { type: 'legendary', title: 'Sunset',             description: 'Watch the sun set today' },
     { type: 'legendary', title: 'Schedule Dinner',    description: 'Schedule a dinner with friends' },
@@ -934,6 +935,16 @@
     } else if (!s.offered.length) {
       s.offered = rollOffered();
     }
+  }
+
+  // Keep the local session cache in sync with a freshly-rolled offer so
+  // ensureOffered() doesn't clobber it with the stale pre-roll value on re-render.
+  function syncDraftSession(offeredIds) {
+    const id = `draft-${s.today}`;
+    const idx = s.sessions.findIndex(x => x.date === s.today);
+    const draft = { id, date: s.today, offered_ids: offeredIds, picked_ids: [], completed_ids: [], status: 'draft' };
+    if (idx >= 0) s.sessions[idx] = { ...s.sessions[idx], ...draft };
+    else s.sessions.push(draft);
   }
 
   function rollOffered() {
@@ -1320,6 +1331,7 @@
   async function beginFirstRitual() {
     s.ftueScreen = null;
     s.offered = rollOffered();
+    syncDraftSession(s.offered);
     s.picked = [];
     s.planBuildState = 'revealing';
     render();
@@ -2067,7 +2079,7 @@
     const isSysItem = sel?.startsWith('sys-');
     const canPurchaseSys = isSysItem && selItem && (w[selItem.rarity] || 0) >= selItem.cost;
     const canPurchase = (isSysItem ? canPurchaseSys : (selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday));
-    const showStreakAward = w.streak > 0 && w.streak % 3 === 0 && w.streak !== (w.streakAwardClaimed || 0);
+    const showStreakAward = Math.floor(w.streak / 3) > Math.floor((w.streakAwardClaimed || 0) / 3);
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Bazaar</div>
@@ -2696,6 +2708,7 @@
     if (screen === 'pick') {
       document.getElementById('btn-generate')?.addEventListener('click', async () => {
         s.offered = rollOffered();
+        syncDraftSession(s.offered);
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
@@ -2736,6 +2749,7 @@
         if (s.wallet.common < 1) return;
         s.wallet.common--;
         s.offered = rollOffered();
+        syncDraftSession(s.offered);
         s.picked = [];
         s.planBuildState = 'revealing';
         render();
