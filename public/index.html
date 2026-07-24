@@ -764,6 +764,7 @@
       leaderboardOpen: false,
       leaderboardData: null,
       leaderboardLoading: false,
+      leaderboardTab: 'week', // 'week' | 'overall'
       lastPurchaseDate: null,
       lastPurchasedItem: null,
       selectedStoreItem: null,
@@ -1991,7 +1992,7 @@
     const common    = userActPool.filter(t => t.type === 'common');
     const legendary = userActPool.filter(t => t.type === 'legendary');
     const deleting  = s.poolEditMode;
-    const markThreshold = 5; // completions required to unlock Bless/Curse
+    const markThreshold = 4; // completions required to unlock Bless/Curse
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
     const canAddRandom   = s.wallet.mythic >= 1;
@@ -2329,6 +2330,12 @@
       }).join('') + `</div>`;
     }
 
+    const tabsHtml = `
+      <div class="lb-tabs">
+        <button class="lb-tab${s.leaderboardTab==='week'?' active':''}" data-lb-tab="week">Last 7 Days</button>
+        <button class="lb-tab${s.leaderboardTab==='overall'?' active':''}" data-lb-tab="overall">Overall</button>
+      </div>`;
+
     let bodyHtml;
     if (s.leaderboardLoading) {
       bodyHtml = `<div class="lb-empty">Loading…</div>`;
@@ -2336,18 +2343,23 @@
       bodyHtml = `<div class="lb-empty">Failed to load leaderboard.</div>`;
     } else {
       const all = [...(s.leaderboardData.users || [])];
+      const isWeek = s.leaderboardTab === 'week';
+      // Last 7 Days respects the inactivity filter; Overall shows everyone.
+      const scoped = isWeek ? all.filter(u => u.recentlyActive) : all;
+      const streakKey = isWeek ? 'currentStreak' : 'longestStreak';
+      const actsKey   = isWeek ? 'acts7d' : 'actsAllTime';
 
       const streakSection = `
         <div class="lb-section">
-          <div class="lb-section-title">🔥 Streak</div>
-          ${lbList([...all].sort((a, b) => b.currentStreak - a.currentStreak), 'currentStreak', ' 🔥', 'lb-streak')}
+          <div class="lb-section-title">🔥 ${isWeek ? 'Active Streak' : 'Longest Streak'}</div>
+          ${lbList([...scoped].sort((a, b) => b[streakKey] - a[streakKey]), streakKey, ' 🔥', 'lb-streak')}
         </div>`;
 
       const actsNote = `<div style="font-size:0.75rem;color:var(--subtext);margin-top:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${rarityTag('common')} = 1pt &nbsp; ${rarityTag('legendary')} = 3pt</div>`;
       const actsSection = `
         <div class="lb-section">
-          <div class="lb-section-title">🧿 Acts</div>
-          ${lbList([...all].sort((a, b) => b.actsAllTime - a.actsAllTime), 'actsAllTime', ' pts', '')}
+          <div class="lb-section-title">🧿 ${isWeek ? 'Acts (Last 7 Days)' : 'Total Acts'}</div>
+          ${lbList([...scoped].sort((a, b) => b[actsKey] - a[actsKey]), actsKey, ' pts', '')}
           ${actsNote}
         </div>`;
 
@@ -2359,6 +2371,7 @@
         <button class="btn-back" id="btn-lb-back">‹ Record</button>
         <div class="section-title">Leaderboard</div>
       </div>
+      ${tabsHtml}
       ${bodyHtml}`;
   }
 
@@ -2700,6 +2713,11 @@
         s.leaderboardOpen = false;
         render();
       });
+      document.querySelectorAll('[data-lb-tab]').forEach(el =>
+        el.addEventListener('click', () => {
+          s.leaderboardTab = el.dataset.lbTab;
+          render();
+        }));
     }
 
     if (screen === 'concluded') {
