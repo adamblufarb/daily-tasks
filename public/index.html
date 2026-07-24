@@ -2358,7 +2358,7 @@
       const actsNote = `<div style="font-size:0.75rem;color:var(--subtext);margin-top:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${rarityTag('common')} = 1pt &nbsp; ${rarityTag('legendary')} = 3pt</div>`;
       const actsSection = `
         <div class="lb-section">
-          <div class="lb-section-title">🧿 ${isWeek ? 'Acts (Last 7 Days)' : 'Total Acts'}</div>
+          <div class="lb-section-title">🧿 ${isWeek ? 'Acts' : 'Total Acts'}</div>
           ${lbList([...scoped].sort((a, b) => b[actsKey] - a[actsKey]), actsKey, ' pts', '')}
           ${actsNote}
         </div>`;
