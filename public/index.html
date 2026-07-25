@@ -587,6 +587,10 @@
     </div>
     <div id="clerk-auth"></div>
     <div id="clerk-captcha"></div>
+    <div id="auth-toggle" style="text-align:center;margin-top:16px;font-size:0.88rem;color:var(--subtext)">
+      <span id="auth-toggle-text">Don't have an account?</span>
+      <button id="auth-toggle-btn" type="button" style="background:none;border:none;color:var(--accent);font-weight:700;font-family:inherit;font-size:inherit;cursor:pointer;padding:0;margin-left:4px">Sign up</button>
+    </div>
   </div>
 </div>
 
@@ -4082,6 +4086,49 @@
 
   let appLoaded = false;
   let authMounted = false;
+  let authMode = 'sign-in'; // 'sign-in' | 'sign-up' — we own this toggle instead of
+                             // relying on Clerk's built-in cross-link, which was doing
+                             // a full-page redirect to the hosted Account Portal and
+                             // bouncing straight back instead of switching in place.
+
+  function mountAuth() {
+    const el = document.getElementById('clerk-auth');
+    // Unmount whichever component was previously mounted before switching.
+    try { clerk.unmountSignIn(el); } catch (e) {}
+    try { clerk.unmountSignUp(el); } catch (e) {}
+
+    const opts = {
+      routing: 'virtual',
+      fallbackRedirectUrl: window.location.origin,
+      appearance: {
+        variables: {
+          colorPrimary: '#363c69',
+          fontFamily: '"Space Grotesk", sans-serif',
+          borderRadius: '16px',
+        },
+        // Hide Clerk's own built-in "Sign up"/"Sign in" footer link — it was
+        // doing a full-page redirect to the hosted Account Portal instead of
+        // switching in place. Our own #auth-toggle-btn replaces it.
+        elements: {
+          footerAction: { display: 'none' },
+        },
+      },
+    };
+    if (authMode === 'sign-up') clerk.mountSignUp(el, opts);
+    else clerk.mountSignIn(el, opts);
+
+    const toggleText = document.getElementById('auth-toggle-text');
+    const toggleBtn  = document.getElementById('auth-toggle-btn');
+    if (toggleText && toggleBtn) {
+      toggleText.textContent = authMode === 'sign-up' ? 'Already have an account?' : "Don't have an account?";
+      toggleBtn.textContent  = authMode === 'sign-up' ? 'Sign in' : 'Sign up';
+    }
+  }
+
+  document.getElementById('auth-toggle-btn')?.addEventListener('click', () => {
+    authMode = authMode === 'sign-in' ? 'sign-up' : 'sign-in';
+    mountAuth();
+  });
 
   function syncAuth() {
     if (clerk.user) {
@@ -4101,18 +4148,7 @@
         appLoaded = false;
       }
       if (!authMounted) {
-        clerk.mountSignIn(document.getElementById('clerk-auth'), {
-          routing: 'virtual',
-          afterSignInUrl: window.location.origin,
-          afterSignUpUrl: window.location.origin,
-          appearance: {
-            variables: {
-              colorPrimary: '#363c69',
-              fontFamily: '"Space Grotesk", sans-serif',
-              borderRadius: '16px',
-            },
-          },
-        });
+        mountAuth();
         authMounted = true;
       }
     }
