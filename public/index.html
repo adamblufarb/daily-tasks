@@ -42,8 +42,6 @@
       --blessed-bg: #fbf1d9;
       --cursed: #7a3466;
       --cursed-bg: #f3e4ee;
-      --spark: #f2b705;
-      --spark-bg: #3d2e00;
       --radius: 20px;
       --shadow: 0 2px 12px rgba(79,70,229,0.08);
     }
@@ -391,7 +389,6 @@
     .store-wallet-chip.common    { background: var(--common);    color: var(--common-light); }
     .store-wallet-chip.legendary { background: var(--legendary); color: var(--legendary-bg); }
     .store-wallet-chip.mythic    { background: var(--mythic);         color: var(--mythic-bg); }
-    .store-wallet-chip.spark     { background: var(--spark);          color: var(--spark-bg); }
     .store-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; box-shadow: var(--shadow); }
     .store-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .store-card-name { font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
@@ -458,10 +455,6 @@
     .reward-tokens { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-bottom: 40px; }
     .reward-token-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 400; color: rgba(255,255,255,0.9); }
     .btn-claim     { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; touch-action: manipulation; }
-    .btn-claim:disabled { opacity: 0.4; pointer-events: none; }
-    .btn-spark     { background: var(--spark); color: var(--spark-bg); box-shadow: none; margin-bottom: 12px; }
-    .spark-count   { font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 14px; }
-    .spark-purchase-hint { font-size: 0.78rem; color: rgba(255,255,255,0.75); margin-top: -8px; margin-bottom: 16px; }
 
     /* Concluded-screen: declined task (red) */
     .active-task.task-declined { border-color: var(--danger); background: var(--danger); color: #fff; cursor: pointer; }
@@ -766,9 +759,7 @@
       storeItems: [],
       editingStoreItem: null,
       storeEditMode: false,
-      wallet: { common: 0, legendary: 0, mythic: 0, streak: 0, streakAwardClaimed: 0, sparks: 1 },
-      preFailStreak: 0,
-      preFailStreakAwardClaimed: 0,
+      wallet: { common: 0, legendary: 0, mythic: 0, streak: 0, streakAwardClaimed: 0 },
       rerollCount: 0, // resets each fresh Ritual Forge; escalates the Re-Roll price
       profile: { nickname: '', hideFromLeaderboard: false },
       leaderboardOpen: false,
@@ -938,14 +929,10 @@
       .onfinish = () => el.remove();
   }
 
-  // Ritual Failure & Spark mechanic — scoped exclusively to this test account
-  // while the feature is under testing. Remove this gate for full rollout.
+  // adamblufarbhbo@gmail.com — Testing Tools access only; this account gets
+  // the standard experience otherwise (see htmlProfile()).
   function isTestUser() {
     return clerk.user?.primaryEmailAddress?.emailAddress === 'adamblufarbhbo@gmail.com';
-  }
-
-  function isOnboardingActive() {
-    return !s.hasCompletedOnboarding && s.onboardingRitualCount < 2;
   }
 
   function shuffle(arr) {
@@ -1436,16 +1423,11 @@
 
     ensureOffered();
     const tasks = s.offered.map(id => getTask(id)).filter(Boolean);
-    // New Ritual rules (test user only): all rolled acts are auto-included,
-    // no individual act commitment/selection.
-    const allAutoIncluded = isTestUser() && !isOnboarding;
-    const n = allAutoIncluded ? tasks.length : s.picked.length;
+    const n = s.picked.length;
     const isRevealing = s.planBuildState === 'revealing';
-    const isMythic = allAutoIncluded ? tasks.length === 5 : (!isOnboarding && n === 5);
-    const canStart = allAutoIncluded ? tasks.length > 0 : (isOnboarding ? n === maxPicks : n >= 3);
-    const countLabel = allAutoIncluded
-      ? `All ${tasks.length} Acts Included`
-      : isOnboarding
+    const isMythic = !isOnboarding && n === 5;
+    const canStart = isOnboarding ? n === maxPicks : n >= 3;
+    const countLabel = isOnboarding
       ? `Committed: <strong>${n} / ${maxPicks}</strong>`
       : `Committed: <strong>${n} / 3</strong>`;
     const rerollCost = (s.rerollCount || 0) + 1;
@@ -1459,7 +1441,7 @@
       </div>
       <div class="pick-count${isMythic?' mythic-pick':''}">${countLabel}</div>
       ${tasks.map((t, i) => `
-        <div class="task-card${t.type==='legendary'?' legendary-card':''}${(allAutoIncluded || s.picked.includes(t.id))?' selected':''}${isRevealing?' task-card-reveal':''}"${allAutoIncluded ? '' : ` data-pick="${t.id}"`}${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${!allAutoIncluded&&!isOnboarding&&n>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
+        <div class="task-card${t.type==='legendary'?' legendary-card':''}${s.picked.includes(t.id)?' selected':''}${isRevealing?' task-card-reveal':''}" data-pick="${t.id}"${t.type==='legendary'?' data-glow-id="'+t.id+'"':''} style="${isRevealing?`animation-delay:${500 + i*500}ms;`:''}${!isOnboarding&&n>=5&&!s.picked.includes(t.id)?'opacity:0.45;pointer-events:none':''}">
           <div class="task-card-top">
             <div class="task-title">${t.title}</div>
             ${rarityTag(t.type)}
@@ -1627,27 +1609,11 @@
 
   /* ── Better Luck Next Time screen ── */
   function htmlBadLuck() {
-    if (!isTestUser()) {
-      return `
-        <div class="reward-screen" style="background:var(--accent)">
-          <div class="reward-emoji">😔</div>
-          <div class="reward-title">Better Luck Next Time</div>
-          <div class="reward-earned">All acts must be completed in order to earn tokens.</div>
-          <button class="btn-claim" id="btn-acknowledge">Got It</button>
-        </div>`;
-    }
-    // New Ritual rules (test user only): 0 acts completed breaks the streak,
-    // but a Spark can be spent right here to save it.
-    const sparks = s.wallet.sparks || 0;
-    const canUseSpark = sparks >= 1;
     return `
       <div class="reward-screen" style="background:var(--accent)">
         <div class="reward-emoji">😔</div>
-        <div class="reward-title">Ritual Failed</div>
-        <div class="reward-earned">No acts were completed — your streak is about to reset.</div>
-        <div class="spark-count">⚡ ${sparks} Spark${sparks === 1 ? '' : 's'} available</div>
-        <button class="btn-claim btn-spark" id="btn-use-spark"${canUseSpark ? '' : ' disabled'}>⚡ Spend 1 Spark to Save Streak</button>
-        ${!canUseSpark ? `<div class="spark-purchase-hint">Out of Sparks — buy more in the Bazaar</div>` : ''}
+        <div class="reward-title">Better Luck Next Time</div>
+        <div class="reward-earned">All acts must be completed in order to earn tokens.</div>
         <button class="btn-claim" id="btn-acknowledge">Got It</button>
       </div>`;
   }
@@ -1739,11 +1705,6 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn-primary" id="btn-test-streak-award" style="flex:1;font-size:0.85rem;padding:13px">Streak Award</button>
-        </div>
-        <div class="testing-group-label">Ritual &amp; Spark</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-primary" id="btn-test-fail-screen" style="flex:1;font-size:0.78rem;padding:11px">Simulate Fail Screen</button>
-          <button class="btn-primary" id="btn-test-add-sparks" style="flex:1;font-size:0.78rem;padding:11px">Add 10 Sparks</button>
         </div>
         <div class="testing-group-label">Tutorials</div>
         <div style="display:flex;gap:8px">
@@ -2184,17 +2145,8 @@
         <div class="store-wallet-chip common" id="tutorial-wallet-common">${w.common} <span class="store-wallet-label">Common</span></div>
         <div class="store-wallet-chip legendary" id="tutorial-wallet-legendary">${w.legendary} <span class="store-wallet-label">Legendary</span></div>
         <div class="store-wallet-chip mythic" id="tutorial-wallet-mythic">${w.mythic} <span class="store-wallet-label">Mythical</span></div>
-        ${isTestUser() ? `<div class="store-wallet-chip spark" id="tutorial-wallet-spark">${w.sparks || 0} <span class="store-wallet-label">Spark</span></div>` : ''}
       </div>
       <button class="btn-primary" id="btn-goto-craft" style="margin-bottom:20px;background:linear-gradient(to right,var(--common) 0%,var(--common) 20%,var(--legendary) 40%,var(--legendary) 60%,var(--mythic) 80%,var(--mythic) 100%)">Craft Tokens</button>
-      ${isTestUser() ? `
-      <div class="streak-award-wrap" id="buy-spark-wrap" style="margin-bottom:20px">
-        <button class="btn-primary btn-streak-award" id="btn-buy-spark" style="background:var(--spark);color:var(--spark-bg)"${w.mythic < 2 ? ' disabled' : ''}>
-          <div class="craft-hold-fill" id="fill-buy-spark" style="background:rgba(0,0,0,0.15)"></div>
-          <span class="streak-award-label">⚡ Buy 1 Spark — 2 ${rarityTag('mythic')}</span>
-        </button>
-      </div>
-      ` : ''}
       ${showStreakAward ? `
       <div class="streak-award-wrap mythic-glow" id="streak-award-wrap" data-glow-id="streak-award" style="margin-bottom:20px">
         <button class="btn-primary btn-streak-award" id="btn-streak-award">
@@ -2664,23 +2616,6 @@
             }, streakWrap);
           }
         }
-        {
-          const sparkBtn  = document.getElementById('btn-buy-spark');
-          const sparkFill = document.getElementById('fill-buy-spark');
-          const sparkWrap = document.getElementById('buy-spark-wrap');
-          if (sparkBtn && sparkFill) {
-            attachHoldToConfirm(sparkBtn, sparkFill, () => {
-              if ((s.wallet.mythic || 0) < 2) return;
-              s.wallet.mythic -= 2;
-              s.wallet.sparks = (s.wallet.sparks || 0) + 1;
-              const mythicChip = document.getElementById('tutorial-wallet-mythic');
-              if (mythicChip) mythicChip.innerHTML = `${s.wallet.mythic} <span class="store-wallet-label">Mythical</span>`;
-              animateTokenChip('tutorial-wallet-mythic');
-              saveWallet();
-              render();
-            }, sparkWrap);
-          }
-        }
         document.querySelectorAll('[data-store-select]').forEach(card =>
           card.addEventListener('click', () => {
             const id = card.dataset.storeSelect;
@@ -2823,21 +2758,13 @@
 
     if (screen === 'bad-luck') {
       document.getElementById('btn-acknowledge')?.addEventListener('click', dismissFailScreen);
-      document.getElementById('btn-use-spark')?.addEventListener('click', async () => {
-        if ((s.wallet.sparks || 0) < 1) return;
-        s.wallet.sparks -= 1;
-        s.wallet.streak = s.preFailStreak || 0;
-        s.wallet.streakAwardClaimed = s.preFailStreakAwardClaimed || 0;
-        await saveWallet();
-        await dismissFailScreen();
-      });
     }
 
     if (screen === 'pick') {
       document.getElementById('btn-generate')?.addEventListener('click', async () => {
         s.offered = rollOffered();
         syncDraftSession(s.offered);
-        s.picked = (isTestUser() && !isOnboardingActive()) ? [...s.offered] : [];
+        s.picked = [];
         s.rerollCount = 0; // fresh Ritual Forge — Re-Roll price starts back at 1 Common
         s.planBuildState = 'revealing';
         render();
@@ -2881,7 +2808,7 @@
         s.rerollCount = (s.rerollCount || 0) + 1;
         s.offered = rollOffered();
         syncDraftSession(s.offered);
-        s.picked = (isTestUser() && !isOnboardingActive()) ? [...s.offered] : [];
+        s.picked = [];
         s.planBuildState = 'revealing';
         render();
         revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
@@ -3395,20 +3322,6 @@
         render();
         await saveWallet();
       });
-      // Ritual & Spark testing
-      document.getElementById('btn-test-fail-screen')?.addEventListener('click', () => {
-        s.tab = 'today';
-        s.preFailStreak = s.wallet.streak || 0;
-        s.preFailStreakAwardClaimed = s.wallet.streakAwardClaimed || 0;
-        s.pendingReward = { common: 0, legendary: 0, mythic: 0 };
-        s.overlayScreen = 'bad-luck';
-        render();
-      });
-      document.getElementById('btn-test-add-sparks')?.addEventListener('click', async () => {
-        s.wallet.sparks = (s.wallet.sparks || 0) + 10;
-        render();
-        await saveWallet();
-      });
       // Tutorial replay
       document.getElementById('btn-test-record')?.addEventListener('click', () => startTutorial('record'));
       document.getElementById('btn-test-bazaar')?.addEventListener('click', () => startTutorial('bazaar'));
@@ -3504,36 +3417,20 @@
     const tasks = (todaySess.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
     const completedIds = todaySess.completed_ids || [];
     const allCompleted = completedIds.length === tasks.length && tasks.length > 0;
-    const testUser = isTestUser();
-    // New Ritual rules (test user only): completing at least 1 act keeps the
-    // streak, and tokens are earned per completed act regardless of total.
-    const isWin = testUser ? completedIds.length >= 1 : allCompleted;
     let earnedCommon = 0, earnedLegendary = 0, earnedMythic = 0;
-    if (testUser) {
-      for (const id of completedIds) {
-        const t = getTaskForHistory(todaySess, id);
-        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
-      }
-      if (allCompleted && tasks.length === 5) earnedMythic = 1;
-    } else if (allCompleted) {
+    if (allCompleted) {
       if (tasks.length === 5) earnedMythic = 1;
       for (const id of completedIds) {
         const t = getTaskForHistory(todaySess, id);
         if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
       }
-    }
-    if (isWin) {
       s.wallet.streak = (s.wallet.streak || 0) + 1;
     } else {
-      if (testUser) {
-        s.preFailStreak = s.wallet.streak || 0;
-        s.preFailStreakAwardClaimed = s.wallet.streakAwardClaimed || 0;
-      }
       s.wallet.streak = 0;
       s.wallet.streakAwardClaimed = 0;
     }
     s.pendingReward  = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
-    s.overlayScreen  = isWin ? 'reward' : 'bad-luck';
+    s.overlayScreen  = allCompleted ? 'reward' : 'bad-luck';
     s.sessions = s.sessions.map(x => x.id === todaySess.id ? { ...x, status: 'done' } : x);
     render();
     await Promise.all([
@@ -3569,8 +3466,7 @@
     await Promise.all(saves);
   }
 
-  // Shared dismissal for the Ritual-failed screen — used by "Got It" and,
-  // after spending a Spark, by the Spark CTA itself.
+  // Dismissal for the Ritual-failed screen.
   async function dismissFailScreen() {
     s.pendingReward = null;
     s.overlayScreen = null;
@@ -3872,34 +3768,20 @@
     const tasks = (pending.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
     const completedIds = pending.completed_ids || [];
     const allCompleted = completedIds.length === tasks.length && tasks.length > 0;
-    const testUser = isTestUser();
-    const isWin = testUser ? completedIds.length >= 1 : allCompleted;
     let earnedCommon = 0, earnedLegendary = 0, earnedMythic = 0;
-    if (testUser) {
-      for (const id of completedIds) {
-        const t = getTaskForHistory(pending, id);
-        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
-      }
-      if (allCompleted && tasks.length === 5) earnedMythic = 1;
-    } else if (allCompleted) {
+    if (allCompleted) {
       if (tasks.length === 5) earnedMythic = 1;
       for (const id of completedIds) {
         const t = getTaskForHistory(pending, id);
         if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
       }
-    }
-    if (isWin) {
       s.wallet.streak = (s.wallet.streak || 0) + 1;
     } else {
-      if (testUser) {
-        s.preFailStreak = s.wallet.streak || 0;
-        s.preFailStreakAwardClaimed = s.wallet.streakAwardClaimed || 0;
-      }
       s.wallet.streak = 0;
       s.wallet.streakAwardClaimed = 0;
     }
     s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
-    s.overlayScreen = isWin ? 'reward' : 'bad-luck';
+    s.overlayScreen = allCompleted ? 'reward' : 'bad-luck';
     s.reviewDeclined = [];
     s.graceConfirmTask = null;
     s.sessions = s.sessions.map(x => x.id === pending.id
@@ -3918,7 +3800,6 @@
       mythic: s.wallet.mythic,
       streak: s.wallet.streak ?? 0,
       streak_award_claimed: s.wallet.streakAwardClaimed ?? 0,
-      sparks: s.wallet.sparks ?? 0,
       last_purchase_date: s.lastPurchaseDate,
       last_purchase_item_name: s.lastPurchasedItem?.name || null,
       last_purchase_item_rarity: s.lastPurchasedItem?.rarity || null,
@@ -4107,7 +3988,7 @@
 
       if (data.wallet) {
         const w = data.wallet;
-        s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic, streak: w.streak ?? 0, streakAwardClaimed: w.streak_award_claimed ?? 0, sparks: w.sparks ?? 0 };
+        s.wallet = { common: w.common, legendary: w.legendary, mythic: w.mythic, streak: w.streak ?? 0, streakAwardClaimed: w.streak_award_claimed ?? 0 };
         s.lastPurchaseDate = w.last_purchase_date || null;
         s.lastPurchasedItem = w.last_purchase_item_name
           ? { name: w.last_purchase_item_name, rarity: w.last_purchase_item_rarity }
@@ -4156,7 +4037,6 @@
         const todaySess = s.sessions.find(x => x.date === s.today);
         if (todaySess?.offered_ids?.length) {
           s.offered = todaySess.offered_ids;
-          s.picked = (isTestUser() && !isOnboardingActive()) ? [...s.offered] : [];
           s.planBuildState = 'pick';
         }
       }
