@@ -24,15 +24,12 @@ module.exports = withAuth(async (req, res) => {
 
   if (allIds.length === 0) return res.json({ users: [] });
 
-  const [sessions, walletRows] = await Promise.all([
-    sql`SELECT user_id, date, status, picked_ids, completed_ids, task_snapshots
-        FROM daily_sessions_v2
-        WHERE user_id = ANY(${allIds})
-        ORDER BY user_id, date ASC`,
-    sql`SELECT user_id, streak FROM wallet_v2 WHERE user_id = ANY(${allIds})`,
-  ]);
-
-  const walletMap = Object.fromEntries(walletRows.map(w => [w.user_id, w]));
+  const sessions = await sql`
+    SELECT user_id, date, status, picked_ids, completed_ids, task_snapshots
+    FROM daily_sessions_v2
+    WHERE user_id = ANY(${allIds})
+    ORDER BY user_id, date ASC
+  `;
 
   const sessionsByUser = {};
   for (const sess of sessions) {
@@ -63,6 +60,32 @@ module.exports = withAuth(async (req, res) => {
     return daysBetween(todayDateStr, lastStarted) < 5;
   }
 
+  // Streak logic — a Ritual is Honored with >=1 act completed, and a streak
+  // only continues across genuinely consecutive calendar dates. Any gap
+  // (a missed day, or a failed day with 0 acts completed) breaks it back
+  // to 0/1. This replaces the old wallet.streak counter, which only reset
+  // on a submitted failure and stayed inflated across a skipped day.
+  function computeStreaks(userSessions) {
+    const done = userSessions
+      .filter(sess => sess.status === 'done' && sess.picked_ids?.length > 0)
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let longestStreak = 0, runStreak = 0, prevDate = null;
+    for (const sess of done) {
+      const honored = sess.completed_ids?.length >= 1;
+      if (!honored) {
+        runStreak = 0;
+      } else if (prevDate && daysBetween(sess.date, prevDate) === 1) {
+        runStreak++;
+      } else {
+        runStreak = 1;
+      }
+      longestStreak = Math.max(longestStreak, runStreak);
+      prevDate = sess.date;
+    }
+    return { currentStreak: runStreak, longestStreak };
+  }
+
   // Resolve Clerk imageUrl + nickname fallback for every visible user
   const clerkAdmin = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
   const clerkMap = {};
@@ -76,7 +99,6 @@ module.exports = withAuth(async (req, res) => {
 
   const users = allIds.map(uid => {
     const userSessions = sessionsByUser[uid] || [];
-    const wallet = walletMap[uid] || {};
     const profile = profileMap[uid];
 
     // A Ritual is Honored with >=1 act completed.
@@ -84,12 +106,7 @@ module.exports = withAuth(async (req, res) => {
       return sess.status === 'done' && sess.picked_ids?.length > 0 && sess.completed_ids?.length >= 1;
     }
 
-    // Longest all-time streak (replay session history)
-    let longestStreak = 0, runStreak = 0;
-    for (const sess of userSessions) {
-      if (isHonored(sess)) { runStreak++; longestStreak = Math.max(longestStreak, runStreak); }
-      else if (sess.status === 'done') runStreak = 0;
-    }
+    const { currentStreak, longestStreak } = computeStreaks(userSessions);
 
     let acts7d = 0, actsAllTime = 0, mythicEarned = 0;
     for (const sess of userSessions) {
@@ -116,7 +133,7 @@ module.exports = withAuth(async (req, res) => {
     return {
       nickname,
       avatarUrl: clerkMap[uid]?.imageUrl || null,
-      currentStreak: wallet.streak || 0,
+      currentStreak,
       longestStreak,
       acts7d,
       actsAllTime,

@@ -3480,15 +3480,15 @@
       if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
     }
     if (allCompleted && tasks.length === 5) earnedMythic = 1; // perfect day still earns the Mythic award
-    if (isWin) {
-      s.wallet.streak = (s.wallet.streak || 0) + 1;
-    } else {
-      s.wallet.streak = 0;
-      s.wallet.streakAwardClaimed = 0;
-    }
     s.pendingReward  = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
     s.overlayScreen  = isWin ? 'reward' : 'bad-luck';
     s.sessions = s.sessions.map(x => x.id === todaySess.id ? { ...x, status: 'done' } : x);
+    // Streak is derived from consecutive calendar dates (see
+    // computeDateConsecutiveStreak), not incremented here. Clear a stale
+    // claimed-tier marker if the streak has reset/shrunk since the claim,
+    // so a fresh run through the same tier is claimable again.
+    s.wallet.streak = computeDateConsecutiveStreak();
+    if ((s.wallet.streakAwardClaimed || 0) > s.wallet.streak) s.wallet.streakAwardClaimed = 0;
     render();
     await Promise.all([
       api('PATCH', '/api/sessions', { id: todaySess.id, status: 'done' }),
@@ -3832,18 +3832,16 @@
       if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
     }
     if (allCompleted && tasks.length === 5) earnedMythic = 1;
-    if (isWin) {
-      s.wallet.streak = (s.wallet.streak || 0) + 1;
-    } else {
-      s.wallet.streak = 0;
-      s.wallet.streakAwardClaimed = 0;
-    }
     s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
     s.overlayScreen = isWin ? 'reward' : 'bad-luck';
     s.reviewDeclined = [];
     s.graceConfirmTask = null;
     s.sessions = s.sessions.map(x => x.id === pending.id
       ? { ...x, completed_ids: completedIds, status: 'done' } : x);
+    // Streak is derived from consecutive calendar dates (see
+    // computeDateConsecutiveStreak), not incremented here.
+    s.wallet.streak = computeDateConsecutiveStreak();
+    if ((s.wallet.streakAwardClaimed || 0) > s.wallet.streak) s.wallet.streakAwardClaimed = 0;
     render();
     await Promise.all([
       api('PATCH', '/api/sessions', { id: pending.id, completed_ids: completedIds, status: 'done' }),

@@ -3,6 +3,12 @@ const { verifyToken, createClerkClient } = require('@clerk/backend');
 
 const ADMIN_EMAIL = 'adam.blufarb@gmail.com';
 
+function daysBetween(dateStrA, dateStrB) {
+  const [ay, am, ad] = dateStrA.split('-').map(Number);
+  const [by, bm, bd] = dateStrB.split('-').map(Number);
+  return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86400000);
+}
+
 async function authenticate(req) {
   const auth = req.headers['authorization'];
   if (!auth?.startsWith('Bearer ')) return null;
@@ -74,11 +80,25 @@ module.exports = async (req, res) => {
     const completionRate = total > 0 ? Math.round((honored / total) * 100) : 0;
     const lastActive = userSessions.reduce((max, s) => s.date > max ? s.date : max, '');
 
-    let longestStreak = 0, currentRunStreak = 0;
-    for (const sess of userSessions) {
-      const isHonored = sess.status === 'done' && sess.picked_ids?.length > 0 && sess.completed_ids?.length === sess.picked_ids?.length;
-      if (isHonored) { currentRunStreak++; longestStreak = Math.max(longestStreak, currentRunStreak); }
-      else if (sess.status === 'done') { currentRunStreak = 0; }
+    // Streaks require genuinely consecutive calendar dates — a Ritual is
+    // Honored with >=1 act completed, and any gap (a missed day, or a
+    // failed day with 0 completed) breaks the run back to 0/1.
+    const doneSessions = userSessions
+      .filter(s => s.status === 'done' && s.picked_ids?.length > 0)
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let longestStreak = 0, currentRunStreak = 0, prevDate = null;
+    for (const sess of doneSessions) {
+      const isHonored = sess.completed_ids?.length >= 1;
+      if (!isHonored) {
+        currentRunStreak = 0;
+      } else if (prevDate && daysBetween(sess.date, prevDate) === 1) {
+        currentRunStreak++;
+      } else {
+        currentRunStreak = 1;
+      }
+      longestStreak = Math.max(longestStreak, currentRunStreak);
+      prevDate = sess.date;
     }
 
     const actStats = {};
@@ -122,7 +142,7 @@ module.exports = async (req, res) => {
       completionRate,
       lastActive: lastActive || null,
       longestStreak,
-      currentStreak: wallet.streak || 0,
+      currentStreak: currentRunStreak,
       actStats: Object.values(actStats).sort((a, b) => b.assigned - a.assigned),
       tokensEarned: { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic },
       walletBalance: { common: wallet.common || 0, legendary: wallet.legendary || 0, mythic: wallet.mythic || 0 },
