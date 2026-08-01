@@ -126,6 +126,7 @@
     .rarity-tag-common    { background: var(--common);    color: var(--common-light); }
     .rarity-tag-legendary { background: var(--legendary); color: var(--legendary-bg); }
     .rarity-tag-mythical  { background: var(--mythic);    color: var(--mythic-bg); }
+    .reward-screen.mythic-celebration .rarity-tag-mythical { background: var(--mythic-dark); color: var(--mythic-bg); }
     .task-desc { font-size: 0.84rem; color: var(--subtext); }
 
     /* Active task list */
@@ -1622,11 +1623,11 @@
     // Perfect 5-act completion gets a purple celebration background for this account.
     const isMythicCelebration = isTestUser() && r.mythic > 0;
     return `
-      <div class="reward-screen" style="background:${isMythicCelebration ? 'var(--mythic)' : 'var(--accent)'}">
+      <div class="reward-screen${isMythicCelebration ? ' mythic-celebration' : ''}" style="background:${isMythicCelebration ? 'var(--mythic)' : 'var(--accent)'}">
         <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
         <div style="position:relative;z-index:1;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:stretch">
-          <div class="reward-emoji">🤝</div>
-          <div class="reward-title">Ritual Honored</div>
+          <div class="reward-emoji">${isMythicCelebration ? '🔱' : '🤝'}</div>
+          <div class="reward-title">${isMythicCelebration ? 'Mythical Ritual Honored' : 'Ritual Honored'}</div>
           <div class="reward-tokens">${tokenRows || '<div class="reward-token-row" style="color:rgba(255,255,255,0.6)">No tokens earned</div>'}</div>
           <button class="btn-claim" id="btn-claim-tokens">Claim Tokens</button>
         </div>
