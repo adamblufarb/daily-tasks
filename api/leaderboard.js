@@ -71,6 +71,9 @@ module.exports = withAuth(async (req, res) => {
     clerkMap[id] = {
       imageUrl: u?.imageUrl || null,
       displayName: u?.firstName || u?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',
+      // adamblufarbhbo@gmail.com: a Ritual is Honored with >=1 act completed
+      // (not just a perfect completion). Everyone else keeps the original rule.
+      looseHonored: u?.emailAddresses?.[0]?.emailAddress === 'adamblufarbhbo@gmail.com',
     };
   }));
 
@@ -78,21 +81,25 @@ module.exports = withAuth(async (req, res) => {
     const userSessions = sessionsByUser[uid] || [];
     const wallet = walletMap[uid] || {};
     const profile = profileMap[uid];
+    const looseHonored = clerkMap[uid]?.looseHonored || false;
+
+    function isHonored(sess) {
+      if (sess.status !== 'done' || !(sess.picked_ids?.length > 0)) return false;
+      return looseHonored
+        ? sess.completed_ids?.length >= 1
+        : sess.completed_ids?.length === sess.picked_ids?.length;
+    }
 
     // Longest all-time streak (replay session history)
     let longestStreak = 0, runStreak = 0;
     for (const sess of userSessions) {
-      const honored = sess.status === 'done' && sess.picked_ids?.length > 0 &&
-        sess.completed_ids?.length === sess.picked_ids?.length;
-      if (honored) { runStreak++; longestStreak = Math.max(longestStreak, runStreak); }
+      if (isHonored(sess)) { runStreak++; longestStreak = Math.max(longestStreak, runStreak); }
       else if (sess.status === 'done') runStreak = 0;
     }
 
     let acts7d = 0, actsAllTime = 0, mythicEarned = 0;
     for (const sess of userSessions) {
-      const honored = sess.status === 'done' && sess.picked_ids?.length > 0 &&
-        sess.completed_ids?.length === sess.picked_ids?.length;
-      if (!honored) continue;
+      if (!isHonored(sess)) continue;
 
       const snapMap = {};
       for (const snap of (sess.task_snapshots || [])) snapMap[snap.id] = snap;
@@ -104,7 +111,9 @@ module.exports = withAuth(async (req, res) => {
         actsAllTime += pts;
       }
       if (sess.date >= cutoff) acts7d += sessPoints;
-      if (sess.picked_ids?.length === 5) mythicEarned++;
+      // The Mythic award always requires a genuine 5/5 completion, even for
+      // the looser Honored definition above.
+      if (sess.picked_ids?.length === 5 && sess.completed_ids?.length === 5) mythicEarned++;
     }
 
     // Nickname: profile row wins, then Clerk name fallback

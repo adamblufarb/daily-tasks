@@ -821,13 +821,16 @@
 
   /* ── Points ── */
   function computePoints() {
+    const looseHonored = isTestUser(); // adamblufarbhbo@gmail.com: >=1 completed counts as Honored
     let common = 0, legendary = 0, mythic = 0;
     for (const sess of s.sessions) {
       if (sess.status !== 'done') continue;
       const picked = (sess.picked_ids || []).length;
       const completed = (sess.completed_ids || []).length;
-      if (picked === 0 || completed < picked) continue; // only fully-completed plans earn points
-      if (picked === 5) mythic++;
+      if (picked === 0) continue;
+      const honored = looseHonored ? completed >= 1 : completed >= picked;
+      if (!honored) continue;
+      if (picked === 5 && completed === 5) mythic++; // Mythic award still requires a perfect completion
       for (const id of sess.completed_ids) {
         const t = getTaskForHistory(sess, id);
         if (t?.type === 'legendary') legendary++; else common++;
@@ -2429,10 +2432,15 @@
       ${sorted.map(sess => {
         const tasks = (sess.picked_ids||[]).map(id => getTaskForHistory(sess, id)).filter(Boolean);
         const isDone = sess.status === 'done';
-        const isWin  = isDone && (sess.completed_ids||[]).length === (sess.picked_ids||[]).length;
+        // adamblufarbhbo@gmail.com: a Ritual is Honored with >=1 act completed;
+        // everyone else keeps the original all-completed rule.
+        const isWin  = isDone && (isTestUser()
+          ? (sess.completed_ids||[]).length >= 1
+          : (sess.completed_ids||[]).length === (sess.picked_ids||[]).length);
         const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Completed' : 'Failed';
         const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
         let cPts = 0, lPts = 0;
+        // The Mythic award always requires a genuine 5/5 completion.
         const isMythic = isDone && (sess.picked_ids||[]).length === 5 && (sess.completed_ids||[]).length === 5;
         if (isDone) for (const id of (sess.completed_ids||[])) {
           const t = getTaskForHistory(sess, id);
