@@ -71,9 +71,6 @@ module.exports = withAuth(async (req, res) => {
     clerkMap[id] = {
       imageUrl: u?.imageUrl || null,
       displayName: u?.firstName || u?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',
-      // adamblufarbhbo@gmail.com: a Ritual is Honored with >=1 act completed
-      // (not just a perfect completion). Everyone else keeps the original rule.
-      looseHonored: u?.emailAddresses?.[0]?.emailAddress === 'adamblufarbhbo@gmail.com',
     };
   }));
 
@@ -81,13 +78,10 @@ module.exports = withAuth(async (req, res) => {
     const userSessions = sessionsByUser[uid] || [];
     const wallet = walletMap[uid] || {};
     const profile = profileMap[uid];
-    const looseHonored = clerkMap[uid]?.looseHonored || false;
 
+    // A Ritual is Honored with >=1 act completed.
     function isHonored(sess) {
-      if (sess.status !== 'done' || !(sess.picked_ids?.length > 0)) return false;
-      return looseHonored
-        ? sess.completed_ids?.length >= 1
-        : sess.completed_ids?.length === sess.picked_ids?.length;
+      return sess.status === 'done' && sess.picked_ids?.length > 0 && sess.completed_ids?.length >= 1;
     }
 
     // Longest all-time streak (replay session history)
@@ -111,8 +105,8 @@ module.exports = withAuth(async (req, res) => {
         actsAllTime += pts;
       }
       if (sess.date >= cutoff) acts7d += sessPoints;
-      // The Mythic award always requires a genuine 5/5 completion, even for
-      // the looser Honored definition above.
+      // The Mythic award always requires a genuine 5/5 completion, independent
+      // of the looser Honored rule above.
       if (sess.picked_ids?.length === 5 && sess.completed_ids?.length === 5) mythicEarned++;
     }
 

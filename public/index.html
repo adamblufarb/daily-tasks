@@ -737,7 +737,6 @@
   // submitted failure, so a day skipped entirely (no session at all) leaves
   // it inflated across the gap. Replays real session dates instead.
   function computeDateConsecutiveStreak() {
-    const testUser = isTestUser();
     const done = s.sessions
       .filter(x => x.status === 'done' && (x.picked_ids || []).length > 0)
       .slice()
@@ -746,8 +745,7 @@
     let prevDate = null;
     for (const sess of done) {
       const completed = (sess.completed_ids || []).length;
-      const picked = (sess.picked_ids || []).length;
-      const honored = testUser ? completed >= 1 : completed === picked;
+      const honored = completed >= 1;
       if (!honored) {
         streak = 0;
       } else if (prevDate && daysBetweenDates(sess.date, prevDate) === 1) {
@@ -854,14 +852,13 @@
 
   /* ── Points ── */
   function computePoints() {
-    const looseHonored = isTestUser(); // adamblufarbhbo@gmail.com: >=1 completed counts as Honored
     let common = 0, legendary = 0, mythic = 0;
     for (const sess of s.sessions) {
       if (sess.status !== 'done') continue;
       const picked = (sess.picked_ids || []).length;
       const completed = (sess.completed_ids || []).length;
       if (picked === 0) continue;
-      const honored = looseHonored ? completed >= 1 : completed >= picked;
+      const honored = completed >= 1;
       if (!honored) continue;
       if (picked === 5 && completed === 5) mythic++; // Mythic award still requires a perfect completion
       for (const id of sess.completed_ids) {
@@ -967,9 +964,10 @@
       .onfinish = () => el.remove();
   }
 
-  // adamblufarbhbo@gmail.com — experimental Ritual mechanics (no act
-  // commitment, looser streak rule, Mythic plan visuals disabled) plus
-  // Testing Tools access. FTUE/onboarding is untouched for this account.
+  // adamblufarbhbo@gmail.com — Testing Tools access only. The Ritual
+  // mechanics that were previously gated behind this (no act commitment,
+  // looser streak rule, Mythic plan visuals disabled) are now standard
+  // for everyone; see htmlProfile() for the remaining Testing Tools gate.
   function isTestUser() {
     return clerk.user?.primaryEmailAddress?.emailAddress === 'adamblufarbhbo@gmail.com';
   }
@@ -1081,7 +1079,8 @@
                  : s.tab === 'tasks'   ? 'tasks'
                  : s.tab === 'store'   ? 'store'
                  : getScreen();
-    document.body.classList.toggle('mythic-bg', screen === 'pick' && s.picked.length === 5 && !isTestUser());
+    // Mythic plan visuals are retired — every Ritual runs and looks like a regular one.
+    document.body.classList.toggle('mythic-bg', false);
     document.querySelector('meta[name="theme-color"]').content = s.ftueScreen === 'splash' ? '#7c8494' : '#f0f4ff';
     document.getElementById('app').innerHTML = buildHtml(screen);
     document.querySelectorAll('.tab-btn').forEach(b =>
@@ -1109,10 +1108,8 @@
     const planCompleted = plan ? (plan.completed_ids || []) : [];
     const isPlanDone    = plan?.status === 'done';
     const isPlanActive  = plan?.status === 'active';
-    const testUserTab   = isTestUser();
-    const isMythicPlan  = isPlanActive && planTasks.length === 5 && !testUserTab;
-    const isHonored     = isPlanDone && planTasks.length > 0 &&
-      (testUserTab ? planCompleted.length >= 1 : planCompleted.length === planTasks.length);
+    const isMythicPlan  = false; // Mythic plan visuals are retired
+    const isHonored     = isPlanDone && planTasks.length > 0 && planCompleted.length >= 1;
     const isFailed      = isPlanDone && !isHonored;
     const ritualIcon  = isHonored ? '🤝' : isFailed ? '🥀' : isPlanActive ? (isMythicPlan ? '🔱' : '🧿') : '🎲';
     const ritualLabel = isHonored ? 'Honored' : isFailed ? 'Failed' : isPlanActive ? 'Active' : 'Ritual';
@@ -1468,12 +1465,12 @@
 
     ensureOffered();
     const tasks = s.offered.map(id => getTask(id)).filter(Boolean);
-    // adamblufarbhbo@gmail.com: no act commitment — all rolled acts are
-    // automatically the Ritual, and Mythic plan visuals never trigger.
-    const noCommitment = isTestUser() && !isOnboarding;
+    // No act commitment — all rolled acts are automatically the Ritual, and
+    // Mythic plan visuals never trigger. Onboarding keeps its own pick flow.
+    const noCommitment = !isOnboarding;
     const n = noCommitment ? tasks.length : s.picked.length;
     const isRevealing = s.planBuildState === 'revealing';
-    const isMythic = !noCommitment && !isOnboarding && n === 5;
+    const isMythic = false; // Mythic plan visuals are retired
     const canStart = noCommitment ? tasks.length > 0 : (isOnboarding ? n === maxPicks : n >= 3);
     const countLabel = isOnboarding
       ? `Committed: <strong>${n} / ${maxPicks}</strong>`
@@ -1507,15 +1504,12 @@
     if (!todaySess) return '';
     const tasks = (todaySess.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
     const completedIds = todaySess.completed_ids || [];
-    const testUser = isTestUser();
-    const isMythic = tasks.length === 5 && !testUser; // Mythic plan visuals disabled for this account
-    const actsLabel = testUser ? "Today's Acts" : 'Committed Acts';
+    const isMythic = false; // Mythic plan visuals are retired
+    const actsLabel = "Today's Acts";
 
     // ── Done-for-today (already submitted) ──
     if (todaySess.status === 'done') {
-      const isHonoredToday = testUser
-        ? completedIds.length >= 1
-        : (completedIds.length === tasks.length && tasks.length > 0);
+      const isHonoredToday = completedIds.length >= 1;
       return `
         <div class="home-header">
           <div class="home-emoji">${isHonoredToday ? '🤝' : '🥀'}</div>
@@ -1544,15 +1538,11 @@
     }
 
     // ── Active plan ──
-    const canSubmit = testUser
-      ? completedIds.length >= 1
-      : (tasks.length > 0 && tasks.every(t => completedIds.includes(t.id)));
+    const canSubmit = completedIds.length >= 1;
     const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
     const resetStr = fmtHour(RESET_HOUR);
     const deadlineDay = new Date().getHours() < RESET_HOUR ? 'today' : 'tomorrow';
-    const homeSub = testUser
-      ? `Complete at least 1 act by ${resetStr} ${deadlineDay} to keep your streak`
-      : `All acts must be completed by ${resetStr} ${deadlineDay}`;
+    const homeSub = `Complete at least 1 act by ${resetStr} ${deadlineDay} to keep your streak`;
     return `
       <div class="home-header">
         <div class="home-emoji">${isMythic ? '🔱' : '🧿'}</div>
@@ -1598,7 +1588,7 @@
     if (!pending) return '';
     const tasks = (pending.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
     const completedIds = pending.completed_ids || [];
-    const isMythic = tasks.length === 5 && !isTestUser();
+    const isMythic = false; // Mythic plan visuals are retired
     const planType = isMythic ? 'mythical' : 'daily';
     return `
       <div class="home-header">
@@ -1652,8 +1642,8 @@
       r.mythic    ? `<div class="reward-token-row">+${r.mythic} ${rarityTag('mythic')}</div>`    : '',
     ];
     const tokenRows = baseRows.filter(Boolean).join('');
-    // Perfect 5-act completion gets a purple celebration background for this account.
-    const isMythicCelebration = isTestUser() && r.mythic > 0;
+    // Perfect 5-act completion gets a purple celebration background.
+    const isMythicCelebration = r.mythic > 0;
     return `
       <div class="reward-screen${isMythicCelebration ? ' mythic-celebration' : ''}" style="background:${isMythicCelebration ? 'var(--mythic)' : 'var(--accent)'}">
         <div id="reward-floaters" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;"></div>
@@ -2466,11 +2456,8 @@
       ${sorted.map(sess => {
         const tasks = (sess.picked_ids||[]).map(id => getTaskForHistory(sess, id)).filter(Boolean);
         const isDone = sess.status === 'done';
-        // adamblufarbhbo@gmail.com: a Ritual is Honored with >=1 act completed;
-        // everyone else keeps the original all-completed rule.
-        const isWin  = isDone && (isTestUser()
-          ? (sess.completed_ids||[]).length >= 1
-          : (sess.completed_ids||[]).length === (sess.picked_ids||[]).length);
+        // A Ritual is Honored with >=1 act completed.
+        const isWin  = isDone && (sess.completed_ids||[]).length >= 1;
         const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Completed' : 'Failed';
         const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
         let cPts = 0, lPts = 0;
@@ -2818,8 +2805,8 @@
         : r.legendary > 0
         ? ['🦧','🐦‍🔥','🐅','🔥','🍄‍🟫','🥃','🏈']
         : ['🏐','🤍','🚰','🏁','🐏','🕊️','🌪️'];
-      // Perfect 5-act completion gets an extra-dense celebration for this account.
-      const density = (isTestUser() && r.mythic > 0) ? 3 : 1;
+      // Perfect 5-act completion gets an extra-dense celebration.
+      const density = r.mythic > 0 ? 3 : 1;
       startRewardFloaters(floatEmojis, density);
     }
 
@@ -2831,7 +2818,7 @@
       document.getElementById('btn-generate')?.addEventListener('click', async () => {
         s.offered = rollOffered();
         syncDraftSession(s.offered);
-        s.picked = (isTestUser() && !isOnboardingActive()) ? [...s.offered] : [];
+        s.picked = isOnboardingActive() ? [] : [...s.offered];
         s.rerollCount = 0; // fresh Ritual Forge — Re-Roll price starts back at 1 Common
         s.planBuildState = 'revealing';
         render();
@@ -2875,7 +2862,7 @@
         s.rerollCount = (s.rerollCount || 0) + 1;
         s.offered = rollOffered();
         syncDraftSession(s.offered);
-        s.picked = (isTestUser() && !isOnboardingActive()) ? [...s.offered] : [];
+        s.picked = isOnboardingActive() ? [] : [...s.offered];
         s.planBuildState = 'revealing';
         render();
         revealTimeoutId = setTimeout(() => { revealTimeoutId = null; s.planBuildState = 'pick'; render(); }, 500 + (s.offered.length - 1) * 500 + 450);
@@ -3484,24 +3471,15 @@
     const tasks = (todaySess.picked_ids || []).map(id => getTaskForHistory(todaySess, id)).filter(Boolean);
     const completedIds = todaySess.completed_ids || [];
     const allCompleted = completedIds.length === tasks.length && tasks.length > 0;
-    const testUser = isTestUser();
-    // adamblufarbhbo@gmail.com: completing at least 1 act keeps the streak,
-    // and tokens are earned per completed act regardless of total.
-    const isWin = testUser ? completedIds.length >= 1 : allCompleted;
+    // Completing at least 1 act keeps the streak; tokens are earned per
+    // completed act regardless of total.
+    const isWin = completedIds.length >= 1;
     let earnedCommon = 0, earnedLegendary = 0, earnedMythic = 0;
-    if (testUser) {
-      for (const id of completedIds) {
-        const t = getTaskForHistory(todaySess, id);
-        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
-      }
-      if (allCompleted && tasks.length === 5) earnedMythic = 1; // perfect day still earns the Mythic award
-    } else if (allCompleted) {
-      if (tasks.length === 5) earnedMythic = 1;
-      for (const id of completedIds) {
-        const t = getTaskForHistory(todaySess, id);
-        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
-      }
+    for (const id of completedIds) {
+      const t = getTaskForHistory(todaySess, id);
+      if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
     }
+    if (allCompleted && tasks.length === 5) earnedMythic = 1; // perfect day still earns the Mythic award
     if (isWin) {
       s.wallet.streak = (s.wallet.streak || 0) + 1;
     } else {
@@ -3847,22 +3825,13 @@
     const tasks = (pending.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
     const completedIds = pending.completed_ids || [];
     const allCompleted = completedIds.length === tasks.length && tasks.length > 0;
-    const testUser = isTestUser();
-    const isWin = testUser ? completedIds.length >= 1 : allCompleted;
+    const isWin = completedIds.length >= 1;
     let earnedCommon = 0, earnedLegendary = 0, earnedMythic = 0;
-    if (testUser) {
-      for (const id of completedIds) {
-        const t = getTaskForHistory(pending, id);
-        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
-      }
-      if (allCompleted && tasks.length === 5) earnedMythic = 1;
-    } else if (allCompleted) {
-      if (tasks.length === 5) earnedMythic = 1;
-      for (const id of completedIds) {
-        const t = getTaskForHistory(pending, id);
-        if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
-      }
+    for (const id of completedIds) {
+      const t = getTaskForHistory(pending, id);
+      if (t?.type === 'legendary') earnedLegendary++; else earnedCommon++;
     }
+    if (allCompleted && tasks.length === 5) earnedMythic = 1;
     if (isWin) {
       s.wallet.streak = (s.wallet.streak || 0) + 1;
     } else {
@@ -4126,7 +4095,7 @@
         const todaySess = s.sessions.find(x => x.date === s.today);
         if (todaySess?.offered_ids?.length) {
           s.offered = todaySess.offered_ids;
-          s.picked = (isTestUser() && !isOnboardingActive()) ? [...s.offered] : [];
+          s.picked = isOnboardingActive() ? [] : [...s.offered];
           s.planBuildState = 'pick';
         }
       }
