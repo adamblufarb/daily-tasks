@@ -727,6 +727,38 @@
       : new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return localDateStr(base);
   }
+  function daysBetweenDates(dateStrA, dateStrB) {
+    const [ay, am, ad] = dateStrA.split('-').map(Number);
+    const [by, bm, bd] = dateStrB.split('-').map(Number);
+    return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86400000);
+  }
+  // Streak Award eligibility must be grounded in actual consecutive calendar
+  // dates, not the wallet.streak counter — that counter only resets on a
+  // submitted failure, so a day skipped entirely (no session at all) leaves
+  // it inflated across the gap. Replays real session dates instead.
+  function computeDateConsecutiveStreak() {
+    const testUser = isTestUser();
+    const done = s.sessions
+      .filter(x => x.status === 'done' && (x.picked_ids || []).length > 0)
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let streak = 0;
+    let prevDate = null;
+    for (const sess of done) {
+      const completed = (sess.completed_ids || []).length;
+      const picked = (sess.picked_ids || []).length;
+      const honored = testUser ? completed >= 1 : completed === picked;
+      if (!honored) {
+        streak = 0;
+      } else if (prevDate && daysBetweenDates(sess.date, prevDate) === 1) {
+        streak++;
+      } else {
+        streak = 1;
+      }
+      prevDate = sess.date;
+    }
+    return streak;
+  }
 
   /* ── Feature flags ── */
   const KEY_AFFIX_ENABLED         = false;
@@ -2162,7 +2194,8 @@
     const isSysItem = sel?.startsWith('sys-');
     const canPurchaseSys = isSysItem && selItem && (w[selItem.rarity] || 0) >= selItem.cost;
     const canPurchase = (isSysItem ? canPurchaseSys : (selItem && (w[selItem.rarity] || 0) >= selItem.cost && !alreadyBoughtToday));
-    const showStreakAward = Math.floor(w.streak / 3) > Math.floor((w.streakAwardClaimed || 0) / 3);
+    const dateStreak = computeDateConsecutiveStreak();
+    const showStreakAward = Math.floor(dateStreak / 3) > Math.floor((w.streakAwardClaimed || 0) / 3);
     return `
       <div class="section-header" style="padding-bottom:8px">
         <div class="section-title">Bazaar</div>
@@ -2632,7 +2665,7 @@
           if (streakBtn && streakFill) {
             attachHoldToConfirm(streakBtn, streakFill, () => {
               s.wallet.mythic += 1;
-              s.wallet.streakAwardClaimed = s.wallet.streak;
+              s.wallet.streakAwardClaimed = computeDateConsecutiveStreak();
               const mythicChip = document.getElementById('tutorial-wallet-mythic');
               if (mythicChip) mythicChip.innerHTML = `${s.wallet.mythic} <span class="store-wallet-label">Mythical</span>`;
               animateTokenChip('tutorial-wallet-mythic');
