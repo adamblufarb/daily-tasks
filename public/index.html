@@ -35,8 +35,8 @@
       --text: #1e1b4b;
       --subtext: #6b7280;
       --border: #e0e7ff;
-      --success: #22c55e;
-      --danger: #ef4444;
+      --success: #3aa65e;
+      --danger: #bc3737;
       --warning-bg: #fef3c7;
       --blessed: #c99a2e;
       --blessed-bg: #fbf1d9;
@@ -723,7 +723,6 @@
 
   /* ── Day reset helpers (must be before state init) ── */
   let RESET_HOUR = 8;
-  const GRACE_HOURS = 3;
   function localDateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
@@ -733,10 +732,6 @@
       ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
       : new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return localDateStr(base);
-  }
-  function isInGracePeriod() {
-    const h = new Date().getHours();
-    return h >= RESET_HOUR && h < RESET_HOUR + GRACE_HOURS;
   }
 
   /* ── Feature flags ── */
@@ -818,10 +813,10 @@
     if (s.loading) return 'loading';
     if (s.ftueScreen) return s.ftueScreen;
     if (s.overlayScreen) return s.overlayScreen;
-    if (isInGracePeriod()) {
-      const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
-      if (pending) return 'concluded';
-    }
+    // No new Ritual can be forged until the previous day's results are in —
+    // this holds indefinitely now, with no grace-period time limit.
+    const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
+    if (pending) return 'concluded';
     if (s.activePlanId) {
       const plan = s.sessions.find(x => x.id === s.activePlanId);
       if (plan && plan.date === s.today) return 'active';
@@ -1558,22 +1553,19 @@
       ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>` : ''}`;
   }
 
-  /* ── Grace-period: Concluded screen ── */
+  /* ── Concluded screen: enter results for an unresolved previous Ritual ── */
   function htmlConcluded() {
     const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
     if (!pending) return '';
     const tasks = (pending.picked_ids || []).map(id => getTaskForHistory(pending, id)).filter(Boolean);
     const completedIds = pending.completed_ids || [];
     const isMythic = tasks.length === 5;
-    const graceEndHour = RESET_HOUR + GRACE_HOURS;
-    const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
-    const graceEndStr = fmtHour(graceEndHour >= 24 ? graceEndHour - 24 : graceEndHour);
     const planType = isMythic ? 'mythical' : 'daily';
     return `
       <div class="home-header">
         <div class="home-emoji">${isMythic ? '🔱' : '🧿'}</div>
         <div class="home-title"${isMythic ? ` style="color:var(--mythic)"` : ''}>${isMythic ? 'Mythical Ritual Concluded' : 'Daily Ritual Concluded'}</div>
-        <div class="home-sub">Please submit your ${planType} ritual results. The day resets at ${graceEndStr}.</div>
+        <div class="home-sub">Please submit your ${planType} ritual results before you can forge a new one.</div>
       </div>
       <div class="tasks-label">Yesterday's Acts</div>
       ${tasks.map(t => {
@@ -1662,7 +1654,6 @@
 
   /* ── Profile ── */
   function htmlProfile() {
-    const graceEnd = RESET_HOUR + GRACE_HOURS;
     const fmtHour = h => h === 0 ? '12:00am' : h < 12 ? `${h}:00am` : h === 12 ? '12:00pm' : `${h-12}:00pm`;
     const hours = Array.from({length: 6}, (_, i) => i + 6);
     const bazaarUnlocked = s.onboardingRitualCount >= 2;
@@ -1716,7 +1707,6 @@
             ${hours.map(h => `<option value="${h}"${h===RESET_HOUR?' selected':''}>${fmtHour(h)}</option>`).join('')}
           </select>
         </div>
-        <div class="settings-sub">Grace period until ${fmtHour(graceEnd >= 24 ? graceEnd - 24 : graceEnd)} to enter previous day's results</div>
       </div>
       <div style="height:16px"></div>
       <button class="profile-menu-item" id="btn-sign-out" style="color:var(--subtext)">
@@ -2045,7 +2035,7 @@
     const common    = userActPool.filter(t => t.type === 'common');
     const legendary = userActPool.filter(t => t.type === 'legendary');
     const deleting  = s.poolEditMode;
-    const markThreshold = 4; // completions required to unlock Bless/Curse
+    const markThreshold = 5; // completions required to unlock Bless/Curse
     const canAdd    = s.wallet.legendary >= 1;
     const canDelete = s.wallet.legendary >= 1;
     const canAddRandom   = s.wallet.mythic >= 1;
@@ -2082,15 +2072,14 @@
               <button class="btn-icon del" data-delete-task="${t.id}" title="Delete"${!canDelete ? ' disabled style="opacity:0.35;pointer-events:none"' : ''}>🗑️</button>
             </div>` : `
             <div class="pool-task-stats">
-              <div class="pool-stat">Chosen <span>${st.chosen}</span></div>
               <div class="pool-stat">Completed <span>${st.completed}</span></div>
             </div>`}
           </div>
           ${!deleting && (eligibleForMark || mark !== null) ? `
           <div class="pool-mark-controls">
-            ${mark === 'blessed' ? `<div class="pool-task-mark-note note-blessed">Blessed acts has <strong>higher</strong> chances to roll</div>` : ''}
-            ${mark === 'cursed'  ? `<div class="pool-task-mark-note note-cursed">Cursed acts has <strong>smaller</strong> chances to roll</div>`  : ''}
-            ${mark === null && eligibleForMark ? `<div class="pool-task-mark-note">You can now Bless or Curse this act</div>` : ''}
+            ${mark === 'blessed' ? `<div class="pool-task-mark-note note-blessed">Blessed acts have <strong>higher</strong> chance to roll</div>` : ''}
+            ${mark === 'cursed'  ? `<div class="pool-task-mark-note note-cursed">Cursed acts have <strong>lower</strong> chance to roll</div>`  : ''}
+            ${mark === null && eligibleForMark ? `<div class="pool-task-mark-note">You can Bless or Curse this act</div>` : ''}
             ${eligibleForMark ? `
             <div class="pool-mark-buttons">
               <button class="pool-mark-btn mark-blessed${mark==='blessed'?' active':''}" data-set-mark="${t.id}" data-mark-value="blessed">✨ Bless</button>
@@ -4150,18 +4139,6 @@
       s.tasks = data.tasks;
       s.loading = false;
 
-      // Auto-fail stale active sessions outside grace period
-      if (!isInGracePeriod()) {
-        const stale = s.sessions.filter(x => x.status === 'active' && x.date !== s.today);
-        if (stale.length) {
-          s.sessions = s.sessions.map(x =>
-            stale.find(st => st.id === x.id) ? { ...x, status: 'done', completed_ids: [] } : x);
-          await Promise.all(stale.map(x =>
-            api('PATCH', '/api/sessions', { id: x.id, completed_ids: [], status: 'done' })
-          ));
-        }
-      }
-
       // Trigger FTUE splash for brand-new users (no non-draft sessions)
       if (!s.hasCompletedOnboarding && s.onboardingRitualCount === 0) {
         const hasRealSessions = s.sessions.some(x => x.status !== 'draft');
@@ -4294,7 +4271,9 @@
 
   // ── Centralized state evaluation ──
   // Called after claiming tokens, on visibility restore, on focus, every 60s,
-  // and at exact reset/grace-end boundaries so the correct screen always shows.
+  // and at the exact reset boundary so the correct screen always shows.
+  // A Ritual left unresolved from a previous day never auto-fails on a timer —
+  // it just stays open (via the Concluded screen) until the user submits it.
   function evaluateState() {
     if (!appLoaded || s.loading) return;
 
@@ -4302,41 +4281,18 @@
     if (newToday !== s.today) {
       s.today = newToday;
       load(); // full refresh on new day
-      return;
-    }
-
-    // Auto-fail any stale active sessions now that grace period has ended
-    if (!isInGracePeriod()) {
-      const stale = s.sessions.filter(x => x.status === 'active' && x.date !== s.today);
-      if (stale.length) {
-        s.sessions = s.sessions.map(x =>
-          stale.find(st => st.id === x.id) ? { ...x, status: 'done', completed_ids: [] } : x
-        );
-        stale.forEach(x =>
-          api('PATCH', '/api/sessions', { id: x.id, completed_ids: [], status: 'done' })
-        );
-        render();
-      }
     }
   }
 
-  // Schedules a one-shot timer to fire at the next significant boundary
-  // (reset time or grace-end time), then reschedules itself.
+  // Schedules a one-shot timer to fire at the next day-reset boundary,
+  // then reschedules itself.
   function scheduleNextBoundary() {
     const now = new Date();
-    const elapsedMins = now.getHours() * 60 + now.getMinutes();
-    const elapsedSecs = elapsedMins * 60 + now.getSeconds();
-    const resetSecs    = RESET_HOUR * 3600;
-    const graceEndSecs = (RESET_HOUR + GRACE_HOURS) * 3600;
-
-    let secsUntilNext;
-    if (elapsedSecs < resetSecs) {
-      secsUntilNext = resetSecs - elapsedSecs;
-    } else if (elapsedSecs < graceEndSecs) {
-      secsUntilNext = graceEndSecs - elapsedSecs;
-    } else {
-      secsUntilNext = 86400 - elapsedSecs + resetSecs; // tomorrow's reset
-    }
+    const elapsedSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    const resetSecs = RESET_HOUR * 3600;
+    const secsUntilNext = elapsedSecs < resetSecs
+      ? resetSecs - elapsedSecs
+      : 86400 - elapsedSecs + resetSecs; // tomorrow's reset
 
     setTimeout(() => {
       evaluateState();
