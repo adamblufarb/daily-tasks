@@ -2477,7 +2477,7 @@
                 const done = (sess.completed_ids||[]).includes(t.id);
                 const over = sess.status === 'done';
                 const incomplete = over && !done;
-                const icon  = done ? '✓' : over ? '✗' : '○';
+                const icon  = done ? '✓' : over ? '•' : '○';
                 const color = done ? 'var(--success)' : 'var(--subtext)';
                 return `<div class="history-task-row${done?' done':''}${incomplete?' incomplete':''}">
                   <span style="color:${color}">${icon}</span>
