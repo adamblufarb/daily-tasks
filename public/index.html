@@ -330,6 +330,7 @@
     .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
     .history-card.card-win  { background: color-mix(in srgb, var(--success) 10.5%, var(--card)); border-color: var(--success); }
     .history-card.card-fail { background: color-mix(in srgb, var(--danger) 10.5%, var(--card)); border-color: var(--danger); }
+    .history-card.card-missed { border-color: var(--danger); }
     .history-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .history-date { font-size: 0.95rem; font-weight: 700; }
     .history-result { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -341,7 +342,7 @@
     .history-task-row { font-size: 0.84rem; display: flex; align-items: center; gap: 8px; color: var(--subtext); }
     .history-task-row.done { color: var(--text); font-weight: 600; }
     .history-task-row.incomplete { opacity: 0.6; }
-    .history-task-row.incomplete .rarity-tag { background: var(--subtext); color: var(--card); }
+    .history-task-row.incomplete .rarity-tag { background: var(--subtext); color: var(--card); opacity: 0.5; }
     .history-pts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; line-height: 1.4; color: var(--subtext); display: flex; gap: 12px; align-items: center; }
     .pts-earned { font-weight: 700; font-size: 0.8rem; line-height: 1.4; }
     .pts-common { color: var(--common); }
@@ -2473,7 +2474,7 @@
           if (t?.type === 'legendary') lPts++; else cPts++;
         }
         return `
-          <div class="history-card${isWin?' card-win':isDone&&!isWin?' card-fail':''}">
+          <div class="history-card${isWin?' card-win':isDone&&!isWin?' card-fail':isMissed?' card-missed':''}">
             <div class="history-card-top">
               <div class="history-date">${fmtDate(sess.date)}</div>
               <span class="history-result ${cls}">${label}</span>
