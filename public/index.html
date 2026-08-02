@@ -161,7 +161,6 @@
     .btn-confirm-yes { background: var(--success); color: #fff; border: none; border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .btn-confirm-yes.btn-danger { background: var(--danger); }
     .btn-confirm-no  { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--text); }
-    .btn-confirm-no.btn-red    { background: var(--danger); border-color: var(--danger); color: #fff; }
 
     /* Review */
     .review-task { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
@@ -340,6 +339,7 @@
     .history-tasks { display: flex; flex-direction: column; gap: 6px; }
     .history-task-row { font-size: 0.84rem; display: flex; align-items: center; gap: 8px; color: var(--subtext); }
     .history-task-row.done { color: var(--text); font-weight: 600; }
+    .history-task-row.incomplete { opacity: 0.6; }
     .history-pts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; line-height: 1.4; color: var(--subtext); display: flex; gap: 12px; align-items: center; }
     .pts-earned { font-weight: 700; font-size: 0.8rem; line-height: 1.4; }
     .pts-common { color: var(--common); }
@@ -457,10 +457,6 @@
     .reward-token-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 400; color: rgba(255,255,255,0.9); }
     .btn-claim     { width: 100%; padding: 17px; background: rgba(255,255,255,0.2); color: #fff; border: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.5); border-radius: var(--radius); font-family: inherit; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; touch-action: manipulation; }
 
-    /* Concluded-screen: declined task (red) */
-    .active-task.task-declined { border-color: var(--danger); background: var(--danger); color: #fff; cursor: pointer; }
-    .active-task.task-declined .active-task-desc { color: rgba(255,255,255,0.75); }
-    .active-task.task-declined .rarity-tag { background: rgba(0,0,0,0.2); color: #fff; }
     .active-task-check.check-x { background: var(--danger); }
 
     /* Done-for-today: incomplete task indicator */
@@ -803,7 +799,6 @@
       showPurchasedScreen: false,
       storeScreen: 'store',
       lastCraftResult: null,
-      reviewDeclined: [],
       suppressSubmitCta: false,
       graceConfirmTask: null,
       overlayScreen: null,
@@ -1022,6 +1017,16 @@
     } else if (!s.offered.length) {
       s.offered = rollOffered();
     }
+  }
+
+  // Clears in-progress Ritual Forge state (rolled acts, picks, reroll
+  // count) so a genuinely new day always starts from a fresh "Roll Acts"
+  // screen instead of silently inheriting yesterday's stale offer.
+  function resetForgeState() {
+    s.offered = [];
+    s.picked = [];
+    s.planBuildState = 'generate';
+    s.rerollCount = 0;
   }
 
   // Keep the local session cache in sync with a freshly-rolled offer so
@@ -1599,38 +1604,32 @@
       <div class="tasks-label">Yesterday's Acts</div>
       ${tasks.map(t => {
         const done       = completedIds.includes(t.id);
-        const declined   = s.reviewDeclined.includes(t.id);
-        const unanswered = !done && !declined;
         const confirming = s.graceConfirmTask === t.id;
-        const showPrompt = unanswered || confirming;
-        const glowClass  = t.type === 'legendary' && unanswered && !confirming ? ' legendary-glow' : '';
-        const glowAttr   = t.type === 'legendary' && unanswered && !confirming ? ` data-glow-id="${t.id}"` : '';
+        const glowClass  = t.type === 'legendary' && !done && !confirming ? ' legendary-glow' : '';
+        const glowAttr   = t.type === 'legendary' && !done && !confirming ? ` data-glow-id="${t.id}"` : '';
         return `
-        <div class="active-task${done&&!confirming?' completed':declined&&!confirming?' task-declined':''} type-${t.type}${glowClass}${confirming?' selected':''}" data-grace-tap="${t.id}"${glowAttr}>
+        <div class="active-task${done&&!confirming?' completed':''} type-${t.type}${glowClass}${confirming?' selected':''}" data-grace-tap="${t.id}"${glowAttr}>
           <div class="active-task-row">
             ${done && !confirming
               ? `<div class="active-task-check">✓</div>`
-              : declined && !confirming
-                ? `<div class="active-task-check check-x">✕</div>`
-                : `<div class="active-task-dot dot-${t.type}"></div>`}
+              : `<div class="active-task-dot dot-${t.type}"></div>`}
             <div class="active-task-info">
               <div class="active-task-title">${t.title}</div>
               <div class="active-task-desc">${t.description}</div>
             </div>
             ${rarityTag(t.type)}
           </div>
-          ${showPrompt ? `
+          ${confirming ? `
           <div class="task-confirm">
             <span class="task-confirm-text">Did you complete this?</span>
             <div style="display:flex;gap:8px">
-              <button class="btn-confirm-no btn-red" data-grace-no="${t.id}">No ✕</button>
               <button class="btn-confirm-yes" data-grace-yes="${t.id}">Yes ✓</button>
             </div>
           </div>` : ''}
         </div>`;
       }).join('')}
       <div style="height:16px"></div>
-      <button class="btn-primary" id="btn-submit-grace"${tasks.every(t => completedIds.includes(t.id) || s.reviewDeclined.includes(t.id)) ? '' : ' disabled'}>Submit Results</button>`;
+      <button class="btn-primary" id="btn-submit-grace">Submit Results</button>`;
   }
 
   /* ── Claim Tokens screen ── */
@@ -2477,9 +2476,10 @@
               ${tasks.map(t => {
                 const done = (sess.completed_ids||[]).includes(t.id);
                 const over = sess.status === 'done';
+                const incomplete = over && !done;
                 const icon  = done ? '✓' : over ? '✗' : '○';
-                const color = done ? 'var(--success)' : over ? 'var(--danger)' : 'var(--subtext)';
-                return `<div class="history-task-row${done?' done':''}">
+                const color = done ? 'var(--success)' : 'var(--subtext)';
+                return `<div class="history-task-row${done?' done':''}${incomplete?' incomplete':''}">
                   <span style="color:${color}">${icon}</span>
                   <span style="flex:1">${t.title}</span>
                   ${rarityTag(t.type)}
@@ -2786,13 +2786,7 @@
         el.addEventListener('click', e => {
           e.stopPropagation();
           s.graceConfirmTask = null;
-          graceCompleteTask(el.dataset.graceYes);
-        }));
-      document.querySelectorAll('[data-grace-no]').forEach(el =>
-        el.addEventListener('click', e => {
-          e.stopPropagation();
-          s.graceConfirmTask = null;
-          graceDeclineTask(el.dataset.graceNo);
+          graceToggleTask(el.dataset.graceYes);
         }));
       document.getElementById('btn-submit-grace')?.addEventListener('click', submitGrace);
     }
@@ -3049,7 +3043,9 @@
       // Reset hour select (Profile menu)
       document.getElementById('select-reset-hour')?.addEventListener('change', async e => {
         RESET_HOUR = parseInt(e.target.value);
-        s.today = todayStr();
+        const newToday = todayStr();
+        if (newToday !== s.today) resetForgeState(); // reset-hour change can shift which day "today" is
+        s.today = newToday;
         render();
         await saveSettings();
       });
@@ -3504,7 +3500,9 @@
     }
     s.pendingReward = null;
     s.overlayScreen = null;
-    s.today = todayStr();
+    const newToday = todayStr();
+    if (newToday !== s.today) resetForgeState(); // don't inherit yesterday's rolled acts
+    s.today = newToday;
     let advancedOnboarding = false;
     if (!s.hasCompletedOnboarding) {
       s.onboardingRitualCount++;
@@ -3527,7 +3525,9 @@
   async function dismissFailScreen() {
     s.pendingReward = null;
     s.overlayScreen = null;
-    s.today = todayStr();
+    const newToday = todayStr();
+    if (newToday !== s.today) resetForgeState(); // don't inherit yesterday's rolled acts
+    s.today = newToday;
     let advancedOnboarding = false;
     if (!s.hasCompletedOnboarding) {
       s.onboardingRitualCount++;
@@ -3805,17 +3805,16 @@
     }
   }
 
-  function graceCompleteTask(taskId) {
+  // Yes-only toggle for the previous day's review — tapping an already
+  // "Yes" act un-marks it. Anything never marked Yes stays incomplete.
+  function graceToggleTask(taskId) {
     const pending = s.sessions.find(x => x.date !== s.today && x.status === 'active');
     if (!pending) return;
-    const newCompleted = [...new Set([...(pending.completed_ids || []), taskId])];
+    const already = (pending.completed_ids || []).includes(taskId);
+    const newCompleted = already
+      ? (pending.completed_ids || []).filter(id => id !== taskId)
+      : [...new Set([...(pending.completed_ids || []), taskId])];
     s.sessions = s.sessions.map(x => x.id === pending.id ? { ...x, completed_ids: newCompleted } : x);
-    s.reviewDeclined = s.reviewDeclined.filter(id => id !== taskId);
-    render();
-  }
-
-  function graceDeclineTask(taskId) {
-    if (!s.reviewDeclined.includes(taskId)) s.reviewDeclined.push(taskId);
     render();
   }
 
@@ -3834,7 +3833,6 @@
     if (allCompleted && tasks.length === 5) earnedMythic = 1;
     s.pendingReward = { common: earnedCommon, legendary: earnedLegendary, mythic: earnedMythic };
     s.overlayScreen = isWin ? 'reward' : 'bad-luck';
-    s.reviewDeclined = [];
     s.graceConfirmTask = null;
     s.sessions = s.sessions.map(x => x.id === pending.id
       ? { ...x, completed_ids: completedIds, status: 'done' } : x);
@@ -4090,11 +4088,17 @@
       } else if (doneTodaySess) {
         s.activePlanId = doneTodaySess.id;
       } else {
+        s.activePlanId = null; // don't keep pointing at a previous day's resolved plan
         const todaySess = s.sessions.find(x => x.date === s.today);
         if (todaySess?.offered_ids?.length) {
           s.offered = todaySess.offered_ids;
           s.picked = isOnboardingActive() ? [] : [...s.offered];
           s.planBuildState = 'pick';
+        } else {
+          // No session at all yet for today — clear any stale Forge state
+          // left over from a previous day (rolled acts, reroll count) so
+          // "Roll Acts" starts fresh instead of showing yesterday's offer.
+          resetForgeState();
         }
       }
       render();
