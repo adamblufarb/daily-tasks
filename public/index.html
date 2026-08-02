@@ -35,7 +35,7 @@
       --text: #1e1b4b;
       --subtext: #6b7280;
       --border: #e0e7ff;
-      --success: #3aa65e;
+      --success: #47946b;
       --danger: #bc3737;
       --warning-bg: #fef3c7;
       --blessed: #c99a2e;
@@ -333,8 +333,8 @@
     .history-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .history-date { font-size: 0.95rem; font-weight: 700; }
     .history-result { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
-    .result-win { background: #dcfce7; color: #16a34a; }
-    .result-fail { background: #fee2e2; color: #dc2626; }
+    .result-win { background: #dcfce7; color: var(--success); }
+    .result-fail { background: #fee2e2; color: var(--danger); }
     .result-active { background: #e0e7ff; color: var(--accent); }
     .history-tasks { display: flex; flex-direction: column; gap: 6px; }
     .history-task-row { font-size: 0.84rem; display: flex; align-items: center; gap: 8px; color: var(--subtext); }
@@ -2457,7 +2457,7 @@
         const isDone = sess.status === 'done';
         // A Ritual is Honored with >=1 act completed.
         const isWin  = isDone && (sess.completed_ids||[]).length >= 1;
-        const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Completed' : 'Failed';
+        const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Honored' : 'Broken';
         const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
         let cPts = 0, lPts = 0;
         // The Mythic award always requires a genuine 5/5 completion.
