@@ -329,17 +329,19 @@
     /* History */
     .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
     .history-card.card-win  { background: color-mix(in srgb, var(--success) 10.5%, var(--card)); border-color: var(--success); }
-    .history-card.card-fail { background: color-mix(in srgb, var(--danger) 7%, var(--card)); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
+    .history-card.card-fail { background: color-mix(in srgb, var(--danger) 10.5%, var(--card)); border-color: var(--danger); }
     .history-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .history-date { font-size: 0.95rem; font-weight: 700; }
     .history-result { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
     .result-win { background: #dcfce7; color: var(--success); }
     .result-fail { background: #fee2e2; color: var(--danger); }
     .result-active { background: #e0e7ff; color: var(--accent); }
+    .result-missed { background: var(--border); color: var(--subtext); }
     .history-tasks { display: flex; flex-direction: column; gap: 6px; }
     .history-task-row { font-size: 0.84rem; display: flex; align-items: center; gap: 8px; color: var(--subtext); }
     .history-task-row.done { color: var(--text); font-weight: 600; }
     .history-task-row.incomplete { opacity: 0.6; }
+    .history-task-row.incomplete .rarity-tag { background: var(--subtext); color: var(--card); }
     .history-pts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; line-height: 1.4; color: var(--subtext); display: flex; gap: 12px; align-items: center; }
     .pts-earned { font-weight: 700; font-size: 0.8rem; line-height: 1.4; }
     .pts-common { color: var(--common); }
@@ -2455,10 +2457,14 @@
       ${sorted.map(sess => {
         const tasks = (sess.picked_ids||[]).map(id => getTaskForHistory(sess, id)).filter(Boolean);
         const isDone = sess.status === 'done';
-        // A Ritual is Honored with >=1 act completed.
-        const isWin  = isDone && (sess.completed_ids||[]).length >= 1;
-        const label  = sess.status === 'active' ? 'In Progress' : isWin ? 'Honored' : 'Broken';
-        const cls    = sess.status === 'active' ? 'result-active' : isWin ? 'result-win' : 'result-fail';
+        const isActive = sess.status === 'active';
+        // A Ritual is Honored with >=1 act completed. Anything neither active
+        // nor done (a draft that was offered but never actually started) means
+        // no Ritual was undertaken that day at all.
+        const isWin    = isDone && (sess.completed_ids||[]).length >= 1;
+        const isMissed = !isDone && !isActive;
+        const label  = isActive ? 'In Progress' : isWin ? 'Honored' : isMissed ? 'Missed' : 'Broken';
+        const cls    = isActive ? 'result-active' : isWin ? 'result-win' : isMissed ? 'result-missed' : 'result-fail';
         let cPts = 0, lPts = 0;
         // The Mythic award always requires a genuine 5/5 completion.
         const isMythic = isDone && (sess.picked_ids||[]).length === 5 && (sess.completed_ids||[]).length === 5;
