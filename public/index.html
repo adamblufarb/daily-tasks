@@ -726,6 +726,17 @@
       : new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return localDateStr(base);
   }
+  function secsUntilNextReset() {
+    const now = new Date();
+    const elapsedSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    const resetSecs = RESET_HOUR * 3600;
+    return elapsedSecs < resetSecs ? resetSecs - elapsedSecs : 86400 - elapsedSecs + resetSecs;
+  }
+  // Submit Results only becomes available in the final 3 hours before the
+  // day rolls over, so users can't cut the Ritual short earlier in the day.
+  function isSubmitWindowOpen() {
+    return secsUntilNextReset() <= 3 * 3600;
+  }
   function daysBetweenDates(dateStrA, dateStrB) {
     const [ay, am, ad] = dateStrA.split('-').map(Number);
     const [by, bm, bd] = dateStrB.split('-').map(Number);
@@ -1580,12 +1591,14 @@
             <span class="task-confirm-text">Did you complete this?</span>
             <div style="display:flex;gap:8px">
               <button class="btn-confirm-no" data-confirm-no="${t.id}">Back</button>
-              <button class="btn-confirm-yes" data-confirm-yes="${t.id}">Yes ✓</button>
+              ${done
+                ? `<button class="btn-confirm-yes btn-danger" data-confirm-undo="${t.id}">No ✕</button>`
+                : `<button class="btn-confirm-yes" data-confirm-yes="${t.id}">Yes ✓</button>`}
             </div>
           </div>` : ''}
         </div>`;
       }).join('')}
-      ${canSubmit && !s.suppressSubmitCta ? `<div style="height:16px"></div>
+      ${canSubmit && !s.suppressSubmitCta && isSubmitWindowOpen() ? `<div style="height:16px"></div>
       <button class="btn-primary" id="btn-submit-results" style="animation:fade-in 0.3s ease forwards">Submit Results</button>` : ''}
       ${localStorage.getItem('showTestingTools') === 'true' ? `<button class="btn-danger-ghost" id="btn-restart">↺ Restart Day</button>` : ''}`;
   }
@@ -2890,15 +2903,19 @@
           s.confirmTask = null;
           render();
         }));
+      document.querySelectorAll('[data-confirm-undo]').forEach(btn =>
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          uncompleteTask(btn.dataset.confirmUndo);
+        }));
       document.querySelectorAll('[data-confirm-yes]').forEach(btn =>
         btn.addEventListener('click', e => {
           e.stopPropagation();
           const taskId      = btn.dataset.confirmYes;
           const sess        = activePlan();
-          const alreadyDone = (sess?.completed_ids || []).includes(taskId);
           const task        = getTaskForHistory(sess, taskId);
-          const isCommon    = !alreadyDone && task?.type === 'common';
-          const isLegendary = !alreadyDone && task?.type === 'legendary';
+          const isCommon    = task?.type === 'common';
+          const isLegendary = task?.type === 'legendary';
           if (isCommon || isLegendary) {
             const EMOJIS  = isCommon
               ? ['🏐','🤍','🚰','🏁','🐏','🕊️','🌪️']
@@ -4229,18 +4246,18 @@
     if (newToday !== s.today) {
       s.today = newToday;
       load(); // full refresh on new day
+    } else if (getScreen() === 'active') {
+      // Re-render only while the active Ritual screen is showing, so the
+      // Submit Results CTA's reset-hour window stays in sync without
+      // disrupting in-progress interactions (typing, animations) elsewhere.
+      render();
     }
   }
 
   // Schedules a one-shot timer to fire at the next day-reset boundary,
   // then reschedules itself.
   function scheduleNextBoundary() {
-    const now = new Date();
-    const elapsedSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-    const resetSecs = RESET_HOUR * 3600;
-    const secsUntilNext = elapsedSecs < resetSecs
-      ? resetSecs - elapsedSecs
-      : 86400 - elapsedSecs + resetSecs; // tomorrow's reset
+    const secsUntilNext = secsUntilNextReset();
 
     setTimeout(() => {
       evaluateState();
